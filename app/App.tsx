@@ -228,10 +228,14 @@ function Picker({ onPick, ledger }: { onPick: (s: Scenario) => void; ledger: Led
       <ScrollView contentContainerStyle={styles.pickerList}>
         {SCENARIOS.map((s, i) =>
           open.has(s.id) ? (
-            <Pressable key={s.id} style={styles.card} onPress={() => onPick(s)}>
+            // An unlocked door wears its mind's own accent (§2/§5 "one accent per context") — a hairline
+            // left edge + the record inked in the room's hue, so the four minds read distinct on the roster
+            // (mandate #2 carried into the picker). The accent is the REWARD of cracking: sealed doors below
+            // stay colorless, the hue only arrives once the door opens.
+            <Pressable key={s.id} style={[styles.card, { borderLeftColor: s.accent, borderLeftWidth: 3 }]} onPress={() => onPick(s)}>
               <Text style={styles.cardTitle}>{s.title.toUpperCase()}</Text>
               <Text style={styles.cardGoal}>{s.playerGoal}</Text>
-              {recordLine(ledger[s.id]) && <Text style={styles.cardRecord}>{recordLine(ledger[s.id])}</Text>}
+              {recordLine(ledger[s.id]) && <Text style={[styles.cardRecord, { color: s.accent }]}>{recordLine(ledger[s.id])}</Text>}
             </Pressable>
           ) : (
             // A sealed door: the mind is named, nothing else. The requirement IS the path.
