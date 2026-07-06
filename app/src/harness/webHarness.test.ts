@@ -21,6 +21,13 @@ describe('parseHarness', () => {
   it('finds the param mid-query and url-decodes', () => {
     expect(parseHarness('?x=1&harness=duel')).toEqual({ kind: 'duel', scenarioId: 'warden', variant: 'mid' });
   });
+
+  it('maps duel-<scenarioId> to a neutral mid-game on that room, but only for a real scenario', () => {
+    for (const id of ['fence', 'suspect', 'oracle']) {
+      expect(parseHarness(`?harness=duel-${id}`)).toEqual({ kind: 'duel', scenarioId: id, variant: 'mid' });
+    }
+    expect(parseHarness('?harness=duel-nobody')).toBeNull();
+  });
 });
 
 describe('seededLedger', () => {

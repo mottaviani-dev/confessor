@@ -46,6 +46,11 @@ const SHOTS = [
   { name: 'duel', url: '/?harness=duel', desc: 'a duel scene — backdrop, orb, tone, objective (Grip high)' },
   { name: 'duel-lowgrip', url: '/?harness=duel-lowgrip', desc: 'the low-Grip interface corruption — the echo rendered colder (§2)' },
   { name: 'duel-askpenalty', url: '/?harness=duel-askpenalty', desc: 'the diegetic ask-penalty line in the open transcript (mandate 1)' },
+  // One neutral mid-game per room — the §2 per-scenario palette seen for every mind (verdigris warden is
+  // the `duel` shot above; here the brass fence, blood-umber suspect, pale-phosphor oracle).
+  { name: 'room-fence', url: '/?harness=duel-fence', desc: 'the Fence backdrop — brass accent (§2 palette)' },
+  { name: 'room-suspect', url: '/?harness=duel-suspect', desc: 'the Suspect backdrop — dried-blood umber (§2 palette)' },
+  { name: 'room-oracle', url: '/?harness=duel-oracle', desc: 'the Oracle backdrop — pale phosphor (§2 palette)' },
 ];
 
 const CONTENT_TYPE = {

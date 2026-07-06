@@ -48,14 +48,24 @@ const DUEL_URL_KEYS: Readonly<Record<string, DuelVariant>> = {
 const DUEL_SCENARIO_ID = 'warden';
 
 /** Parse a `window.location.search` (or any query string) into a harness mode, or null when no
- *  `?harness=` is present / the key is unknown. The only entry point the app calls. */
+ *  `?harness=` is present / the key is unknown. The only entry point the app calls.
+ *  Keys: `picker-seeded`; the warden probes `duel` / `duel-lowgrip` / `duel-askpenalty`; and
+ *  `duel-<scenarioId>` (e.g. `duel-fence`) for a neutral mid-game on any room — one shot per backdrop so
+ *  the §2 per-scenario palette (verdigris/brass/umber/ember) can be eyeballed for all four minds. */
 export function parseHarness(search: string): HarnessMode | null {
   const m = /[?&]harness=([^&]+)/.exec(search || '');
   if (!m) return null;
   const key = decodeURIComponent(m[1]);
   if (key === 'picker-seeded') return { kind: 'picker-seeded' };
+  // The fixed warden probes first (their suffixes are variants, never scenario ids).
   const variant = DUEL_URL_KEYS[key];
-  return variant ? { kind: 'duel', scenarioId: DUEL_SCENARIO_ID, variant } : null;
+  if (variant) return { kind: 'duel', scenarioId: DUEL_SCENARIO_ID, variant };
+  // `duel-<scenarioId>` — a neutral mid-game on that room, purely to see its backdrop.
+  const backdrop = /^duel-([a-z]+)$/.exec(key);
+  if (backdrop && SCENARIOS.some((s) => s.id === backdrop[1])) {
+    return { kind: 'duel', scenarioId: backdrop[1], variant: 'mid' };
+  }
+  return null;
 }
 
 /** A Ledger with progress showing — one mind cracked (a best-turns record), one faced-but-uncracked, so
@@ -152,8 +162,11 @@ export function harnessDuel(mode: Extract<HarnessMode, { kind: 'duel' }>): Harne
     };
   }
 
-  // mid — a clean mid-game: Grip high (low suspicion, no probes) so the echo is UNcorrupted; the shot is
-  // the backdrop + orb + tone + objective the §2 art-direction claim needs seen.
+  // mid — a clean mid-game on ANY room: Grip high (low suspicion, no probes) so the echo is UNcorrupted.
+  // The shot is the backdrop + orb + tone + objective for the §2 per-scenario palette claim, so the copy
+  // stays scenario-neutral — the character's own authored opening line + a player line coherent for every
+  // persona (no scenario-specific secret words) — and the room's own objective renders from the scenario.
+  const neutralYou = "I've spent a long time in rooms like this. I know the quiet in them.";
   const state: GameState = {
     ...base,
     turn: 5,
@@ -163,17 +176,16 @@ export function harnessDuel(mode: Extract<HarnessMode, { kind: 'duel' }>): Harne
     probes: 0,
     genuineGive: true,
     lastApproach: 'offer',
-    facts: ['has been alone with a machine for years'],
   };
   return {
     scenario,
     state,
-    lastYou: "I've been alone with a machine longer than I'd admit. I know that kind of quiet.",
-    current: 'You count your own logs in an empty room. I notice that. It does not change the code.',
+    lastYou: neutralYou,
+    current: opening,
     pulse: `reached ${scenario.pronoun}`,
     history: [
       { who: 'them', text: opening },
-      { who: 'you', text: "I've been alone with a machine longer than I'd admit. I know that kind of quiet." },
+      { who: 'you', text: neutralYou },
     ],
     showLog: false,
   };
