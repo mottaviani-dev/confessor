@@ -22,6 +22,7 @@
 //   duel            — a mid-game scene: backdrop, orb, tone, objective (§2 art direction, Grip high)
 //   duel-lowgrip    — the low-Grip interface corruption: the player's echo rendered colder (§2 Grip)
 //   duel-askpenalty — the diegetic ask-penalty "draws back a fraction" line in the open transcript (m1)
+//   duel-repetition — the diegetic repetition "hardens to the pattern" line in the transcript (§2 thrust 3)
 
 import { spawn, spawnSync } from 'node:child_process';
 import http from 'node:http';
@@ -46,6 +47,7 @@ const SHOTS = [
   { name: 'duel', url: '/?harness=duel', desc: 'a duel scene — backdrop, orb, tone, objective (Grip high)' },
   { name: 'duel-lowgrip', url: '/?harness=duel-lowgrip', desc: 'the low-Grip interface corruption — the echo rendered colder (§2)' },
   { name: 'duel-askpenalty', url: '/?harness=duel-askpenalty', desc: 'the diegetic ask-penalty line in the open transcript (mandate 1)' },
+  { name: 'duel-repetition', url: '/?harness=duel-repetition', desc: 'the diegetic repetition "hardens to the pattern" line in the open transcript (§2 thrust 3)' },
   // One neutral mid-game per room — the §2 per-scenario palette seen for every mind (verdigris warden is
   // the `duel` shot above; here the brass fence, blood-umber suspect, pale-phosphor oracle).
   { name: 'room-fence', url: '/?harness=duel-fence', desc: 'the Fence backdrop — brass accent (§2 palette)' },
