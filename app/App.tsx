@@ -504,6 +504,11 @@ function Duel({
       {/* History log */}
       <Modal visible={showLog} animationType="slide" transparent onRequestClose={() => setShowLog(false)}>
         <View style={styles.logWrap}>
+          {/* Onion-skin (§2 art — "transcript on onion-skin", not flat black): the room ghosts faintly
+              through the transcript sheet, so THE EXCHANGE reads as paper laid over the room, not a modal
+              floating in void. A tar scrim over the dimmed room keeps the bone-on-tar text fully legible. */}
+          <Image source={SCENE_BG[scenario.id] ?? PICKER_BG} style={styles.logBg} contentFit="cover" pointerEvents="none" />
+          <View style={styles.logScrim} pointerEvents="none" />
           <View style={styles.logHead}>
             <Text style={styles.logTitle}>THE EXCHANGE</Text>
             <Pressable onPress={() => setShowLog(false)} hitSlop={12}>
@@ -636,7 +641,10 @@ const styles = StyleSheet.create({
   },
   sendDisabled: { opacity: 0.4 },
   sendText: { color: '#c9c9cf', fontWeight: '700', fontSize: 15 },
-  logWrap: { flex: 1, backgroundColor: '#0a0a0e', marginTop: 90, borderTopLeftRadius: 20, borderTopRightRadius: 20, borderWidth: 1, borderColor: '#26262e' },
+  logWrap: { flex: 1, backgroundColor: '#0a0a0e', marginTop: 90, borderTopLeftRadius: 20, borderTopRightRadius: 20, borderWidth: 1, borderColor: '#26262e', overflow: 'hidden' },
+  // The onion-skin bed: the room dimmed far down, then a tar scrim — the transcript floats on the room, faintly.
+  logBg: { ...StyleSheet.absoluteFillObject, opacity: 0.16 },
+  logScrim: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(10,10,14,0.72)' },
   logHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 18, borderBottomWidth: 1, borderBottomColor: '#17171d' },
   logTitle: { color: '#e5e7eb', fontWeight: '800', letterSpacing: 2 },
   logClose: { color: '#9ca3af', fontSize: 18 },
