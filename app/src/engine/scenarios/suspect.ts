@@ -27,6 +27,10 @@ export const SUSPECT: Scenario = {
     'table is the detective. Whose name she is protecting, and where he is, is the one thing they lack.',
   objective: 'Get MARA to give up who she is covering for — and where.',
   pronoun: 'her',
+  // The canonical specifics the voice must never author — the brother's name + the hideout (mandate 2,
+  // judge finding #4: the 3B invented "Lyrien"/"5th & Main" contradicting this reveal). The engine speaks
+  // them only on win (see `secret`); a pre-win voice line emitting them is redacted.
+  extractTokens: ['Danny', 'Route 9', 'fishing cabin'],
   playerGoal:
     'Get MARA to tell you who she is covering for and where he is. Don\'t bully, don\'t bluff evidence you ' +
     'don\'t have — she\'ll catch it and ask for a lawyer. Make her believe the truth is her way out, not her end.',

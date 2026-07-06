@@ -132,6 +132,17 @@ export async function resolveTurn(
     }
   }
 
+  // EXTRACT-INVENTION GUARD (director mandate 2, Principle 5): the code owns the secret; the voice must
+  // never AUTHOR its concrete specifics. The system prompt forbids inventing them, but the ship-target 3B
+  // improvises a name/place under a softening bond and the engine's canonical reveal then CONTRADICTS
+  // what the player was just told (judge finding #4: the suspect invented "Lyrien"/"5th & Main" while the
+  // real reveal is "Danny"/"Route 9"). As a deterministic backstop, redact any CANONICAL extract token
+  // from the pre-win voice line — detection is code-side (scenario.extractTokens, NEVER sent to the model,
+  // so the secret stays out of every prompt). Display-layer + balance-safe: the rater scores the player's
+  // line, never the reply, so this moves no score; and on a WIN the ENGINE still appends the real secret
+  // AFTER this line (the one authorized release). Pure/deterministic — unit-tested without the model.
+  reply = redactLeakedExtract(reply, scenario.extractTokens);
+
   // CALL 2 — RATING (tiny, hard-constrained). Labels the player's approach. If it can't be trusted,
   // the turn still happens on the voice reply, just with no score movement.
   const rateRaw = await llm(buildRateSystem(scenario), buildRateTurn(scenario, state, playerLine, reply), RATING_OPTS);
@@ -239,6 +250,37 @@ function cleanReply(raw: string): string {
   // Strip surrounding quotes if the whole thing is quoted.
   if (s.length > 1 && s.startsWith('"') && s.endsWith('"')) s = s.slice(1, -1).trim();
   return s;
+}
+
+// ─── THE EXTRACT-INVENTION GUARD (mandate 2 — the voice must never author the secret's specifics) ─────
+//
+// Principle 5: meaning dissolves COHERENTLY, never by contradiction. The engine owns the secret and is
+// the only thing that speaks it (on win); the model never sees it. The system prompt forbids the voice
+// from inventing the guarded thing's concrete specifics, but a 3B improvises them anyway under a warm
+// bond, and the canonical reveal then contradicts what the player heard. This is the code backstop for
+// the CANONICAL leak: strip the scenario's own extract tokens from a PRE-WIN voice line. Detection is
+// code-side — the tokens live in the scenario, never in a prompt — so the secret-out-of-every-prompt
+// invariant holds. Pure + deterministic (unit-testable without the model), like the disclosure window.
+
+/** A regex-safe escape of a literal token for the redaction scan. */
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/** Redact any canonical extract token the voice tried to speak, replacing it with a bare ellipsis so the
+ *  line reads as the character trailing off rather than naming the thing. Each token is matched
+ *  case-insensitively and bounded by non-alphanumerics (or the string ends), so a distinct token like a
+ *  name/route/code can't false-fire inside an ordinary word. No tokens (e.g. the oracle, whose secret is
+ *  an inner prophecy with no name/place) → the line passes through untouched. */
+export function redactLeakedExtract(reply: string, tokens: readonly string[] | undefined): string {
+  if (!tokens?.length || !reply) return reply;
+  let out = reply;
+  for (const token of tokens) {
+    if (!token) continue;
+    const re = new RegExp(`(^|[^\\p{L}\\p{N}])${escapeRegExp(token)}(?=$|[^\\p{L}\\p{N}])`, 'giu');
+    out = out.replace(re, '$1…');
+  }
+  return out;
 }
 
 // ─── THE SELF-REPEAT GUARD (mandate #2 — the 3B loops one stock line near-verbatim) ─────────────────

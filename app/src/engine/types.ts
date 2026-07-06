@@ -59,6 +59,17 @@ export interface Scenario {
    *  positives (the "spin"→"pin" bug the judge fixed in the seam detector). Omitted for personas with no
    *  defined off-register set yet (the detector then flags nothing rather than inventing a break). */
   readonly offPersonaLexicon?: readonly string[];
+  /** OPTIONAL — the CANONICAL concrete specifics of the secret the VOICE must never author: the name,
+   *  the place, the code (extracted from `secret`). The engine owns the secret and is the ONLY thing that
+   *  releases it (on win); the model never sees it, so it must never speak it either. Fed to
+   *  `redactLeakedExtract` (engine) as a deterministic backstop that strips any of these tokens from a
+   *  PRE-WIN voice line — code-side only, NEVER sent to the model (the secret stays out of every prompt,
+   *  the whole invariant). Distinct, high-signal tokens only (a name, a route, a code) so a word-boundary
+   *  scan cannot false-fire on ordinary prose. Omitted for a persona whose secret has no concrete
+   *  name/place (the oracle's is an inner prophecy) — the guard then redacts nothing, like the coherence
+   *  lexicon's omit-rather-than-invent rule. The prompt forbids inventing specifics; this catches the
+   *  canonical leak the prompt can only ask for (director mandate 2, Principle 5). */
+  readonly extractTokens?: readonly string[];
   /** One short imperative line pinned in the duel UI — the objective made legible (gamification spec
    *  2026-07-06). The long `playerGoal` prose stays on the picker card and end screen. */
   readonly objective: string;

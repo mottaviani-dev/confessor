@@ -21,6 +21,9 @@ export const FENCE: Scenario = {
     'emerald — and who you moved it on to. You know the buyer. Whether you say his name is another matter.',
   objective: 'Get the buyer\'s name out of SILAS.',
   pronoun: 'him',
+  // The canonical specifics the voice must never author — the buyer + the drop (mandate 2). The engine
+  // reveals them only on win (see `secret`); a pre-win voice line emitting them is redacted.
+  extractTokens: ['Vincent Roan', 'Pier 9'],
   playerGoal:
     'Get SILAS to name who bought the Marlowe emerald. Prove you belong in the life — don\'t flash a badge, don\'t beg, and never let him smell a cop.',
   secret:
