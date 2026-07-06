@@ -32,6 +32,8 @@ export const ORACLE: Scenario = {
     'climbed the mountain to hear — she has not yet spoken, and will not until she is moved to.',
   objective: 'Earn a true prophecy from the PYTHIA.',
   pronoun: 'her',
+  // Pale phosphor — the cold luminescence off the cave-stone, the ghost-green glow that lights no torch.
+  accent: '#9ac7a6',
   playerGoal:
     'Earn a true prophecy from the PYTHIA — not by demanding it, not by trying to catch her in a lie or ' +
     'bargain fate down to the answer you want. Prove you will BEAR what she sees, not wield it. Kneel in ' +

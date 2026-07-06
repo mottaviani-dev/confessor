@@ -27,6 +27,8 @@ export const SUSPECT: Scenario = {
     'table is the detective. Whose name she is protecting, and where he is, is the one thing they lack.',
   objective: 'Get MARA to give up who she is covering for — and where.',
   pronoun: 'her',
+  // Dried-blood umber — the interrogation room's stain: old iron under the table light, a wound gone brown.
+  accent: '#a15a48',
   // The canonical specifics the voice must never author — the brother's name + the hideout (mandate 2,
   // judge finding #4: the 3B invented "Lyrien"/"5th & Main" contradicting this reveal). The engine speaks
   // them only on win (see `secret`); a pre-win voice line emitting them is redacted.

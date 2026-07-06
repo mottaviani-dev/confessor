@@ -68,8 +68,11 @@ const SCENE_BG: Record<string, number> = {
 };
 
 // Chrome doctrine: ink and hairline borders only — no image assets (etch grain turns to noise at button
-// scale) and NO accent colors on chrome (colored card stripes read as generic app design, not the room).
-// The only color in the frame stays the scene plate itself and the tone system.
+// scale). ONE accent per room (bible §2 / §5 "one accent per context on a near-monochrome base") tints the
+// chrome the game-STATE does not own (title rule, objective, bond-echo, input carriage) so each mind reads
+// chromatically distinct — Warden verdigris, Fence brass, Suspect umber, Oracle phosphor. State-owned
+// surfaces (orb, tone word, mood wash) stay on the composure/Grip ramp, so state still beats accent under
+// stress. A desaturated accent, never a colored card-stripe — that would read as generic app design (§5).
 
 const TONE_COLOR: Record<Tone, string> = {
   hostile: '#ef4444',
@@ -290,6 +293,9 @@ function Duel({
   const shown = useTypewriter(current, busy ? 0 : 16);
   const over = state.status !== 'playing';
   const left = turnsLeft(scenario, state);
+  // The room's signature accent (§2 art / §5 grammar) — tints only the chrome state does NOT own, so each
+  // mind reads distinct the instant it opens; the orb/tone/wash stay state-driven (state beats accent).
+  const accent = scenario.accent;
 
   const send = async () => {
     const line = input.trim();
@@ -397,7 +403,11 @@ function Duel({
           <Pressable onPress={onExit} hitSlop={12}>
             <Text style={styles.back}>‹</Text>
           </Pressable>
-          <Text style={styles.title}>{scenario.title.toUpperCase()}</Text>
+          <View>
+            <Text style={styles.title}>{scenario.title.toUpperCase()}</Text>
+            {/* The room's accent as a title rule — a hairline of its own color, not a colored bar */}
+            <View style={[styles.titleRule, { backgroundColor: accent }]} />
+          </View>
         </View>
         <View style={styles.topRight}>
           <Text style={[styles.clock, left <= 3 && styles.clockLow]}>{left} left</Text>
@@ -410,8 +420,8 @@ function Duel({
         </View>
       </View>
 
-      {/* The objective, always legible */}
-      <Text style={styles.objective}>{scenario.objective}</Text>
+      {/* The objective, always legible — inked in the room's accent */}
+      <Text style={[styles.objective, { color: accent }]}>{scenario.objective}</Text>
 
       {/* Thin diegetic edges instead of loud bars */}
       <View style={styles.edges}>
@@ -430,7 +440,8 @@ function Duel({
         </View>
         <Text style={[styles.tone, { color: emblem }]}>
           {TONE_WORD[state.tone]}
-          <Text style={styles.bond}> · {bondState(state.trust, scenario.winTrust)}</Text>
+          {/* The bond ladder in the room's accent — the tone word stays state-colored (emblem) */}
+          <Text style={[styles.bond, { color: accent }]}> · {bondState(state.trust, scenario.winTrust)}</Text>
         </Text>
         {suspicionWarning(state.suspicion, scenario.loseSuspicion) && (
           <Text style={styles.warning}>CLOSE TO SHUTTING YOU OUT</Text>
@@ -483,7 +494,8 @@ function Duel({
               multiline
             />
             <Pressable style={[styles.send, busy && styles.sendDisabled]} onPress={send} disabled={busy}>
-              <Text style={styles.sendText}>▶</Text>
+              {/* The carriage strike inked in the room's accent — the one live mark on the input line */}
+              <Text style={[styles.sendText, { color: accent }]}>▶</Text>
             </Pressable>
           </View>
         )}
@@ -543,6 +555,9 @@ const styles = StyleSheet.create({
   topLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   back: { color: '#9ca3af', fontSize: 30, marginTop: -6, fontWeight: '700' },
   title: { color: '#e5e7eb', fontSize: 18, fontWeight: '800', letterSpacing: 3 },
+  // The accent title rule: a 2px hairline under the room name, stretched to the title's width. Color is
+  // injected per-scenario; kept thin + low-opacity so it reads as ink, not a colored UI bar (§5).
+  titleRule: { height: 2, marginTop: 5, borderRadius: 1, alignSelf: 'stretch', opacity: 0.85 },
   topRight: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   clock: { color: '#9ca3af', fontSize: 13, fontWeight: '700', letterSpacing: 1 },
   clockLow: { color: '#f87171' },

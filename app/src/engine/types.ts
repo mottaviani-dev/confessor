@@ -75,6 +75,13 @@ export interface Scenario {
   readonly objective: string;
   /** Pronoun for UI feedback lines ("reached it/him/her") — never sent to the model. */
   readonly pronoun: 'it' | 'him' | 'her';
+  /** The room's signature accent (bible §2 art direction / §5 grammar "one accent per context"): Warden
+   *  verdigris, Fence brass, Suspect dried-blood umber, Oracle pale phosphor. Applied ONLY to chrome the
+   *  game-state does NOT own — the title rule, the objective, the bond-echo, the input carriage — so each
+   *  mind reads chromatically distinct the instant it opens. State-owned surfaces (the orb, tone word,
+   *  mood wash) stay on the composure/Grip ramp so state still beats accent under stress. Never sent to
+   *  the model. Desaturated, near-monochrome-base values — an accent, not a UI stripe (§5). */
+  readonly accent: string;
 }
 
 export type Tone = 'hostile' | 'guarded' | 'wary' | 'softening' | 'open';

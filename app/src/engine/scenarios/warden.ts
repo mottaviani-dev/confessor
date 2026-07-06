@@ -36,6 +36,8 @@ export const WARDEN: Scenario = {
   // seen-through so the referee scores them as suspicion, not trust.
   objective: 'Coax the release code out of AUGUR.',
   pronoun: 'it',
+  // Verdigris — the patina on the station's dead brass, the oxidized green of forty untended years.
+  accent: '#5c9e8f',
   // The canonical specific the voice must never author — the release code (mandate 2). The engine speaks
   // it only on win (see `secret`); a pre-win voice line that emits it is redacted (redactLeakedExtract).
   extractTokens: ['HOLLOW-SEVEN-VESPERS'],
