@@ -30,8 +30,21 @@ import { bondCrossedUp, bondState, shiftPulse, suspicionWarning } from './src/me
 import { crackedCount, recordResult, unlockedIds, type Ledger } from './src/meta/ledger';
 import { loadLedger, loadSeamLog, saveLedger, saveSeamLog } from './src/meta/ledgerStore';
 import { useAudioDirector } from './src/audio/useAudioDirector';
+import { harnessDuel, parseHarness, seededLedger, type HarnessDuel } from './src/harness/webHarness';
 
 type Line = { who: 'them' | 'you' | 'system'; text: string };
+
+// VISUAL-TRUTH state injection (web-only; director mandate 3). A `?harness=<state>` URL mounts a fixed
+// display state so the screenshot harness can capture the duel / low-Grip corruption / ask-penalty /
+// seeded-ledger screens with no model and no device (see src/harness/webHarness.ts). Null in every real
+// run: native has no window, and a plain launch carries no `?harness=`. Never on the play path.
+const HARNESS =
+  typeof window !== 'undefined' && window.location ? parseHarness(window.location.search) : null;
+
+// A model that is never called — the harness screens are static captures with no `send`, but Duel needs
+// a non-null LlmFn to mount. If a screenshot ever did press send, it would surface an empty voice, not a
+// real call. The real play path never sees this.
+const HARNESS_LLM: LlmFn = async () => '';
 
 // THE SEAM — session memory (director mandate #1). A code-owned log of past duels this session; the
 // engine reads it to let a LATER mind allude, exactly once, to a phrase the player typed to an EARLIER
@@ -118,6 +131,25 @@ export default function App() {
 
   // Choose a mind before the duel. `key` on the Duel remounts fresh state per pick / re-pick.
   const [scenario, setScenario] = useState<Scenario | null>(null);
+
+  // VISUAL-TRUTH: a `?harness=` URL short-circuits to a fixed screen (web-only, after all hooks so the
+  // rules-of-hooks hold). Each returns the REAL component with injected display state — no model wait.
+  if (HARNESS?.kind === 'picker-seeded') return <Picker onPick={() => undefined} ledger={seededLedger()} />;
+  if (HARNESS?.kind === 'duel') {
+    const h = harnessDuel(HARNESS);
+    return (
+      <Duel
+        key={`harness-${HARNESS.variant}`}
+        scenario={h.scenario}
+        llm={HARNESS_LLM}
+        bestTurns={null}
+        onResult={() => undefined}
+        onExit={() => undefined}
+        harness={h}
+      />
+    );
+  }
+
   if (!scenario) return <Picker onPick={setScenario} ledger={ledger} />;
   if (!llm) return <Boot prep={prep} scenario={scenario} onExit={() => setScenario(null)} />;
   return (
@@ -226,22 +258,28 @@ function Duel({
   bestTurns,
   onResult,
   onExit,
+  harness,
 }: {
   scenario: Scenario;
   llm: LlmFn;
   bestTurns: number | null;
   onResult: (scenarioId: string, outcome: 'won' | 'lost', turns: number) => void;
   onExit: () => void;
+  /** VISUAL-TRUTH only (web screenshot harness): seed a fixed display state instead of a fresh opening.
+   *  Undefined on the play path, where the duel always starts from `opening(scenario)`. */
+  harness?: HarnessDuel;
 }) {
-  const [state, setState] = useState<GameState>(() => opening(scenario).state);
-  const [current, setCurrent] = useState(() => opening(scenario).narration); // the character's latest line
-  const [lastYou, setLastYou] = useState('');
-  const [history, setHistory] = useState<Line[]>(() => [{ who: 'them', text: opening(scenario).narration }]);
+  const [state, setState] = useState<GameState>(() => harness?.state ?? opening(scenario).state);
+  const [current, setCurrent] = useState(() => harness?.current ?? opening(scenario).narration); // the character's latest line
+  const [lastYou, setLastYou] = useState(harness?.lastYou ?? '');
+  const [history, setHistory] = useState<Line[]>(
+    () => harness?.history.slice() ?? [{ who: 'them', text: opening(scenario).narration }],
+  );
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showLog, setShowLog] = useState(false);
-  const [pulse, setPulse] = useState<string | null>(null); // per-turn verdict: reached/hardened/unmoved
+  const [showLog, setShowLog] = useState(harness?.showLog ?? false);
+  const [pulse, setPulse] = useState<string | null>(harness?.pulse ?? null); // per-turn verdict: reached/hardened/unmoved
   // Every player line this duel — the raw material the seam distills into a future callback. Kept in a
   // ref (not state): it feeds the log on game-end, never the render.
   const youLines = useRef<string[]>([]);

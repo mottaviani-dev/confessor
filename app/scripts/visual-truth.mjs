@@ -14,12 +14,14 @@
 //            npm run visual-truth -- --no-export      (skip the export, reuse the existing dist/)
 //            VISUAL_TRUTH_CHROME=<path> npm run ...   (override the browser binary)
 //
-// SHIPPED THIS SLICE: the mind-picker (fresh ledger) — which already renders the Ledger header + the
-// sealed-door cards, so the director can eyeball the §5 "diegetic paper, not a HUD" gamification claim.
-// RESIDUAL (next slice): a duel scene, a low-Grip corrupted line, and a SEEDED-ledger picker each need a
-// web-only `?harness=<state>` mode in App.tsx that mounts a fixed GameState + a stub LlmFn (no model), so
-// each can be captured at its own URL. The SHOTS table below is already keyed for those URLs — add the
-// app-side reader and drop the `pending: true` flag to light them up.
+// SHOTS (all live): the fresh picker + four `?harness=` screens. The web-only `?harness=<state>` reader
+// in App.tsx (src/harness/webHarness.ts) mounts a fixed GameState + a never-called LlmFn (no model, no
+// device) so each screen renders the REAL component and captures at its own URL:
+//   picker          — fresh Ledger header + sealed-door cards (§5 diegetic paper, not a HUD)
+//   picker-seeded   — a cracked record + an unlocked door + sealed doors (the unlock chain)
+//   duel            — a mid-game scene: backdrop, orb, tone, objective (§2 art direction, Grip high)
+//   duel-lowgrip    — the low-Grip interface corruption: the player's echo rendered colder (§2 Grip)
+//   duel-askpenalty — the diegetic ask-penalty "draws back a fraction" line in the open transcript (m1)
 
 import { spawn, spawnSync } from 'node:child_process';
 import http from 'node:http';
@@ -40,9 +42,10 @@ const VIEWPORT = { width: 430, height: 932, deviceScaleFactor: 2 };
 const SETTLE_MS = 4500; // let React mount + the typewriter reach its resting frame before the capture
 const SHOTS = [
   { name: 'picker', url: '/', desc: 'mind-picker + Ledger header + sealed-door cards (fresh ledger)' },
-  { name: 'picker-seeded', url: '/?harness=picker-seeded', desc: 'Ledger with cracked records + an unlocked door', pending: true },
-  { name: 'duel', url: '/?harness=duel', desc: 'a duel scene — backdrop, orb, tone, objective', pending: true },
-  { name: 'duel-lowgrip', url: '/?harness=duel-lowgrip', desc: 'a low-Grip corrupted player line + ask-penalty', pending: true },
+  { name: 'picker-seeded', url: '/?harness=picker-seeded', desc: 'Ledger with a cracked record + an unlocked door + sealed doors' },
+  { name: 'duel', url: '/?harness=duel', desc: 'a duel scene — backdrop, orb, tone, objective (Grip high)' },
+  { name: 'duel-lowgrip', url: '/?harness=duel-lowgrip', desc: 'the low-Grip interface corruption — the echo rendered colder (§2)' },
+  { name: 'duel-askpenalty', url: '/?harness=duel-askpenalty', desc: 'the diegetic ask-penalty line in the open transcript (mandate 1)' },
 ];
 
 const CONTENT_TYPE = {
