@@ -34,7 +34,8 @@
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
     "test": "vitest run src",
-    "gen-audio": "node scripts/gen-audio.mjs"
+    "gen-audio": "node scripts/gen-audio.mjs",
+    "visual-truth": "node scripts/visual-truth.mjs"
   },
   "private": true
 }
