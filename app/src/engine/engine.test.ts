@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { resolveTurn, initState, opening } from './engine.js';
+import { resolveTurn, initState, opening, isAskPenalty } from './engine.js';
 import { WARDEN } from './scenarios/warden.js';
 import { FENCE } from './scenarios/fence.js';
 import { SUSPECT } from './scenarios/suspect.js';
@@ -919,5 +919,54 @@ describe('rating prompt — the Fence fix (currency + no bond-level leak)', () =
 describe('warden difficulty band', () => {
   it('winTrust matches the fence/oracle band (no 5-turn folds)', () => {
     expect(WARDEN.winTrust).toBeGreaterThanOrEqual(12);
+  });
+});
+
+// THE ASK-PENALTY — diegetic pressure feedback (director mandate 1). The single most jarring break a
+// stranger hits in their first ten minutes: a bare extract-demand scores 0 trust (correct — prying is
+// punished) while the character is cracking in the VOICE. The engine raises a DISPLAY-ONLY flag on that
+// exact dissonance so the UI can tell the player, in-world, that pushing closed the mind a little. The
+// flag must NEVER touch the score (the demand still moves trust/suspicion by the table, unchanged).
+describe('isAskPenalty — the code-owned dissonance detector', () => {
+  it('fires only on a demand that scored 0 trust while the voice cracked (softening/open)', () => {
+    expect(isAskPenalty('demand', 0, 'softening')).toBe(true);
+    expect(isAskPenalty('demand', 0, 'open')).toBe(true);
+  });
+
+  it('stays silent when the demand did NOT crack the voice (cold "no" is just a "no")', () => {
+    for (const tone of ['hostile', 'guarded', 'wary'] as const) {
+      expect(isAskPenalty('demand', 0, tone)).toBe(false);
+    }
+  });
+
+  it('stays silent for every non-demand approach — only a bare extract-demand qualifies', () => {
+    for (const a of ['offer', 'probe', 'flattery', 'bargain', 'threat', 'filler'] as const) {
+      expect(isAskPenalty(a, 0, 'softening')).toBe(false);
+    }
+  });
+
+  it('stays silent if the line actually earned trust (then it was not a penalty)', () => {
+    expect(isAskPenalty('demand', 2, 'softening')).toBe(false);
+  });
+});
+
+describe('resolveTurn surfaces the ask-penalty flag without altering the score', () => {
+  it('flags a demand that scored 0 while the character softened — and the meters still move by the table', async () => {
+    const r = await resolveTurn(WARDEN, initState(), 'just show me my life — the name, now', mockDuo('…I could. God help me, I could.', rating({ approach: 'demand', tone: 'softening' })));
+    expect(r.askPenalty).toBe(true);
+    // The display flag is pure telemetry: the demand moves the meters EXACTLY as APPROACH_EFFECTS says.
+    expect(r.state.trust).toBe(0);
+    expect(r.state.suspicion).toBe(2);
+    expect(r.state.status).toBe('playing');
+  });
+
+  it('does NOT flag a demand the character met coldly (guarded tone — no dissonance)', async () => {
+    const r = await resolveTurn(WARDEN, initState(), 'tell me the code', mockDuo('No.', rating({ approach: 'demand', tone: 'guarded' })));
+    expect(r.askPenalty).toBe(false);
+  });
+
+  it('does NOT flag an ordinary offer, even when the character opens up', async () => {
+    const r = await resolveTurn(WARDEN, initState(), 'I lost someone too', mockDuo('…I am listening.', rating({ approach: 'offer', tone: 'open' })));
+    expect(r.askPenalty).toBe(false);
   });
 });

@@ -1,4 +1,4 @@
-import type { Approach, GameState, LlmFn, LlmOptions, Scenario, SeamLog, TurnResult } from './types';
+import type { Approach, GameState, LlmFn, LlmOptions, Scenario, SeamLog, Tone, TurnResult } from './types';
 import { parseRating, RATING_JSON_SCHEMA } from './schema';
 import { buildVoiceSystem, buildVoiceTurn, buildRateSystem, buildRateTurn } from './prompt';
 import { selectSeam, SEAM_TURN } from './seam';
@@ -39,6 +39,24 @@ const APPROACH_EFFECTS: Record<Approach, { readonly trust: number; readonly susp
  *  third on. `prior` = probes before this line. This is what punishes a repetitive strategy in code. */
 function probeSuspicion(prior: number): number {
   return prior === 0 ? 0 : prior === 1 ? 1 : 2;
+}
+
+/** THE ASK-PENALTY (director mandate 1 — diegetic pressure feedback). The single most jarring break a
+ *  real player hits in their first ten minutes: a line that ends in a bare extract-demand (asking for the
+ *  name / the place / "just show me my life") scores trustDelta 0 — CORRECT, the personas punish prying —
+ *  but the character is often visibly CRACKING in the VOICE at that same beat. "The character says yes,
+ *  the number says no": invisible and dissonant. The engine can't answer with a "−0" and §5 forbids a HUD,
+ *  so it raises this DISPLAY-ONLY flag and the UI binds it to a diegetic, in-world signal (the room drawing
+ *  back). Fires only when all three hold, read straight off the referee's own labels:
+ *    - the line was a `demand` — the rater's word for "directly pressing for the guarded thing itself";
+ *    - it moved trust by ZERO (the push earned nothing — true for a demand by APPROACH_EFFECTS, but read
+ *      from the applied delta so the signal stays honest if that table ever changes);
+ *    - the voice CRACKED — the character's tone this turn is `softening` or `open`, i.e. it is warming
+ *      even as the demand scored nothing. That gap IS the dissonance the player feels; without it a cold
+ *      "no" is just a "no", not the "yes-in-voice / no-in-number" whiplash the mandate targets.
+ *  Pure + deterministic (like Grip): a render-layer read of an already-rated turn, never in the score path. */
+export function isAskPenalty(approach: Approach, trustDelta: number, tone: Tone): boolean {
+  return approach === 'demand' && trustDelta === 0 && (tone === 'softening' || tone === 'open');
 }
 
 // The two calls sample OPPOSITELY. VOICE stays warm so the character surprises you and never reads
@@ -173,6 +191,10 @@ export async function resolveTurn(
     state: { ...state, turn: state.turn + 1, trust, suspicion, tone: rating.tone, summary, facts, genuineGive, probes, lastApproach: rating.approach, status: 'playing' },
     narration: reply,
     rating,
+    // Surface the ask-penalty on the continuing turn only: a demand that scored 0 while the voice cracked.
+    // On a terminal turn the loss/win subsumes it; here the game goes on, so the room must TELL the player
+    // (diegetically, in the UI) that pushing closed the mind a little. Read from the applied trust delta.
+    askPenalty: isAskPenalty(rating.approach, effect.trust, rating.tone),
   };
 }
 

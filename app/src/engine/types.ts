@@ -138,6 +138,13 @@ export interface TurnResult {
    *  turn so balance diagnosis reads labels directly instead of inferring them back from meter deltas
    *  (§7 Rule 2, judge 2026-07-05). */
   readonly rating?: Rating;
+  /** THE ASK-PENALTY — a DISPLAY-ONLY flag (director mandate 1, diegetic pressure feedback). Set when the
+   *  player's line was a bare extract-demand that scored ZERO trust while the character was visibly
+   *  CRACKING in the voice ("the character says yes, the number says no"). The UI binds this to a diegetic,
+   *  in-world signal — never a floating "−0"/HUD/tooltip (§5) — so a stranger's first 10 minutes SEES that
+   *  pushing closed the mind a little instead of feeling an invisible, dissonant nothing. Like Grip, this
+   *  is a render-layer read of an ALREADY-rated turn: it never touches the score (see engine.isAskPenalty). */
+  readonly askPenalty?: boolean;
 }
 
 /**

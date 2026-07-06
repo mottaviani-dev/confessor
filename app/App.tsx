@@ -278,6 +278,14 @@ function Duel({
       if (!suspicionWarning(state.suspicion, scenario.loseSuspicion) && suspicionWarning(r.state.suspicion, scenario.loseSuspicion)) {
         crossings.push({ who: 'system', text: `${scenario.title} is close to shutting you out.` });
       }
+      // THE ASK-PENALTY, made diegetic (mandate 1). A bare extract-demand scores 0 trust — correct, prying
+      // is punished — but the mind is often cracking in the VOICE at that same beat ("says yes, the number
+      // says no"). The room TELLS the player, IN-WORLD, that reaching straight for it closed the mind a
+      // little — never a floating "−0" / HUD / tooltip (§5). Display-only: the engine already rated the
+      // ORIGINAL line (r.askPenalty is a read of that rated turn), so this changes nothing the referee saw.
+      if (r.askPenalty) {
+        crossings.push({ who: 'system', text: `You reach straight for it — and ${scenario.title.replace(/^The /, 'the ')} draws back a fraction.` });
+      }
       setState(r.state);
       // The room descends with the fiction (mandate #2 / Principle 4): the bed detunes as the séance
       // comes apart — THEIR composure cracking (trust) OR YOUR grip slipping (suspicion), whichever is
