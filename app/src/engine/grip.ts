@@ -61,6 +61,21 @@ const COLDER: Readonly<Record<string, string>> = {
   safe: 'lost',
   listen: 'wait',
   gently: 'coldly',
+  // Sincere-register vocabulary — the words a player reaches for on the empathetic path. Corruption only
+  // fires once Grip has slipped (you pressed too hard), so widening the warm→cold map makes the room land
+  // its edit on more of what you actually type, not just the first seventeen words it happened to know.
+  believe: 'doubt',
+  love: 'need',
+  forgive: 'blame',
+  grateful: 'indebted',
+  comfort: 'control',
+  wish: 'demand',
+  healing: 'scarring',
+  tender: 'cruel',
+  peace: 'dread',
+  honest: 'cold',
+  open: 'closed',
+  share: 'hide',
 };
 
 /** djb2 — a tiny deterministic hash so the choice of which eligible word to edit is stable for a given

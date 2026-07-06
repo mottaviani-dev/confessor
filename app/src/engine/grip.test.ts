@@ -86,6 +86,16 @@ describe('corruptLine() — the room edits you (display-layer only)', () => {
   it('never changes the empty line', () => {
     expect(corruptLine('', 0.1, 1)).toBe('');
   });
+
+  // The widened warm→cold map: the sincere-register words a player types on the empathetic path must be
+  // eligible for the cold render once Grip has slipped — each one alone should corrupt at low Grip.
+  it('corrupts the sincere-register vocabulary once Grip has slipped', () => {
+    const warm = ['believe', 'love', 'forgive', 'grateful', 'comfort', 'wish', 'healing', 'tender', 'peace', 'honest', 'open', 'share'];
+    for (const w of warm) {
+      const line = `I ${w} you.`;
+      expect(corruptLine(line, 0.1, 1), `"${w}" should render colder at low Grip`).not.toBe(line);
+    }
+  });
 });
 
 // THE GUARDRAIL (bible §6): the corruption is display-only. The engine/referee must score the player's
