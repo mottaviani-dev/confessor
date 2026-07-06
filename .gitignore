@@ -1,0 +1,15 @@
+node_modules/
+dist/
+*.log
+.DS_Store
+.expo/
+app/node_modules/
+app/.expo/
+
+# Autonomous loop dirs (runners, prompts, logs, review artifacts) — box-local, never shipped.
+.loop/
+.judge/
+.director/
+.playwright-mcp/
+app/assets/_gen/
+.claude/
