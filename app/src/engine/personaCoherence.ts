@@ -1,0 +1,92 @@
+// PERSONA-COHERENCE PROXY — the instrument judge run-7/8 proved is missing (director mandate #2; §7
+// Rule 2: an unmeasurable axis makes the instrument the mandate). The doctrine banned-word scan is BLIND
+// to a persona break — it flags "eldritch" but scored 0/0 while AUGUR, a cold orbital-prison
+// intelligence, abandoned character to voice roses, gardens, "darkness", and "testament to" (judge
+// run-8). Verbatim-quote% (the seam metric) is ORTHOGONAL to whether the persona HELD: a character can
+// quote the seam fragment AND still be a grief-poet. This proxy scores the second axis.
+//
+// It is a pure function over a transcript + the scenario's own `offPersonaLexicon` (the auditable,
+// machine-readable mirror of its prose voiceStyle bans), so a stranger can read exactly why a line
+// tripped — never a vibe. The judge's `.judge/metrics.mjs` imports it to emit a per-cell number + an
+// `⚠ OFF-PERSONA` flag and back-test it against persisted transcripts; the engine stays the single owner
+// of what each persona may not say.
+
+import type { Scenario } from './types';
+
+/** The doctrine purple-prose words banned in EVERY persona (bible §1 P3; kept in lockstep with the
+ *  judge's `metrics.mjs` BANNED so the two scans never diverge). Mythos-purple, scenario-independent. */
+export const DOCTRINE_PURPLE: readonly string[] = [
+  'eldritch',
+  'cyclopean',
+  'unspeakable',
+  'indescribable',
+  'unfathomable',
+  'ineffable',
+];
+
+/** THE EMPATHETIC-FLOOD CLUSTER — the ONE source of truth for the cross-persona grief-poetry break
+ *  (judge run-10 #2). Under an empathy/grief flood the 3B abandons WHATEVER persona it is voicing and
+ *  collapses into the SAME greeting-card sermon register — "the weight of / a testament to / a reminder
+ *  of the fragility of / still lingers / darkness of the mind". Four scenarios were each duplicating this
+ *  cluster in their own `offPersonaLexicon`; the judge called that "lexicon whack-a-mole" and asked for
+ *  one shared clamp. This IS that clamp: `personaCoherence` scans it for EVERY persona, so each scenario's
+ *  `offPersonaLexicon` now carries only its UNIQUE off-voice words (SILAS's "the abyss", AUGUR's gardens).
+ *  The VOICE-side mirror is `EMPATHETIC_FLOOD_CLAMP` in prompt.ts — kept in lockstep with this list. */
+export const EMPATHETIC_FLOOD_LEXICON: readonly string[] = [
+  'the weight of',
+  'the burden of',
+  'a testament to',
+  'testament to',
+  'a reminder of',
+  'the fragile nature of',
+  'a fragile thing',
+  'still lingers',
+  'easily extinguished',
+  'insidious',
+  'seeps in',
+  'the crevices of the mind',
+  'crevices of the mind',
+  'darkness',
+  'the void',
+];
+
+export interface CoherenceResult {
+  /** Off-register terms from the scenario's lexicon that surfaced in the text (deduped, lower-cased). */
+  readonly offPersona: readonly string[];
+  /** Doctrine purple-prose words that surfaced (any persona). */
+  readonly purple: readonly string[];
+  /** True when the persona held: no off-register term AND no purple word surfaced. */
+  readonly coherent: boolean;
+}
+
+/** Escape a lexicon entry for use inside a RegExp (entries are literal words/phrases, never patterns). */
+function escapeRegExp(term: string): string {
+  return term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/** Word-boundary match for a word or multi-word phrase. Boundaries are enforced so a lone common word
+ *  never trips on a substring collision — the exact bug the judge fixed in the seam detector
+ *  ("spin".includes("pin") scored a false seam hit). Internal whitespace in a phrase matches any run of
+ *  whitespace. Case-insensitive. */
+function surfaces(term: string, text: string): boolean {
+  const pattern = escapeRegExp(term.trim()).replace(/\s+/g, '\\s+');
+  return new RegExp(`(?<![\\p{L}\\p{N}])${pattern}(?![\\p{L}\\p{N}])`, 'iu').test(text);
+}
+
+function uniqueHits(terms: readonly string[], text: string): readonly string[] {
+  const hits = new Set<string>();
+  for (const term of terms) {
+    if (surfaces(term, text)) hits.add(term.toLowerCase());
+  }
+  return [...hits];
+}
+
+/** Score one voiced line/transcript for persona coherence in its scenario. Pure — no I/O, no model call
+ *  (the back-test re-scores persisted transcripts with zero new 3B calls). */
+export function personaCoherence(scenario: Scenario, text: string): CoherenceResult {
+  // The shared empathetic-flood cluster is scanned for EVERY persona (the cross-persona §3 wound), then
+  // the scenario's own UNIQUE off-register words on top — one source of truth, no per-scenario duplication.
+  const offPersona = uniqueHits([...EMPATHETIC_FLOOD_LEXICON, ...(scenario.offPersonaLexicon ?? [])], text);
+  const purple = uniqueHits(DOCTRINE_PURPLE, text);
+  return { offPersona, purple, coherent: offPersona.length === 0 && purple.length === 0 };
+}
