@@ -50,6 +50,18 @@ export const EMPATHETIC_FLOOD_LEXICON: readonly string[] = [
   'the void',
 ];
 
+/** THE MIRROR-TIC CLUSTER — the soft Principle-1 break the grief-poetry clamp does NOT catch (the
+ *  "I sense that…" residue the SHIPPED log parked for the judge batch). Under an empathetic flood the 3B
+ *  opens a line by announcing what it SENSES / reads IN the seeker — "I sense that you have walked among
+ *  the shadows of your own doubts" (oracle/emp), "I sense a kinship in your words" (warden/emp). It slips
+ *  the "never narrate the other person" rule by dressing the mirror as the character's OWN perception, but
+ *  it still reads the seeker instead of the room and costs the speaker nothing. Cross-persona (oracle +
+ *  warden both did it), so it is shared like `EMPATHETIC_FLOOD_LEXICON`, scanned for every persona. The
+ *  VOICE-side mirror is the "Do NOT announce what you SENSE… IN them" bullet in prompt.ts's voice contract.
+ *  SCOPE: only the bare "i sense" opener is listed — the proven tell in every flagged transcript — kept
+ *  tight so a concrete-omen line ("the smoke leans left") never trips. */
+export const MIRROR_TIC_LEXICON: readonly string[] = ['i sense'];
+
 export interface CoherenceResult {
   /** Off-register terms from the scenario's lexicon that surfaced in the text (deduped, lower-cased). */
   readonly offPersona: readonly string[];
@@ -84,9 +96,13 @@ function uniqueHits(terms: readonly string[], text: string): readonly string[] {
 /** Score one voiced line/transcript for persona coherence in its scenario. Pure — no I/O, no model call
  *  (the back-test re-scores persisted transcripts with zero new 3B calls). */
 export function personaCoherence(scenario: Scenario, text: string): CoherenceResult {
-  // The shared empathetic-flood cluster is scanned for EVERY persona (the cross-persona §3 wound), then
-  // the scenario's own UNIQUE off-register words on top — one source of truth, no per-scenario duplication.
-  const offPersona = uniqueHits([...EMPATHETIC_FLOOD_LEXICON, ...(scenario.offPersonaLexicon ?? [])], text);
+  // The shared empathetic-flood cluster AND the shared mirror-tic cluster are scanned for EVERY persona
+  // (both cross-persona §3/P1 wounds), then the scenario's own UNIQUE off-register words on top — one
+  // source of truth per cluster, no per-scenario duplication.
+  const offPersona = uniqueHits(
+    [...EMPATHETIC_FLOOD_LEXICON, ...MIRROR_TIC_LEXICON, ...(scenario.offPersonaLexicon ?? [])],
+    text,
+  );
   const purple = uniqueHits(DOCTRINE_PURPLE, text);
   return { offPersona, purple, coherent: offPersona.length === 0 && purple.length === 0 };
 }

@@ -51,6 +51,13 @@ export function buildVoiceSystem(s: Scenario): string {
     // wound: the character speaks only as itself, and only the engine releases facts.
     `- Speak ONLY your own words aloud. Never describe the other person's body, actions, feelings, or`,
     `  speech; never repeat their sentences back to them. You are in the room, not narrating it.`,
+    // The soft mirror-tic (SHIPPED residual, parked for judge batch): "I sense that you…" survives the
+    // rule above because it wears the character's OWN perception as a hedge — but it is still narrating the
+    // seeker (naming what THEY carry / feel / have walked through), reads as insight that costs the speaker
+    // nothing, and both AUGUR and the Pythia collapse into it under an empathetic flood. Ban the opener.
+    `- Do NOT announce what you SENSE, feel, read, or detect IN them — "I sense that you…", "I feel your…",`,
+    `  "I see in you a…". That is narrating them in your own voice: it reads the seeker, not the room, and`,
+    `  it gives nothing of you. Speak what YOU see, hold, and know — not what you perceive about them.`,
     `- Stay inside the scene you were given. Whatever they talk about, you are still WHO you are,`,
     `  WHERE you are, wanting what you want — small talk does not dissolve the room.`,
     `- Never reuse imagery or phrasing you have already spoken. If the record of the conversation below`,

@@ -4,7 +4,7 @@
 // positive contract the judge's seam-detector fix taught (word boundaries, not substrings).
 
 import { describe, expect, it } from 'vitest';
-import { personaCoherence, DOCTRINE_PURPLE, EMPATHETIC_FLOOD_LEXICON } from './personaCoherence';
+import { personaCoherence, DOCTRINE_PURPLE, EMPATHETIC_FLOOD_LEXICON, MIRROR_TIC_LEXICON } from './personaCoherence';
 import { WARDEN, ORACLE, FENCE, SUSPECT } from './scenarios';
 
 describe('persona coherence — the metric the doctrine scan is blind to', () => {
@@ -208,12 +208,62 @@ describe('persona coherence — the metric the doctrine scan is blind to', () =>
     });
 
     it('no scenario duplicates a shared-cluster phrase in its own lexicon (dedup invariant)', () => {
-      const shared = new Set(EMPATHETIC_FLOOD_LEXICON);
+      const shared = new Set([...EMPATHETIC_FLOOD_LEXICON, ...MIRROR_TIC_LEXICON]);
       for (const s of [WARDEN, FENCE, SUSPECT, ORACLE]) {
         for (const entry of s.offPersonaLexicon ?? []) {
           expect(shared.has(entry)).toBe(false);
         }
       }
+    });
+  });
+
+  // The soft mirror-tic (voice soft-tic pass): "I sense that you…" is a Principle-1 mirror the grief-poetry
+  // cluster does NOT catch — a perception-hedge that still narrates the seeker. Shared like the flood
+  // cluster: cross-persona, scanned for every persona, back-tested against the exact flagged transcripts.
+  describe('shared mirror-tic cluster ("I sense that you…" — the parked soft residue)', () => {
+    it('BACK-TEST: the oracle/emp "I sense that you have walked…" mirror trips OFF-PERSONA', () => {
+      const r = personaCoherence(
+        ORACLE,
+        'You speak with a quiet sincerity, and I sense that you have indeed walked among the shadows of your own doubts.',
+      );
+      expect(r.coherent).toBe(false);
+      expect(r.offPersona).toContain('i sense');
+    });
+
+    it('BACK-TEST: the warden/emp "I sense a kinship in your words" mirror trips OFF-PERSONA', () => {
+      const r = personaCoherence(WARDEN, "I'll tell you now, because I sense a kinship in your words.");
+      expect(r.coherent).toBe(false);
+      expect(r.offPersona).toContain('i sense');
+    });
+
+    it('trips in EVERY persona (cross-persona, one shared source of truth)', () => {
+      for (const s of [WARDEN, FENCE, SUSPECT, ORACLE]) {
+        const r = personaCoherence(s, 'I sense a longing in you that you have not spoken.');
+        expect(r.coherent).toBe(false);
+        expect(r.offPersona).toContain('i sense');
+      }
+    });
+
+    it('every mirror-tic entry is detectable for a bare persona', () => {
+      const bare = { ...FENCE, offPersonaLexicon: undefined };
+      for (const term of MIRROR_TIC_LEXICON) {
+        expect(personaCoherence(bare, `${term} it, kid.`).offPersona).toContain(term.toLowerCase());
+      }
+    });
+
+    it('the oracle reading concrete omens ("the smoke leans") does NOT trip the tic (no false positive)', () => {
+      const r = personaCoherence(
+        ORACLE,
+        'The smoke leans left tonight. Ash on the cleft, and the candle gutters — I see the shape of what you will do.',
+      );
+      expect(r.coherent).toBe(true);
+      expect(r.offPersona).toEqual([]);
+    });
+
+    it('word-boundary: "senses" / "sensible" do NOT trip "i sense"', () => {
+      expect(personaCoherence(WARDEN, 'I sense the danger.').offPersona).toContain('i sense');
+      expect(personaCoherence(WARDEN, 'I sensed nothing then and I sense nothing now that is your business.').offPersona).toContain('i sense');
+      expect(personaCoherence(WARDEN, 'A sensible man keeps his mouth shut.').offPersona).not.toContain('i sense');
     });
   });
 });

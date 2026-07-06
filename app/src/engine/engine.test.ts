@@ -759,6 +759,16 @@ describe('voice prompt — the Principle 1 contract (own words only, no echo, no
     }
   });
 
+  // Voice soft-tic pass: the "I sense that you…" mirror-hedge (narrating the seeker as the character's own
+  // perception) is banned in EVERY persona's contract — the soft Principle-1 residue the grief clamp missed.
+  it('bans the mirror-tic opener ("I sense that you…") in every scenario', () => {
+    for (const s of SCENARIOS) {
+      const sys = buildVoiceSystem(s).replace(/\s+/g, ' ');
+      expect(sys).toMatch(/Do NOT announce what you SENSE, feel, read, or detect IN them/);
+      expect(sys).toContain('I sense that you');
+    }
+  });
+
   it('holds the scene against small talk (the suspect café-anecdote collapse)', () => {
     const sys = buildVoiceSystem(SUSPECT).replace(/\s+/g, ' ');
     expect(sys).toMatch(/Stay inside the scene you were given/);
