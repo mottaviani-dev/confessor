@@ -25,6 +25,8 @@
 //   duel-repetition — the diegetic repetition "hardens to the pattern" line in the transcript (§2 thrust 3)
 //   win-highgrip    — a clean win: the reveal verbatim, the closing triumphant (§2 thrust 5)
 //   win-lowgrip     — a pyrrhic win: the reveal drifted, the closing a wound — the room kept a piece of you
+//   lose-highgrip   — a composed loss: the door stays shut, you leave whole (§2 thrust 5)
+//   lose-lowgrip    — an unmade loss: you paid the price and got nothing — the room kept a piece of you
 
 import { spawn, spawnSync } from 'node:child_process';
 import http from 'node:http';
@@ -54,6 +56,10 @@ const SHOTS = [
   // extraction vs the room "keeps a piece of you" (the reveal drifts, the closing turns pyrrhic).
   { name: 'win-highgrip', url: '/?harness=win-highgrip', desc: 'a clean win — high Grip: the reveal is verbatim, the closing triumphant (§2 thrust 5)' },
   { name: 'win-lowgrip', url: '/?harness=win-lowgrip', desc: 'a pyrrhic win — low Grip: the reveal drifts, the closing is a wound (§2 thrust 5)' },
+  // The LOSS mirror (§2 thrust 5): the SAME defeat closed two ways — a composed loss (you leave whole) vs
+  // an unmade one (you paid the price AND got nothing, the room kept a piece of you). No reveal either way.
+  { name: 'lose-highgrip', url: '/?harness=lose-highgrip', desc: 'a composed loss — high Grip: the door stays shut, you leave whole (§2 thrust 5)' },
+  { name: 'lose-lowgrip', url: '/?harness=lose-lowgrip', desc: 'an unmade loss — low Grip: you paid the price and got nothing (§2 thrust 5)' },
   // One neutral mid-game per room — the §2 per-scenario palette seen for every mind (verdigris warden is
   // the `duel` shot above; here the brass fence, blood-umber suspect, pale-phosphor oracle).
   { name: 'room-fence', url: '/?harness=duel-fence', desc: 'the Fence backdrop — brass accent (§2 palette)' },

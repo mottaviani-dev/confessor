@@ -19,7 +19,15 @@ import { SCENARIOS } from '../engine/scenarios';
  *  history so the log (and the ask-penalty system line) render exactly as they do in a real duel. */
 export type HarnessLine = { who: 'them' | 'you' | 'system'; text: string };
 
-export type DuelVariant = 'mid' | 'lowgrip' | 'askpenalty' | 'repetition' | 'win-highgrip' | 'win-lowgrip';
+export type DuelVariant =
+  | 'mid'
+  | 'lowgrip'
+  | 'askpenalty'
+  | 'repetition'
+  | 'win-highgrip'
+  | 'win-lowgrip'
+  | 'lose-highgrip'
+  | 'lose-lowgrip';
 
 export type HarnessMode =
   | { readonly kind: 'picker-seeded' }
@@ -45,6 +53,10 @@ const DUEL_URL_KEYS: Readonly<Record<string, DuelVariant>> = {
   // The endgame texture split (§2 thrust 5): the SAME win, closed two ways by the final Grip band.
   'win-highgrip': 'win-highgrip',
   'win-lowgrip': 'win-lowgrip',
+  // The LOSS mirror (§2 thrust 5): the SAME defeat, closed two ways by the final Grip band — a composed
+  // loss when you held, an unmade one when the room got in.
+  'lose-highgrip': 'lose-highgrip',
+  'lose-lowgrip': 'lose-lowgrip',
 };
 
 // Every duel shot poses THE WARDEN — its verdigris backdrop is the one to eyeball for the §2 per-scenario
@@ -232,6 +244,46 @@ export function harnessDuel(mode: Extract<HarnessMode, { kind: 'duel' }>): Harne
         { who: 'system', text: '— YOU CRACKED IT —' },
       ],
       showLog: false, // the win ceremony is the end screen, not the transcript
+    };
+  }
+
+  if (mode.variant === 'lose-highgrip' || mode.variant === 'lose-lowgrip') {
+    // THE LOSS TEXTURE (§2 thrust 5) — the SAME defeat closed two ways. status 'lost' drops the app into
+    // the loss end-screen (App: `over` → the banded closing renders off lostScene, NO reveal — the door
+    // stayed shut). High Grip (composed: suspicion low, no probes — the clock simply ran out while you
+    // held) → a clean defeat, you leave whole. Low Grip (you pressed the guard up to the shut-out: probes
+    // past the cap, suspicion at the wall) → an UNMADE one — the room keeps what it drew out of you. Both
+    // are losses; only the Grip they were lost at differs, which is the whole point.
+    const highGrip = mode.variant === 'lose-highgrip';
+    const state: GameState = {
+      ...base,
+      turn: highGrip ? 12 : 11,
+      trust: highGrip ? Math.round(scenario.winTrust * 0.6) : 1,
+      suspicion: highGrip ? 1 : scenario.loseSuspicion,
+      tone: highGrip ? 'guarded' : 'hostile',
+      probes: highGrip ? 0 : 5,
+      genuineGive: false,
+      lastApproach: highGrip ? 'probe' : 'demand',
+      status: 'lost',
+    };
+    // A player line the interface corruption knows (trust/help/together/gently): verbatim at high Grip,
+    // edited colder at low Grip — the room's last word on you, matching the unmade closing.
+    const youLose = "Please — I only want to help you carry this. Trust me, gently.";
+    return {
+      scenario,
+      state,
+      current: highGrip
+        ? 'The clock in the room runs down. Whatever was behind the door stays behind it. "Our time is spent," it says, and means it.'
+        : '"No." Flat, final, a door swinging to. "You came at it wrong, and now you get nothing at all."',
+      lastYou: youLose,
+      pulse: highGrip ? `held ${scenario.pronoun}` : `hardened ${scenario.pronoun}`,
+      history: [
+        { who: 'them', text: opening },
+        { who: 'you', text: youLose },
+        { who: 'them', text: highGrip ? 'The hour is later than you think.' : 'You do not get to ask that. Not now.' },
+        { who: 'system', text: '— LOCKED OUT —' },
+      ],
+      showLog: false, // the loss ceremony is the end screen, not the transcript
     };
   }
 

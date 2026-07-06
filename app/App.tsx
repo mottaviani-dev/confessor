@@ -27,7 +27,7 @@ import { getBackendEnv, prepareOnDeviceLlm } from './src/llm/nativeBridge';
 import { MODEL_SPEC } from './src/llm/modelSpec';
 import { devlog } from './src/llm/devlog';
 import { bondCrossedUp, bondState, shiftPulse, suspicionWarning } from './src/meta/bond';
-import { wonScene } from './src/meta/endgame';
+import { lostScene, wonScene } from './src/meta/endgame';
 import { crackedCount, recordResult, unlockedIds, type Ledger } from './src/meta/ledger';
 import { loadLedger, loadSeamLog, saveLedger, saveSeamLog } from './src/meta/ledgerStore';
 import { useAudioDirector } from './src/audio/useAudioDirector';
@@ -405,6 +405,10 @@ function Duel({
   // you", the extracted secret rendered back slightly ALTERED and the closing line pyrrhic. Computed in
   // render so it lights on the live win AND the `?harness=win-*` screenshot dumps alike.
   const won = over && state.status === 'won' ? wonScene(scenario, state) : null;
+  // The LOSS mirror (§2 thrust 5): a loss is not just a loss either. No secret is released, but the same
+  // Grip band selects HOW you leave — a composed defeat at high Grip, an unmade one at low Grip where the
+  // room kept a piece of you. Lit on the live loss AND the `?harness=lose-*` dumps.
+  const lost = over && state.status === 'lost' ? lostScene(scenario, state) : null;
 
   return (
     <View style={styles.root}>
@@ -493,6 +497,9 @@ function Duel({
             {won && <Text style={[styles.reveal, won.pyrrhic && styles.revealWound]}>{won.reveal}</Text>}
             {/* The banded closing line — triumphant when clean, pyrrhic when the room kept a piece of you. */}
             {won && <Text style={[styles.closing, won.pyrrhic && styles.closingWound]}>{won.closing}</Text>}
+            {/* The banded LOSS closing — a composed defeat when clean, an unmade one (wound tint) at low
+                Grip where the room kept a piece of you. No reveal: the door stayed shut. */}
+            {lost && <Text style={[styles.closing, lost.unmade && styles.closingWound]}>{lost.closing}</Text>}
             <Text style={styles.goal}>{scenario.playerGoal}</Text>
             <View style={styles.endRow}>
               <Pressable style={[styles.send, styles.endBtn]} onPress={restart}>

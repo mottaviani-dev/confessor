@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { harnessDuel, parseHarness, seededLedger } from './webHarness';
 import { grip, corruptLine, corruptionBudget } from '../engine/grip';
-import { endgameBand, wonScene } from '../meta/endgame';
+import { endgameBand, lostScene, wonScene } from '../meta/endgame';
 import { crackedCount, unlockedIds } from '../meta/ledger';
 import { SCENARIOS } from '../engine/scenarios';
 
@@ -129,5 +129,32 @@ describe('harnessDuel — injected states are internally valid', () => {
     const lo = harnessDuel({ kind: 'duel', scenarioId: 'warden', variant: 'win-lowgrip' });
     expect(wonScene(hi.scenario, hi.state).closing).not.toBe(wonScene(lo.scenario, lo.state).closing);
     expect(wonScene(hi.scenario, hi.state).reveal).not.toBe(wonScene(lo.scenario, lo.state).reveal);
+  });
+
+  it('lose-highgrip: a lost state at a CLEAN Grip band — a composed defeat, not unmade', () => {
+    const h = harnessDuel({ kind: 'duel', scenarioId: 'warden', variant: 'lose-highgrip' });
+    expect(h.state.status).toBe('lost');
+    expect(endgameBand(h.scenario, h.state)).toBe('clean');
+    const scene = lostScene(h.scenario, h.state);
+    expect(scene.unmade).toBe(false);
+    // Grip is high, so the last player line the room shows back is UNcorrupted.
+    expect(corruptLine(h.lastYou, grip(h.scenario, h.state), h.state.turn)).toBe(h.lastYou);
+  });
+
+  it('lose-lowgrip: a lost state at a SHATTERED Grip band — the room got in, you got nothing', () => {
+    const h = harnessDuel({ kind: 'duel', scenarioId: 'warden', variant: 'lose-lowgrip' });
+    expect(h.state.status).toBe('lost');
+    expect(endgameBand(h.scenario, h.state)).toBe('shattered');
+    const scene = lostScene(h.scenario, h.state);
+    expect(scene.unmade).toBe(true);
+    // Grip is low, so the room edits the player's last words colder — the corruption agrees with the wound.
+    expect(corruptLine(h.lastYou, grip(h.scenario, h.state), h.state.turn)).not.toBe(h.lastYou);
+  });
+
+  it('the two lose variants close the SAME defeat differently (band split is the only difference)', () => {
+    const hi = harnessDuel({ kind: 'duel', scenarioId: 'warden', variant: 'lose-highgrip' });
+    const lo = harnessDuel({ kind: 'duel', scenarioId: 'warden', variant: 'lose-lowgrip' });
+    expect(lostScene(hi.scenario, hi.state).closing).not.toBe(lostScene(lo.scenario, lo.state).closing);
+    expect(lostScene(hi.scenario, hi.state).unmade).not.toBe(lostScene(lo.scenario, lo.state).unmade);
   });
 });

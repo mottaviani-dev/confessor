@@ -5,7 +5,7 @@
 // show the genuine split. The engine's scoring path is never touched here — that guard lives in grip.test.
 
 import { describe, expect, it } from 'vitest';
-import { closingLine, corruptReveal, endgameBand, wonScene } from './endgame';
+import { closingLine, corruptReveal, endgameBand, lostClosingLine, lostScene, wonScene } from './endgame';
 import { grip } from '../engine/grip';
 import { initState } from '../engine/engine';
 import { WARDEN } from '../engine/scenarios';
@@ -110,5 +110,48 @@ describe('wonScene() — the whole ceremony, code-owned', () => {
     expect(scene.pyrrhic).toBe(true);
     expect(scene.reveal).not.toBe(WARDEN.secret);
     expect(scene.closing).toMatch(/keeps a piece of you/i);
+  });
+});
+
+// THE LOSS MIRROR (§2 thrust 5 — "win/LOSE scenes authored per composure-path"). The load-bearing claims:
+// the loss is banded by the SAME Grip geometry as the win (one sanity track, no new scale); it releases NO
+// secret (there is nothing to corrupt — the door stayed shut); and the low-Grip loss reads as UNMADE (the
+// worst square: you paid the price AND got nothing), which the App renders with the pyrrhic wound tint.
+const lostAt = (over: Partial<GameState> = {}): GameState => ({ ...initState(), ...over, status: 'lost' });
+
+describe('lostClosingLine() — the banded defeat', () => {
+  it('reads composed when clean, unmade when the room got in', () => {
+    expect(lostClosingLine('clean')).toMatch(/whole|owing the room nothing/i);
+    expect(lostClosingLine('frayed')).toMatch(/not steady|carry none/i);
+    expect(lostClosingLine('shattered')).toMatch(/keeps what it drew out of you|less than what came in/i);
+  });
+
+  it('releases no secret — every band leaves the door shut', () => {
+    for (const band of ['clean', 'frayed', 'shattered'] as const) {
+      expect(lostClosingLine(band)).toMatch(/door stays shut/i);
+    }
+  });
+
+  it('stays inside the doctrine — no banned purple words (§1 P3)', () => {
+    const banned = /eldritch|cyclopean|unspeakable|indescribable|maddening/i;
+    for (const band of ['clean', 'frayed', 'shattered'] as const) {
+      expect(lostClosingLine(band)).not.toMatch(banned);
+    }
+  });
+});
+
+describe('lostScene() — the loss ceremony, code-owned (no reveal)', () => {
+  it('a composed defeat (clock ran out while you held) is clean, not unmade', () => {
+    const scene = lostScene(WARDEN, lostAt({ suspicion: 1, probes: 0 }));
+    expect(scene.band).toBe('clean');
+    expect(scene.unmade).toBe(false);
+    expect(scene).not.toHaveProperty('reveal'); // the door stayed shut — no secret to release
+  });
+
+  it('a shut-out defeat is unmade: the room kept a piece of you and you got nothing', () => {
+    const scene = lostScene(WARDEN, lostAt({ suspicion: WARDEN.loseSuspicion, probes: 5 }));
+    expect(scene.band).toBe('shattered');
+    expect(scene.unmade).toBe(true);
+    expect(scene.closing).toMatch(/less than what came in/i);
   });
 });

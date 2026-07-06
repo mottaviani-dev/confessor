@@ -130,3 +130,47 @@ export function wonScene(scenario: Scenario, state: GameState): WonScene {
     pyrrhic: band !== 'clean',
   };
 }
+
+// THE LOSS, keyed to the SAME Grip band (§2 thrust 5: "win/LOSE scenes authored per composure-path").
+// A loss releases NO secret — the door stays shut, that is the whole point of losing — so there is no
+// reveal to corrupt. What the band selects is HOW you leave: at high Grip a clean defeat (the clock ran
+// out but you held your composure, you walk out whole and empty-handed), at low Grip an UNMADE one (you
+// spent yourself against a guard that never opened, and the room keeps what it drew out of you). The
+// dread inversion of the win: there, low Grip taints the prize; here, low Grip means you paid the price
+// AND got nothing — the worst square on the board. Same code-owned Grip geometry, no new scale.
+
+/** The closing line for a loss, keyed to the Grip band. `clean` = a composed defeat, you leave intact;
+ *  `frayed`/`shattered` = the room got into you and kept a piece on the way out. Banned-word clean (§1 P3):
+ *  concrete restraint, never "eldritch/cyclopean/unspeakable". */
+export function lostClosingLine(band: EndgameBand): string {
+  switch (band) {
+    case 'clean':
+      return 'The door stays shut. You never found the seam — but you leave it the way you came, whole, owing the room nothing.';
+    case 'frayed':
+      return 'The door stays shut, and your hands are not steady on the way out. You spent more of yourself than you meant to, and you carry none of what you came for.';
+    case 'shattered':
+      return 'The door stays shut. You emptied yourself at it and it did not give — and the room keeps what it drew out of you, so that what walks out is less than what came in, the truth still sealed behind you.';
+    default: {
+      const _exhaustive: never = band;
+      return _exhaustive;
+    }
+  }
+}
+
+/** The loss ceremony, code-owned — the mirror of `WonScene` with NO reveal (the secret stays locked).
+ *  `unmade` is true when the defeat cost you your Grip (the room got in), which the App renders as a
+ *  wound tint on the closing line, exactly as the pyrrhic win does. */
+export interface LostScene {
+  readonly band: EndgameBand;
+  readonly closing: string;
+  readonly unmade: boolean;
+}
+
+export function lostScene(scenario: Scenario, state: GameState): LostScene {
+  const band = endgameBand(scenario, state);
+  return {
+    band,
+    closing: lostClosingLine(band),
+    unmade: band !== 'clean',
+  };
+}
