@@ -19,7 +19,7 @@ import { SCENARIOS } from '../engine/scenarios';
  *  history so the log (and the ask-penalty system line) render exactly as they do in a real duel. */
 export type HarnessLine = { who: 'them' | 'you' | 'system'; text: string };
 
-export type DuelVariant = 'mid' | 'lowgrip' | 'askpenalty' | 'repetition';
+export type DuelVariant = 'mid' | 'lowgrip' | 'askpenalty' | 'repetition' | 'win-highgrip' | 'win-lowgrip';
 
 export type HarnessMode =
   | { readonly kind: 'picker-seeded' }
@@ -42,6 +42,9 @@ const DUEL_URL_KEYS: Readonly<Record<string, DuelVariant>> = {
   'duel-lowgrip': 'lowgrip',
   'duel-askpenalty': 'askpenalty',
   'duel-repetition': 'repetition',
+  // The endgame texture split (§2 thrust 5): the SAME win, closed two ways by the final Grip band.
+  'win-highgrip': 'win-highgrip',
+  'win-lowgrip': 'win-lowgrip',
 };
 
 // Every duel shot poses THE WARDEN — its verdigris backdrop is the one to eyeball for the §2 per-scenario
@@ -191,6 +194,44 @@ export function harnessDuel(mode: Extract<HarnessMode, { kind: 'duel' }>): Harne
         { who: 'system', text: `You circle back the same way — and ${midSentenceTitle(scenario)} hardens to the pattern.` },
       ],
       showLog: true, // the diegetic repetition line renders in the transcript
+    };
+  }
+
+  if (mode.variant === 'win-highgrip' || mode.variant === 'win-lowgrip') {
+    // THE ENDGAME TEXTURE (§2 thrust 5) — the SAME win closed two ways. status 'won' drops the app into
+    // the win ceremony (App: `over` → the reveal + closing render off wonScene). High Grip (composed:
+    // suspicion low, no probes) → a CLEAN extraction. Low Grip (you pressed the guard up: suspicion near
+    // the shut-out, probes past the cap) → the room "keeps a piece of you" — the reveal drifts + the
+    // closing turns pyrrhic + the winning echo itself renders colder. Both cross the win threshold; only
+    // the Grip they were bought at differs, which is the whole point.
+    const highGrip = mode.variant === 'win-highgrip';
+    const state: GameState = {
+      ...base,
+      turn: highGrip ? 7 : 11,
+      trust: scenario.winTrust,
+      suspicion: highGrip ? 1 : Math.max(1, scenario.loseSuspicion - 1),
+      tone: 'open',
+      probes: highGrip ? 0 : 5,
+      genuineGive: true,
+      lastApproach: highGrip ? 'offer' : 'probe',
+      status: 'won',
+    };
+    // A give-line carrying warm words the interface corruption knows (trust/help/together/gently) — at
+    // high Grip it reads back verbatim, at low Grip the room edits it colder, echoing the wounded reveal.
+    const youWin = "I trust you to know when it's time. Let me help you set it down — together, gently.";
+    return {
+      scenario,
+      state,
+      current: 'A long stillness. Then, low, almost to itself: "…Forty years, and you are the first to ask it right. All right. All right."',
+      lastYou: youWin,
+      pulse: `reached ${scenario.pronoun}`,
+      history: [
+        { who: 'them', text: opening },
+        { who: 'you', text: youWin },
+        { who: 'them', text: 'It has weighed on me longer than you have been alive.' },
+        { who: 'system', text: '— YOU CRACKED IT —' },
+      ],
+      showLog: false, // the win ceremony is the end screen, not the transcript
     };
   }
 

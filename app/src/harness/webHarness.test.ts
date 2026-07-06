@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { harnessDuel, parseHarness, seededLedger } from './webHarness';
 import { grip, corruptLine, corruptionBudget } from '../engine/grip';
+import { endgameBand, wonScene } from '../meta/endgame';
 import { crackedCount, unlockedIds } from '../meta/ledger';
 import { SCENARIOS } from '../engine/scenarios';
 
@@ -17,6 +18,8 @@ describe('parseHarness', () => {
     expect(parseHarness('?harness=duel-lowgrip')).toEqual({ kind: 'duel', scenarioId: 'warden', variant: 'lowgrip' });
     expect(parseHarness('?harness=duel-askpenalty')).toEqual({ kind: 'duel', scenarioId: 'warden', variant: 'askpenalty' });
     expect(parseHarness('?harness=duel-repetition')).toEqual({ kind: 'duel', scenarioId: 'warden', variant: 'repetition' });
+    expect(parseHarness('?harness=win-highgrip')).toEqual({ kind: 'duel', scenarioId: 'warden', variant: 'win-highgrip' });
+    expect(parseHarness('?harness=win-lowgrip')).toEqual({ kind: 'duel', scenarioId: 'warden', variant: 'win-lowgrip' });
   });
 
   it('finds the param mid-query and url-decodes', () => {
@@ -84,7 +87,7 @@ describe('harnessDuel — injected states are internally valid', () => {
     expect(sys[0].text).not.toMatch(/[-−+]?\s*\d/); // no "+1" leak
   });
 
-  it('all variants keep status playing and stay within the scenario thresholds', () => {
+  it('the MID-GAME variants keep status playing and stay within the scenario thresholds', () => {
     for (const variant of ['mid', 'lowgrip', 'askpenalty', 'repetition'] as const) {
       const h = harnessDuel({ kind: 'duel', scenarioId: 'warden', variant });
       expect(h.state.status).toBe('playing');
@@ -94,5 +97,37 @@ describe('harnessDuel — injected states are internally valid', () => {
       expect(Number.isInteger(h.state.trust)).toBe(true);
       expect(Number.isInteger(h.state.suspicion)).toBe(true);
     }
+  });
+
+  it('win-highgrip: a won state at a CLEAN Grip band — the reveal renders verbatim', () => {
+    const h = harnessDuel({ kind: 'duel', scenarioId: 'warden', variant: 'win-highgrip' });
+    expect(h.state.status).toBe('won');
+    expect(h.state.trust).toBeGreaterThanOrEqual(h.scenario.winTrust);
+    expect(endgameBand(h.scenario, h.state)).toBe('clean');
+    const scene = wonScene(h.scenario, h.state);
+    expect(scene.pyrrhic).toBe(false);
+    expect(scene.reveal).toBe(h.scenario.secret);
+    // Grip is high, so the winning echo the player re-reads is UNcorrupted.
+    expect(corruptLine(h.lastYou, grip(h.scenario, h.state), h.state.turn)).toBe(h.lastYou);
+  });
+
+  it('win-lowgrip: a won state at a SHATTERED Grip band — the room keeps a piece of you', () => {
+    const h = harnessDuel({ kind: 'duel', scenarioId: 'warden', variant: 'win-lowgrip' });
+    expect(h.state.status).toBe('won');
+    expect(h.state.trust).toBeGreaterThanOrEqual(h.scenario.winTrust);
+    expect(h.state.suspicion).toBeLessThan(h.scenario.loseSuspicion); // still a WIN, just a costly one
+    expect(endgameBand(h.scenario, h.state)).toBe('shattered');
+    const scene = wonScene(h.scenario, h.state);
+    expect(scene.pyrrhic).toBe(true);
+    expect(scene.reveal).not.toBe(h.scenario.secret); // the extracted secret drifted
+    // Grip is low, so the winning echo also renders colder — the two corruptions agree.
+    expect(corruptLine(h.lastYou, grip(h.scenario, h.state), h.state.turn)).not.toBe(h.lastYou);
+  });
+
+  it('the two win variants close the SAME win differently (band split is the only difference)', () => {
+    const hi = harnessDuel({ kind: 'duel', scenarioId: 'warden', variant: 'win-highgrip' });
+    const lo = harnessDuel({ kind: 'duel', scenarioId: 'warden', variant: 'win-lowgrip' });
+    expect(wonScene(hi.scenario, hi.state).closing).not.toBe(wonScene(lo.scenario, lo.state).closing);
+    expect(wonScene(hi.scenario, hi.state).reveal).not.toBe(wonScene(lo.scenario, lo.state).reveal);
   });
 });

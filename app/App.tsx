@@ -27,6 +27,7 @@ import { getBackendEnv, prepareOnDeviceLlm } from './src/llm/nativeBridge';
 import { MODEL_SPEC } from './src/llm/modelSpec';
 import { devlog } from './src/llm/devlog';
 import { bondCrossedUp, bondState, shiftPulse, suspicionWarning } from './src/meta/bond';
+import { wonScene } from './src/meta/endgame';
 import { crackedCount, recordResult, unlockedIds, type Ledger } from './src/meta/ledger';
 import { loadLedger, loadSeamLog, saveLedger, saveSeamLog } from './src/meta/ledgerStore';
 import { useAudioDirector } from './src/audio/useAudioDirector';
@@ -347,10 +348,18 @@ function Duel({
       // further gone — and the code-owned door schedule advances with the turn.
       audio.setComposure(Math.max(r.state.trust / scenario.winTrust, r.state.suspicion / scenario.loseSuspicion));
       audio.markTurn(r.state.turn, scenario.turnLimit);
-      setCurrent(r.narration || '…');
+      // On a WIN the engine appends the real secret to the narration (reply + "\n\n" + secret). The reveal
+      // is not stage text — it is the win ceremony, rendered Grip-banded below (clean vs the room "keeps a
+      // piece of you", §2 thrust 5). Strip it from the stage + transcript so the ceremony owns the secret,
+      // and the low-Grip win shows only the ALTERED reveal — never the clean one beside it.
+      const stageLine =
+        r.ending === 'won' && r.narration.endsWith(scenario.secret)
+          ? r.narration.slice(0, -scenario.secret.length).trimEnd()
+          : r.narration;
+      setCurrent(stageLine || '…');
       setHistory((h) => [
         ...h,
-        { who: 'them', text: r.narration || '…' },
+        { who: 'them', text: stageLine || '…' },
         ...crossings,
         ...(r.ending ? [{ who: 'system' as const, text: r.ending === 'won' ? '— YOU CRACKED IT —' : '— LOCKED OUT —' }] : []),
       ]);
@@ -391,6 +400,11 @@ function Duel({
   // typed it. DISPLAY-LAYER ONLY (bible §6): `lastYou` is the raw text the engine already rated; this
   // corrupts only the echo the player re-reads. Silent while Grip is high — a composed game never sees it.
   const youShown = corruptLine(lastYou, grip(scenario, state), state.turn);
+  // THE ENDGAME TEXTURE (§2 thrust 5) — a win is not just a win. Code selects the closing scene off the
+  // final Grip band (endgame.ts): high Grip → a clean extraction; low Grip → the room "keeps a piece of
+  // you", the extracted secret rendered back slightly ALTERED and the closing line pyrrhic. Computed in
+  // render so it lights on the live win AND the `?harness=win-*` screenshot dumps alike.
+  const won = over && state.status === 'won' ? wonScene(scenario, state) : null;
 
   return (
     <View style={styles.root}>
@@ -474,6 +488,11 @@ function Duel({
                 {(bestTurns === null || state.turn < bestTurns) && ' Your fastest.'}
               </Text>
             )}
+            {/* THE REVEAL, as the room releases it — clean when you kept your Grip, drifted at low Grip
+                (a code/name/route comes back not-quite-right). The wound tint drains its bone. */}
+            {won && <Text style={[styles.reveal, won.pyrrhic && styles.revealWound]}>{won.reveal}</Text>}
+            {/* The banded closing line — triumphant when clean, pyrrhic when the room kept a piece of you. */}
+            {won && <Text style={[styles.closing, won.pyrrhic && styles.closingWound]}>{won.closing}</Text>}
             <Text style={styles.goal}>{scenario.playerGoal}</Text>
             <View style={styles.endRow}>
               <Pressable style={[styles.send, styles.endBtn]} onPress={restart}>
@@ -590,6 +609,14 @@ const styles = StyleSheet.create({
   them: { color: '#e5e7eb', fontSize: 21, lineHeight: 31, textAlign: 'center', marginTop: 18, fontWeight: '500' },
   caret: { color: '#4ade80' },
   goal: { color: '#8a8a92', fontSize: 13, fontStyle: 'italic', textAlign: 'center', marginBottom: 12, lineHeight: 18 },
+  // The win ceremony (§2 thrust 5). `reveal` = the extracted secret as the room releases it (bone, the
+  // in-world voice); `revealWound` drains it colder at low Grip, where the specifics drifted. `closing` =
+  // the banded closing line as a diegetic stage-whisper (bone italic, matching logSys); `closingWound`
+  // cools it toward the wound. No floating chrome — paper, not a HUD toast (§5).
+  reveal: { color: '#d4d4d8', fontSize: 16, lineHeight: 24, fontStyle: 'italic', textAlign: 'center', marginBottom: 12 },
+  revealWound: { color: '#9aa0ac' },
+  closing: { color: '#b3a892', fontSize: 13, lineHeight: 19, fontStyle: 'italic', textAlign: 'center', marginBottom: 14, letterSpacing: 0.3 },
+  closingWound: { color: '#8b8f9e' },
   endRow: { flexDirection: 'row', gap: 10 },
   endBtn: { flex: 1 },
   endAlt: { backgroundColor: 'transparent', borderColor: '#26262e' },
