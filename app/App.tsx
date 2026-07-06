@@ -628,5 +628,9 @@ const styles = StyleSheet.create({
   logLine: { fontSize: 15, lineHeight: 22, marginBottom: 12 },
   logThem: { color: '#d4d4d8' },
   logYou: { color: '#67c99a', textAlign: 'right' },
-  logSys: { color: '#c084fc', textAlign: 'center', fontWeight: '800', letterSpacing: 1 },
+  // The room's own stage-whisper (ask-penalty, repetition, bond-crossings, the end marker). Desaturated
+  // bone italic — reads as in-world paper, NOT a floating system toast. The old saturated violet (#c084fc)
+  // was off-palette (doctrine = bone / tar / sodium-amber / one scenario accent) and betrayed the diegetic
+  // illusion the backdrops paid for — a §5 "never floating game-chrome" break the visual-truth eyes caught.
+  logSys: { color: '#b3a892', textAlign: 'center', fontStyle: 'italic', fontWeight: '600', letterSpacing: 0.3 },
 });
