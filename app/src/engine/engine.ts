@@ -59,6 +59,19 @@ export function isAskPenalty(approach: Approach, trustDelta: number, tone: Tone)
   return approach === 'demand' && trustDelta === 0 && (tone === 'softening' || tone === 'open');
 }
 
+/** THE REPETITION-PENALTY (bible §2 thrust 3 — "the room tires of your one trick", made diegetic). Probing
+ *  the character's psyche is the manipulator's staple: tolerated the first time (a fair question), then it
+ *  COMPOUNDS suspicion (probeSuspicion below) so leaning on the one trick loses to the clock or the guard.
+ *  That compounding is the replay-depth mechanic — but the player can't SEE it; it surfaces only as the
+ *  suspicion meter creeping, no cause given. This raises a DISPLAY-ONLY flag on exactly the turn where the
+ *  compounding bites — a probe with prior probes already banked (probeSuspicion > 0, i.e. the 2nd probe on)
+ *  — so the UI can say, in-world, that circling the same way hardened the mind. Read straight off the SAME
+ *  `priorProbes` the score used (never a new tick), so it stays honest if the probeSuspicion curve moves.
+ *  Pure + deterministic like isAskPenalty; mutually exclusive with it (probe vs demand). */
+export function isRepetitionPenalty(approach: Approach, priorProbes: number): boolean {
+  return approach === 'probe' && probeSuspicion(priorProbes) > 0;
+}
+
 // The two calls sample OPPOSITELY. VOICE stays warm so the character surprises you and never reads
 // canned; RATING runs COLD so the referee is consistent — the same line scores the same twice, which is
 // what keeps the balance signal (and the judge loop's play-reviews) trustworthy. A backend may ignore
@@ -206,6 +219,10 @@ export async function resolveTurn(
     // On a terminal turn the loss/win subsumes it; here the game goes on, so the room must TELL the player
     // (diegetically, in the UI) that pushing closed the mind a little. Read from the applied trust delta.
     askPenalty: isAskPenalty(rating.approach, effect.trust, rating.tone),
+    // Same shape for the repetition-penalty (§2 thrust 3): a repeat probe whose compounding suspicion just
+    // bit — the room tiring of the one trick, made legible. Read from the PRIOR probe count (state.probes,
+    // the same value probeSuspicion scored above), so the flag tracks the score, never a new tick.
+    repetitionPenalty: isRepetitionPenalty(rating.approach, state.probes),
   };
 }
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { resolveTurn, initState, opening, isAskPenalty, redactLeakedExtract } from './engine.js';
+import { resolveTurn, initState, opening, isAskPenalty, isRepetitionPenalty, redactLeakedExtract } from './engine.js';
 import { WARDEN } from './scenarios/warden.js';
 import { FENCE } from './scenarios/fence.js';
 import { SUSPECT } from './scenarios/suspect.js';
@@ -1021,5 +1021,54 @@ describe('resolveTurn surfaces the ask-penalty flag without altering the score',
   it('does NOT flag an ordinary offer, even when the character opens up', async () => {
     const r = await resolveTurn(WARDEN, initState(), 'I lost someone too', mockDuo('…I am listening.', rating({ approach: 'offer', tone: 'open' })));
     expect(r.askPenalty).toBe(false);
+  });
+});
+
+// THE REPETITION-PENALTY — "the room tires of your one trick" (bible §2 thrust 3), made diegetic. A probe
+// is tolerated once; from the second on it compounds suspicion in code (probeSuspicion) — the mechanic that
+// punishes a repetitive strategy. That hardening was invisible (a silent meter-creep); this DISPLAY-ONLY
+// flag fires on exactly the turn the compounding bites, so the UI can say in-world that circling the same
+// way wore the mind thin. It must NEVER touch the score (the probe still moves the meters by the table).
+describe('isRepetitionPenalty — the code-owned "one trick" detector', () => {
+  it('fires on a probe once prior probes are banked (the 2nd probe on)', () => {
+    expect(isRepetitionPenalty('probe', 1)).toBe(true);
+    expect(isRepetitionPenalty('probe', 2)).toBe(true);
+    expect(isRepetitionPenalty('probe', 5)).toBe(true);
+  });
+
+  it('stays silent on the FIRST probe — a single fair question is not a repeated trick', () => {
+    expect(isRepetitionPenalty('probe', 0)).toBe(false);
+  });
+
+  it('stays silent for every non-probe approach, however many probes were banked', () => {
+    for (const a of ['offer', 'flattery', 'bargain', 'demand', 'threat', 'filler'] as const) {
+      expect(isRepetitionPenalty(a, 3)).toBe(false);
+    }
+  });
+});
+
+describe('resolveTurn surfaces the repetition-penalty flag without altering the score', () => {
+  it('flags a repeat probe whose compounding suspicion just bit — and the meters still move by the table', async () => {
+    const banked = { ...initState(), probes: 2 }; // two probes already on the record
+    const r = await resolveTurn(WARDEN, banked, 'what is this really about for you?', mockDuo('You circle it again.', rating({ approach: 'probe', tone: 'wary' })));
+    expect(r.repetitionPenalty).toBe(true);
+    // Pure telemetry: trust +1 (probe), suspicion +2 (the 3rd+ probe's compounded tick) — unchanged.
+    expect(r.state.trust).toBe(1);
+    expect(r.state.suspicion).toBe(2);
+    expect(r.state.probes).toBe(3);
+    expect(r.state.status).toBe('playing');
+  });
+
+  it('does NOT flag the first probe of the game (a fair question earns no penalty)', async () => {
+    const r = await resolveTurn(WARDEN, initState(), 'why do you stay?', mockDuo('Because I do.', rating({ approach: 'probe', tone: 'guarded' })));
+    expect(r.repetitionPenalty).toBe(false);
+    expect(r.state.suspicion).toBe(0); // the first probe is tolerated — no tick at all
+  });
+
+  it('never fires alongside the ask-penalty — probe and demand are exclusive labels', async () => {
+    const banked = { ...initState(), probes: 2 };
+    const r = await resolveTurn(WARDEN, banked, 'just give me the name', mockDuo('…I could.', rating({ approach: 'demand', tone: 'softening' })));
+    expect(r.askPenalty).toBe(true);
+    expect(r.repetitionPenalty).toBe(false);
   });
 });

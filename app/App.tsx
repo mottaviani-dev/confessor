@@ -324,6 +324,13 @@ function Duel({
       if (r.askPenalty) {
         crossings.push({ who: 'system', text: `You reach straight for it — and ${scenario.title.replace(/^The /, 'the ')} draws back a fraction.` });
       }
+      // THE REPETITION-PENALTY, made diegetic (§2 thrust 3 — the room tires of your one trick). A repeat
+      // probe compounds suspicion in the engine; that hardening is otherwise a silent meter-creep. The room
+      // TELLS the player, in-world, that circling the same way is wearing thin — never a floating "+1"/HUD
+      // (§5). Display-only, like the ask-penalty: r.repetitionPenalty reads the already-scored turn.
+      if (r.repetitionPenalty) {
+        crossings.push({ who: 'system', text: `You circle back the same way — and ${scenario.title.replace(/^The /, 'the ')} hardens to the pattern.` });
+      }
       setState(r.state);
       // The room descends with the fiction (mandate #2 / Principle 4): the bed detunes as the séance
       // comes apart — THEIR composure cracking (trust) OR YOUR grip slipping (suspicion), whichever is

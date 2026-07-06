@@ -16,6 +16,7 @@ describe('parseHarness', () => {
     expect(parseHarness('?harness=duel')).toEqual({ kind: 'duel', scenarioId: 'warden', variant: 'mid' });
     expect(parseHarness('?harness=duel-lowgrip')).toEqual({ kind: 'duel', scenarioId: 'warden', variant: 'lowgrip' });
     expect(parseHarness('?harness=duel-askpenalty')).toEqual({ kind: 'duel', scenarioId: 'warden', variant: 'askpenalty' });
+    expect(parseHarness('?harness=duel-repetition')).toEqual({ kind: 'duel', scenarioId: 'warden', variant: 'repetition' });
   });
 
   it('finds the param mid-query and url-decodes', () => {
@@ -71,8 +72,20 @@ describe('harnessDuel — injected states are internally valid', () => {
     expect(sys[0].text).not.toMatch(/[-−]?\s*0/); // no "−0" leak
   });
 
+  it('repetition: opens the transcript carrying the diegetic "hardens to the pattern" line', () => {
+    const h = harnessDuel({ kind: 'duel', scenarioId: 'warden', variant: 'repetition' });
+    expect(h.showLog).toBe(true);
+    expect(h.state.probes).toBeGreaterThanOrEqual(1); // prior probes banked → the compounding bit
+    const sys = h.history.filter((l) => l.who === 'system');
+    expect(sys).toHaveLength(1);
+    expect(sys[0].text).toContain('hardens to the pattern');
+    // mirrors App's binding: mid-sentence room name, no floating number / HUD (§5).
+    expect(sys[0].text).toContain('the Warden');
+    expect(sys[0].text).not.toMatch(/[-−+]?\s*\d/); // no "+1" leak
+  });
+
   it('all variants keep status playing and stay within the scenario thresholds', () => {
-    for (const variant of ['mid', 'lowgrip', 'askpenalty'] as const) {
+    for (const variant of ['mid', 'lowgrip', 'askpenalty', 'repetition'] as const) {
       const h = harnessDuel({ kind: 'duel', scenarioId: 'warden', variant });
       expect(h.state.status).toBe('playing');
       expect(h.state.trust).toBeGreaterThanOrEqual(0);

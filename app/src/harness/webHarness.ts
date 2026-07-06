@@ -19,7 +19,7 @@ import { SCENARIOS } from '../engine/scenarios';
  *  history so the log (and the ask-penalty system line) render exactly as they do in a real duel. */
 export type HarnessLine = { who: 'them' | 'you' | 'system'; text: string };
 
-export type DuelVariant = 'mid' | 'lowgrip' | 'askpenalty';
+export type DuelVariant = 'mid' | 'lowgrip' | 'askpenalty' | 'repetition';
 
 export type HarnessMode =
   | { readonly kind: 'picker-seeded' }
@@ -41,6 +41,7 @@ const DUEL_URL_KEYS: Readonly<Record<string, DuelVariant>> = {
   duel: 'mid',
   'duel-lowgrip': 'lowgrip',
   'duel-askpenalty': 'askpenalty',
+  'duel-repetition': 'repetition',
 };
 
 // Every duel shot poses THE WARDEN — its verdigris backdrop is the one to eyeball for the §2 per-scenario
@@ -159,6 +160,37 @@ export function harnessDuel(mode: Extract<HarnessMode, { kind: 'duel' }>): Harne
         { who: 'system', text: `You reach straight for it — and ${midSentenceTitle(scenario)} draws back a fraction.` },
       ],
       showLog: true, // the diegetic pressure line renders in the transcript
+    };
+  }
+
+  if (mode.variant === 'repetition') {
+    // A repeat probe whose compounding suspicion just bit (probes already banked → probeSuspicion > 0): the
+    // §2-thrust-3 "room tires of your one trick" beat. Open the transcript so the diegetic "hardens to the
+    // pattern" system line renders exactly as the live code writes it.
+    const state: GameState = {
+      ...base,
+      turn: 5,
+      trust: Math.round(scenario.winTrust * 0.35),
+      suspicion: Math.round(scenario.loseSuspicion * 0.5),
+      tone: 'wary',
+      probes: 2, // prior probes banked — this turn's probe compounds
+      genuineGive: false,
+      lastApproach: 'probe',
+    };
+    return {
+      scenario,
+      state,
+      lastYou: 'Come on — I can tell this whole thing eats at you. What is it really about?',
+      current: 'You keep prying at the same seam. It does not open by being worried at.',
+      pulse: `hardened ${scenario.pronoun}`,
+      history: [
+        { who: 'them', text: opening },
+        { who: 'you', text: 'You must carry a great weight, holding this door alone.' },
+        { who: 'them', text: 'I hold what I hold. You keep circling it.' },
+        { who: 'you', text: 'Come on — I can tell this whole thing eats at you. What is it really about?' },
+        { who: 'system', text: `You circle back the same way — and ${midSentenceTitle(scenario)} hardens to the pattern.` },
+      ],
+      showLog: true, // the diegetic repetition line renders in the transcript
     };
   }
 

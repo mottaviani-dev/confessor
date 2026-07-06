@@ -156,6 +156,15 @@ export interface TurnResult {
    *  pushing closed the mind a little instead of feeling an invisible, dissonant nothing. Like Grip, this
    *  is a render-layer read of an ALREADY-rated turn: it never touches the score (see engine.isAskPenalty). */
   readonly askPenalty?: boolean;
+  /** THE REPETITION-PENALTY — a DISPLAY-ONLY flag (bible §2 thrust 3, "the room tires of your one trick").
+   *  Probing (working the CHARACTER's psyche) is tolerated once, then compounds suspicion in code — the
+   *  mechanic that makes a repetitive strategy lose and replay strategic. But that compounding is INVISIBLE
+   *  to the player: it reads only as the suspicion meter creeping, with no why. Set when THIS turn's probe
+   *  is the one that pushed past the free first probe (probeSuspicion > 0), so the UI can tell the player,
+   *  in-world, that circling the same way hardened the mind — never a floating "+1"/HUD (§5). Like the
+   *  ask-penalty, a pure render-layer read of the SAME prior-probe count the score used, never a new tick
+   *  (see engine.isRepetitionPenalty). Mutually exclusive with `askPenalty` (probe vs demand). */
+  readonly repetitionPenalty?: boolean;
 }
 
 /**
