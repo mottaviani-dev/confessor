@@ -59,7 +59,10 @@ describe('selectSeam — the warden is the second seam-live persona', () => {
   });
 
   it('carries a WARDEN-flavoured tail (not the fence wrapper) while still leading with the verbatim fragment', () => {
-    const log = recordPlaythrough([], rec({ scenarioId: 'fence', playerPhrase: 'I kept a lighthouse for six years alone' }));
+    // The picked record is a THIRD room (suspect) so BOTH selectors fire cross-mind — comparing the fence
+    // vs warden WRAPPER on the same fragment requires the fragment to come from neither. (A fence-only log
+    // no longer yields a fence hint: the same-mind bleed guard, 2026-07-07.)
+    const log = recordPlaythrough([], rec({ scenarioId: 'suspect', playerPhrase: 'I kept a lighthouse for six years alone' }));
     const wardenHint = selectSeam(log, WARDEN)!.hint;
     const fenceHint = selectSeam(log, FENCE)!.hint;
     expect(wardenHint).not.toBe(fenceHint); // persona-tuned manner, not the same wrapper
@@ -107,6 +110,25 @@ describe('selectSeam — fact selection', () => {
     expect(seam).not.toBeNull();
     expect(seam!.hint).toContain('sat across a table');
     expect(seam!.hint).toContain('EXACTLY ONCE');
+  });
+});
+
+describe('selectSeam — the same-mind bleed guard (fix 2026-07-07)', () => {
+  it('a log of ONLY the same mind yields NO seam (never recites the player’s own prior words back)', () => {
+    // The bug: fallbacks that dropped the different-room guard let a mind quote the player's OWN phrase
+    // from a previous run of that SAME mind — "restart the same mind and it remembers everything".
+    const log = recordPlaythrough([], rec({ scenarioId: 'fence', playerPhrase: 'a phrase I typed to the fence' }));
+    expect(selectSeam(log, FENCE)).toBeNull();
+  });
+
+  it('still fires off a DIFFERENT mind present in an otherwise same-mind log', () => {
+    let log: SeamLog = [];
+    log = recordPlaythrough(log, rec({ scenarioId: 'fence', playerPhrase: 'same-mind fence phrase' }));
+    log = recordPlaythrough(log, rec({ scenarioId: 'warden', playerPhrase: 'a phrase from the warden room' }));
+    const seam = selectSeam(log, FENCE);
+    expect(seam).not.toBeNull();
+    expect(seam!.hint).toContain('a phrase from the warden room'); // the cross-mind memory
+    expect(seam!.hint).not.toContain('same-mind fence phrase'); // never its own prior words
   });
 });
 

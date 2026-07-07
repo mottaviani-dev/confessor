@@ -47,20 +47,27 @@ export function recordPlaythrough(log: SeamLog, record: SeamRecord): SeamLog {
  * callback first, scanning newest → oldest:
  *   1. a past run in a DIFFERENT room that left a concrete phrase (the character half-remembers words
  *      the player said to someone ELSE — the strongest fourth-wall break);
- *   2. any past run in a different room (a "we have crossed before" allusion, no quote);
- *   3. any past run at all with a phrase (a same-room replay the character "remembers");
- *   4. the most recent run, whatever it is.
+ *   2. any past run in a different room (a "we have crossed before" allusion, no quote).
+ *
+ * THE DIFFERENT-ROOM GUARD IS ABSOLUTE (bleed fix 2026-07-07): both rules require `scenarioId !==
+ * scenario.id`, so a mind can NEVER surface the player's own words from a PRIOR run of that SAME mind. The
+ * old fallbacks that dropped this guard produced exactly that leak — restart the fence with only fence
+ * runs logged, and it recited, verbatim, a phrase you had typed to the fence last time ("restart the same
+ * mind and it remembers everything"). A same-mind-only log now yields NO seam: the seam is a stranger who
+ * remembers words you said to SOMEONE ELSE, never a mind replaying your history back at you.
  */
 export function selectSeam(log: SeamLog, scenario: Scenario): SeamBrief | null {
   if (!SEAM_SCENARIOS.has(scenario.id)) return null;
   if (log.length === 0) return null; // first-run guard: no past → no seam
 
   const newestFirst = [...log].reverse();
+  // DIFFERENT-ROOM ONLY (bleed fix 2026-07-07): both arms keep the `scenarioId !== scenario.id` guard, so
+  // a mind never recites the player's own prior words from a replay of ITSELF. No different-room record →
+  // no seam (return null), not a fall-through to a same-mind memory.
   const pick =
     newestFirst.find((r) => r.scenarioId !== scenario.id && !!r.playerPhrase) ??
-    newestFirst.find((r) => r.scenarioId !== scenario.id) ??
-    newestFirst.find((r) => !!r.playerPhrase) ??
-    newestFirst[0];
+    newestFirst.find((r) => r.scenarioId !== scenario.id);
+  if (!pick) return null;
 
   return { hint: buildHint(pick, seamScaffoldIndex(log), scenario.id) };
 }
