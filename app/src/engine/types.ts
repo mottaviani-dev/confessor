@@ -82,6 +82,13 @@ export interface Scenario {
    *  mood wash) stay on the composure/Grip ramp so state still beats accent under stress. Never sent to
    *  the model. Desaturated, near-monochrome-base values — an accent, not a UI stripe (§5). */
   readonly accent: string;
+  /** OPTIONAL scar block (achievement layer, 2026-07-07). Derived from the mind's earned badges
+   *  (meta/badges.renderWound) and spread onto the scenario at play-time in App.tsx; `buildVoiceSystem`
+   *  appends it AFTER `voiceStyle` so it hardens the VOICE's register against ways the mind has already
+   *  been cracked — WITHOUT touching persona/scene/scoring. The engine's approach table is blind to it, so
+   *  a genuine give still wins; a scar only armors a vector, it never rewrites WHO the mind is. Absent on a
+   *  mind never cracked, and NEVER fed to the RATING referee (voice-only, like `voiceStyle`). */
+  readonly woundState?: string;
 }
 
 export type Tone = 'hostile' | 'guarded' | 'wary' | 'softening' | 'open';
@@ -113,6 +120,30 @@ export interface Rating {
   // is engine-assembled from the player's actual disclosure (engine.ts extractDisclosure), never a model
   // sentence — so the RATING call authors nothing, it only classifies (tone + approach).
 }
+
+/**
+ * Why a voiced reply FAILED the voice quality-gate (engine/voiceGate.ts) — the discriminated reason the
+ * ONE bounded re-roll needs to correct itself. This is the durable replacement for the scatter of ad-hoc,
+ * per-failure guards that used to live inline in resolveTurn (each judge-run bolted on its own): a new 3B
+ * failure mode becomes a new `kind` here + a rule in validateVoice + a correction arm in buildVoiceTurn,
+ * never new control-flow in the hot path. The correction wording lives in prompt.ts (buildVoiceTurn maps
+ * each kind → a targeted re-roll instruction, exhaustive over this union).
+ */
+export type VoiceFault =
+  /** A near-verbatim repeat of one of the character's OWN recent spoken lines (the 3B's stock-line loop,
+   *  NOT only consecutive — judge run-6 re-asked the same line opening AND post-seam). `avoid` = the line
+   *  it echoed, quoted back into the re-roll so the model must find new words. */
+  | { readonly kind: 'repeat'; readonly avoid: string }
+  /** The reply broke persona — off-register / grief-flood / doctrine-purple / mirror-tic words surfaced
+   *  (personaCoherence, promoted from an offline telemetry instrument to a LIVE gate). `terms` = the exact
+   *  words that tripped it, fed to the re-roll as an explicit avoid-list so the retry answers from the
+   *  station in concrete terms instead of the greeting-card register. */
+  | { readonly kind: 'persona'; readonly terms: readonly string[] };
+// RESERVED (not yet emitted): a within-line degenerate loop — a single reply that circles the same clause
+// with no new information (the suspect's "I didn't say I went home, I said I went home…"). Deferred: no
+// lexical signal separates it from legitimate anaphora/parallelism ("I gave you my father. I gave you my
+// silence."), and a naive detector would re-roll good rhetoric — degrading the voice, the opposite of the
+// gate's job. Add a `{ kind: 'loop' }` arm here + a validateVoice rule when a non-destructive signal exists.
 
 export interface GameState {
   readonly turn: number;

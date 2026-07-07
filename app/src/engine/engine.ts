@@ -2,6 +2,7 @@ import type { Approach, GameState, LlmFn, LlmOptions, Scenario, SeamLog, Tone, T
 import { parseRating, RATING_JSON_SCHEMA } from './schema';
 import { buildVoiceSystem, buildVoiceTurn, buildRateSystem, buildRateTurn } from './prompt';
 import { selectSeam, SEAM_TURN } from './seam';
+import { validateVoice } from './voiceGate';
 
 // The deterministic heart. The model voices the character + labels the player's approach; THIS decides
 // everything that matters: maps approach → score movement, rules win/lose, holds + releases the secret,
@@ -119,29 +120,27 @@ export async function resolveTurn(
     return endOrContinue(scenario, { ...state, turn: state.turn + 1, summary }, '…');
   }
 
-  // SELF-REPEAT GUARD (VOICE path only, director mandate #2 · judge run-6 "Also worth doing"). The
-  // ship-target 3B re-asks one stock line near-verbatim — the fence's "what makes you think you can handle
-  // the kind of cargo I'm looking at?" surfaced in BOTH its opening AND its post-seam recovery (2/3
-  // seam-probe runs, turns SEVERAL apart), and fence1 turns 12/14 were word-for-word identical. The global
-  // VOICE contract already forbids self-echo in prose; the 3B ignores it, so the guarantee has to live in
-  // CODE. The loop is NOT only consecutive (the judge's worst offender — opening vs post-seam recovery — is
-  // many turns apart), so the guard checks the fresh reply against EVERY one of the character's recent
-  // spoken lines in the memory window, not just the immediately-previous one. On a near-repeat of any of
-  // them, re-roll VOICE ONCE with an explicit "you already said this — say it differently" instruction
-  // (quoting the matched line) and take the retry (accept the first if the retry dies — bounded: at most
-  // one extra call, latency stays capped). SKIPPED on the seam turn: its callback is engine-scheduled with
-  // its own anti-echo override (seam.ts / buildHint), and re-rolling it would risk dropping the
-  // flagship-dread quote the director marked HANDS-OFF.
+  // THE VOICE QUALITY-GATE (VOICE path only). One validation pass over the fresh reply (voiceGate.ts:
+  // validateVoice) + ONE bounded re-roll when it fails — the single choke point that replaced a scatter of
+  // inline single-symptom guards. It catches the 3B's cross-turn stock-line loop (judge run-6: the same
+  // line re-asked opening AND post-seam, turns apart — so it is checked against EVERY recent spoken line,
+  // not just the last) AND a persona break (off-register / grief-flood words — personaCoherence, now a
+  // LIVE gate rather than offline-only telemetry). On a fault, re-roll VOICE ONCE with a fault-specific
+  // correction (buildVoiceTurn maps the fault kind → instruction) and take the retry (keep the first if
+  // the retry dies — bounded: at most one extra call, latency stays capped; the retry is NOT re-validated,
+  // which holds the latency envelope). SKIPPED on the seam turn: its callback is engine-scheduled with its
+  // own anti-echo override (seam.ts / buildHint), and re-rolling it would risk dropping the flagship-dread
+  // quote the director marked HANDS-OFF.
   if (!seam) {
-    const repeated = recentCharacterReplies(state.summary).find((prev) => isNearRepeat(reply, prev));
-    if (repeated) {
+    const fault = validateVoice(reply, recentCharacterReplies(state.summary), scenario);
+    if (fault) {
       const retryRaw = await llm(
         buildVoiceSystem(scenario),
-        buildVoiceTurn(scenario, state, playerLine, null, repeated),
+        buildVoiceTurn(scenario, state, playerLine, null, fault),
         VOICE_OPTS,
       );
       const retry = cleanReply(retryRaw);
-      if (retry) reply = retry; // a live retry replaces the parroted line; a dead retry keeps the first
+      if (retry) reply = retry; // a live retry replaces the faulted line; a dead retry keeps the first
     }
   }
 
@@ -300,16 +299,12 @@ export function redactLeakedExtract(reply: string, tokens: readonly string[] | u
   return out;
 }
 
-// ─── THE SELF-REPEAT GUARD (mandate #2 — the 3B loops one stock line near-verbatim) ─────────────────
+// ─── THE CHARACTER'S RECENT LINES (engine-owned memory → the voice quality-gate) ────────────────────
 //
-// A 3-4B on a short context re-emits its own strongest line a turn or two later, almost word-for-word
-// (judge run-6: the fence re-asks "…handle the kind of cargo…" opening AND post-seam; fence1 12/14 were
-// identical). The engine already feeds the character its last line back (in the rolling summary) with a
-// prose "find new words" order — a 3B ignores it. So the DETECTION is code: compare this reply to the
-// character's previous spoken line and, when it near-repeats, resolveTurn re-rolls VOICE once with an
-// explicit avoid-instruction. Pure + deterministic (unit-testable without the model), like the disclosure window.
-
-const REPEAT_JACCARD = 0.8; // token-overlap at/above this (on 6+ word lines) reads as the same line reworded
+// The 3B's stock-line loop (judge run-6) and its persona breaks are DETECTED in voiceGate.validateVoice,
+// but the raw material — the character's own recent spoken lines — is engine-owned memory (the rolling
+// summary), so it is recovered HERE and passed INTO the gate. Keeps the gate pure (no summary-format
+// knowledge) and the engine the single owner of what the character remembers saying.
 
 /** The character's OWN recent spoken lines, recovered from the engine-owned rolling summary (every "You:"
  *  block it still holds — SUMMARY_KEEP exchanges). Empty before the first reply. A fresh reply is checked
@@ -327,33 +322,6 @@ function recentCharacterReplies(summary: string): string[] {
     }
   }
   return lines;
-}
-
-/** Normalize for a repeat comparison: lowercase, drop punctuation, collapse whitespace — so trivial
- *  re-punctuation/casing does not hide a verbatim repeat. */
-function normalizeForRepeat(s: string): string {
-  return s.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim();
-}
-
-/** True when `reply` is a near-verbatim repeat of the character's previous line `prev`. Two arms, both
- *  tuned to catch the 3B's stock-line loop WITHOUT re-rolling two genuinely different beats:
- *    - an EXACT normalized match of a real line (≥4 words — an interjection like "Hm." / "No." may repeat);
- *    - a very high token-overlap (Jaccard ≥ REPEAT_JACCARD) on lines of 6+ words each — the "same question,
- *      lightly reworded" case. The high floor + length gate keep distinct short lines from tripping it. */
-function isNearRepeat(reply: string, prev: string): boolean {
-  const a = normalizeForRepeat(reply);
-  const b = normalizeForRepeat(prev);
-  if (!a || !b) return false;
-  const ta = a.split(' ');
-  const tb = b.split(' ');
-  if (a === b) return ta.length >= 4;
-  if (ta.length < 6 || tb.length < 6) return false;
-  const sa = new Set(ta);
-  const sb = new Set(tb);
-  let inter = 0;
-  for (const t of sa) if (sb.has(t)) inter++;
-  const union = sa.size + sb.size - inter;
-  return union > 0 && inter / union >= REPEAT_JACCARD;
 }
 
 // ─── THE DISCLOSURE WINDOW (mandate #5, Principle 2 — the engine owns memory, not a model narration) ──

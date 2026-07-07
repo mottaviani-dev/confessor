@@ -39,6 +39,22 @@ export const RATING_JSON_SCHEMA = {
   },
 } as const;
 
+/** JSON Schema for the JUDGE call (badge/scar meta-layer, 2026-07-07 — sibling of RATING_JSON_SCHEMA).
+ *  Every field is a free string: the vector is EMERGENT (judge-coined), not an enum, so on-device this
+ *  only shapes the object; the cloud stand-in adds FENCE_HINT (makeLlm) and `extractJson` tolerates the
+ *  fence, exactly like the rating path. matchedId is nullable — null means "mint a new badge". */
+export const JUDGE_JSON_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['vector', 'name', 'meaning'],
+  properties: {
+    vector: { type: 'string' },
+    name: { type: 'string' },
+    meaning: { type: 'string' },
+    matchedId: { type: ['string', 'null'] },
+  },
+} as const;
+
 /**
  * Parse + validate the rating call's raw text into a Rating, or null if it can't be trusted.
  * Tolerant extraction (models wrap JSON in prose/fences on the odd turn) then strict zod. Null → the
@@ -74,7 +90,7 @@ function salvageRating(raw: string): Rating | null {
   return result.success ? result.data : null;
 }
 
-function extractJson(raw: string): string | null {
+export function extractJson(raw: string): string | null {
   const trimmed = raw.trim();
   if (trimmed.startsWith('{') && trimmed.endsWith('}')) return trimmed;
   const start = trimmed.indexOf('{');

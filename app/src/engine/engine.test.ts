@@ -793,15 +793,29 @@ describe('voice prompt — the Principle 1 contract (own words only, no echo, no
     expect(sys).toMatch(/DIFFERENT architectures/);
   });
 
-  // Self-repeat re-roll (mandate #2): buildVoiceTurn injects an explicit avoid-instruction ONLY when the
-  // engine passes the line to avoid (the one retry), and leaves the normal first call untouched.
-  it('injects the avoid-repeat instruction only when an avoidLine is passed (the re-roll)', () => {
+  // Voice-gate re-roll correction (buildVoiceTurn maps a VoiceFault → a kind-specific instruction, ONLY on
+  // the one retry the engine fires; the normal first call is untouched).
+  it('injects the repeat correction only when a repeat fault is passed (the re-roll)', () => {
     const normal = buildVoiceTurn(FENCE, initState(), 'hi', null);
     expect(normal).not.toContain('do NOT say it again');
-    const reroll = buildVoiceTurn(FENCE, initState(), 'hi', null, 'What makes you think you can handle this?');
+    const reroll = buildVoiceTurn(FENCE, initState(), 'hi', null, {
+      kind: 'repeat',
+      avoid: 'What makes you think you can handle this?',
+    });
     expect(reroll).toMatch(/You already said this a moment ago — do NOT say it again/);
     expect(reroll).toContain('What makes you think you can handle this?');
     expect(reroll).toMatch(/GENUINELY different line/);
+  });
+
+  // The persona-break fault produces its own correction, naming the exact off-register words to avoid.
+  it('injects the persona correction (with the tripped words) on a persona fault', () => {
+    const reroll = buildVoiceTurn(FENCE, initState(), 'hi', null, {
+      kind: 'persona',
+      terms: ['the void', 'darkness'],
+    });
+    expect(reroll).toMatch(/You slipped out of character — do NOT reach for these words again/);
+    expect(reroll).toContain('the void');
+    expect(reroll).toContain('darkness');
   });
 
   // Per-turn anti-mirror hold (judge run-10 #1): when the LAST line worked the character's feelings (a

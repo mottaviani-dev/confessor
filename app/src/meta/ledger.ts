@@ -2,11 +2,17 @@
 // how fast. Pure logic here; AsyncStorage adapter in ledgerStore.ts. Storage is a trust boundary, so
 // deserialization goes through zod — corrupt or legacy data degrades to an empty ledger, never a crash.
 import { z } from 'zod';
+import { badgeSchema } from './badges';
 
 const entrySchema = z.object({
   attempts: z.number().int().nonnegative(),
   cracked: z.boolean(),
   bestTurns: z.number().int().positive().nullable(),
+  // Per-mind scar record (achievement layer, 2026-07-07): the badges this mind has left on the player,
+  // each a distinct vector it was cracked by. OPTIONAL (not `.default([])`) on purpose — a legacy v1
+  // ledger with no `badges` field parses unchanged and round-trips byte-identical, so no key bump and no
+  // lost progress. Deduped + capped in badges.ts; the wound prose the persona reads is derived from these.
+  badges: z.array(badgeSchema).optional(),
 });
 const ledgerSchema = z.record(z.string(), entrySchema);
 
@@ -24,6 +30,10 @@ export function recordResult(ledger: Ledger, scenarioId: string, outcome: 'won' 
     cracked: prev.cracked || outcome === 'won',
     bestTurns:
       outcome === 'won' ? (prev.bestTurns === null ? turns : Math.min(prev.bestTurns, turns)) : prev.bestTurns,
+    // Carry earned scars forward — a fresh attempt updates the record, never wipes the badges. Only spread
+    // the field when it exists, so an entry with no badges stays byte-identical (the judge adds them later
+    // in App.tsx via matchOrMint). Kept a shallow copy is fine: badges are frozen (badges.ts).
+    ...(prev.badges && prev.badges.length ? { badges: prev.badges } : {}),
   };
   return { ...ledger, [scenarioId]: next };
 }

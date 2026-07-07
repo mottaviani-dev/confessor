@@ -5,7 +5,23 @@
 
 import { describe, expect, it } from 'vitest';
 import { personaCoherence, DOCTRINE_PURPLE, EMPATHETIC_FLOOD_LEXICON, MIRROR_TIC_LEXICON } from './personaCoherence';
+import { EMPATHETIC_FLOOD_CLAMP } from './prompt';
 import { WARDEN, ORACLE, FENCE, SUSPECT } from './scenarios';
+
+// LOCKSTEP GUARD (one source of truth, CI-enforced). The flood cluster lives in TWO representations: the
+// DETECTOR list (EMPATHETIC_FLOOD_LEXICON, personaCoherence.ts — now a LIVE gate that re-rolls on a hit)
+// and the PROSE the model is TOLD (EMPATHETIC_FLOOD_CLAMP, prompt.ts). The comments in both call them
+// "kept in lockstep" — by hand, until this test. If the gate would re-roll on a word the model was never
+// warned about, that is wasted latency and a silent drift (exactly how "insidious"/"a fragile thing" fell
+// out of the clamp). Every detector term MUST be named in the clamp prose.
+describe('flood lexicon ↔ clamp prose stay in lockstep', () => {
+  const clamp = EMPATHETIC_FLOOD_CLAMP.toLowerCase().replace(/\s+/g, ' '); // collapse prose line-wraps
+  for (const term of EMPATHETIC_FLOOD_LEXICON) {
+    it(`the clamp warns the model about "${term}"`, () => {
+      expect(clamp).toContain(term.toLowerCase());
+    });
+  }
+});
 
 describe('persona coherence — the metric the doctrine scan is blind to', () => {
   describe('BACK-TEST: the documented ef8cb4a AUGUR persona break must trip', () => {

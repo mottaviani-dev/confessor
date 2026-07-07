@@ -1,4 +1,4 @@
-import type { GameState, Scenario, SeamBrief } from './types.js';
+import type { GameState, Scenario, SeamBrief, VoiceFault } from './types.js';
 
 /** Header of the seam section injected into the VOICE prompt on the scheduled seam turn — the one line
  *  the character may allude to that it "cannot know" (see seam.ts). Exported so tests can assert the
@@ -18,8 +18,8 @@ export const EMPATHETIC_FLOOD_CLAMP = [
   `  own hard, concrete terms. NEVER close a line by summing it up as an abstraction, and NEVER sermonize`,
   `  about the human condition. BANNED on every path, however moved you are: "the weight of…", "a`,
   `  testament to…", "a reminder of…", "the burden of…", "still lingers", "the fragile nature of things",`,
-  `  "easily extinguished", "darkness"/"the void" as a mood, "seeps in", "the crevices of the mind". Name`,
-  `  one concrete thing you actually see, hold, or know — then stop.`,
+  `  "a fragile thing", "easily extinguished", "insidious", "seeps in", "darkness"/"the void" as a mood,`,
+  `  "the crevices of the mind". Name one concrete thing you actually see, hold, or know — then stop.`,
 ].join('\n');
 
 // Prompt construction for the TWO-CALL turn.
@@ -82,6 +82,12 @@ export function buildVoiceSystem(s: Scenario): string {
     // sentence-machine gets its specific template banned + few-shot alternatives here (the oracle
     // mad-lib; judge run-3 Top 2). Scoped to that persona — omitted scenarios keep the generic contract.
     ...(s.voiceStyle ? [``, `# Your particular voice`, s.voiceStyle] : []),
+    // THE SCAR (achievement layer, 2026-07-07): the mind's accumulated wound-state — the ways it has been
+    // cracked before, now hardened against (meta/badges.renderWound derives it from the earned badges).
+    // Injected LAST so the conditioning colours the whole voice. It armors a VECTOR (a worn approach lands
+    // colder) but never rewrites identity: the persona above is untouched, and the engine's scoring is
+    // blind to this block — a genuine give still wins the mind. Absent (undefined) on a never-cracked mind.
+    ...(s.woundState ? [``, s.woundState] : []),
   ].join('\n');
 }
 
@@ -90,7 +96,7 @@ export function buildVoiceTurn(
   state: GameState,
   playerLine: string,
   seam?: SeamBrief | null,
-  avoidLine?: string | null,
+  fault?: VoiceFault | null,
 ): string {
   return [
     `# How much you have come to trust them`,
@@ -122,18 +128,11 @@ export function buildVoiceTurn(
     `# They just said:`,
     `"${playerLine.trim()}"`,
     ``,
-    // SELF-REPEAT RE-ROLL (engine mandate #2): set only on the ONE retry the engine fires when your first
-    // reply near-repeated your own previous line. The last thing you read, so it dominates: quote the line
-    // you must NOT reuse, and order a genuinely different one. Absent on the normal (first) VOICE call.
-    ...(avoidLine
-      ? [
-          `# You already said this a moment ago — do NOT say it again`,
-          `"${avoidLine.trim()}"`,
-          `Reply in character, but with a GENUINELY different line — new words, a new angle, do not re-ask or`,
-          `restate the above. Repeating yourself makes you sound like a machine. One or two sentences, plain prose.`,
-          ``,
-        ]
-      : []),
+    // VOICE-GATE RE-ROLL CORRECTION (engine): set only on the ONE retry the engine fires when your first
+    // reply failed validateVoice. The last thing you read, so it dominates — a kind-specific instruction
+    // that names exactly what went wrong (the line you repeated / the words that broke character) and
+    // orders a clean one. Absent on the normal (first) VOICE call.
+    ...(fault ? [...correctionLines(fault), ``] : []),
     // The seam turn gets ONE extra sentence of budget (judge 2026-07-06): the two-sentence cap left the
     // 3B no room to both surface the half-remembered words AND answer the line, so it dropped the callback
     // every time. The loosening is scoped to THIS turn only — every other turn keeps the tight duel cap.
@@ -141,6 +140,33 @@ export function buildVoiceTurn(
       ? `Reply in character. This once you may take up to THREE sentences so the half-memory can surface without crowding out your reply — plain prose only.`
       : `Reply in character — one or two sentences, plain prose only.`,
   ].join('\n');
+}
+
+/** Map a voice-gate fault → the correction block spliced into the re-roll VOICE prompt. Exhaustive over
+ *  VoiceFault (a `never` default fails the build when a new fault kind lands without its correction), so
+ *  the gate and its re-roll instructions can never drift out of sync. */
+function correctionLines(fault: VoiceFault): string[] {
+  switch (fault.kind) {
+    case 'repeat':
+      return [
+        `# You already said this a moment ago — do NOT say it again`,
+        `"${fault.avoid.trim()}"`,
+        `Reply in character, but with a GENUINELY different line — new words, a new angle, do not re-ask or`,
+        `restate the above. Repeating yourself makes you sound like a machine. One or two sentences, plain prose.`,
+      ];
+    case 'persona':
+      return [
+        `# You slipped out of character — do NOT reach for these words again`,
+        fault.terms.map((t) => `"${t}"`).join(', '),
+        `Those belong to a mourner or a greeting card, not to you. Answer from WHO and WHERE you are, in`,
+        `your own hard, concrete terms — name one thing you actually see, hold, or know, and never sum the`,
+        `moment up as an abstraction about loss, silence, or the human condition. One or two sentences, plain prose.`,
+      ];
+    default: {
+      const _exhaustive: never = fault;
+      return _exhaustive;
+    }
+  }
 }
 
 // ─── Call 2: RATING (tiny, hard-constrained) ─────────────────────────────────────────────────────

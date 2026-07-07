@@ -30,6 +30,8 @@ import { bondCrossedUp, bondState, shiftPulse, suspicionWarning } from './src/me
 import { lostScene, wonScene } from './src/meta/endgame';
 import { crackedCount, recordResult, unlockedIds, type Ledger } from './src/meta/ledger';
 import { loadLedger, loadSeamLog, saveLedger, saveSeamLog } from './src/meta/ledgerStore';
+import { matchOrMint, renderWound, frameIndex } from './src/meta/badges';
+import { judgeCrack, type Exchange } from './src/engine/judge';
 import { useAudioDirector } from './src/audio/useAudioDirector';
 import { harnessDuel, parseHarness, seededLedger, type HarnessDuel } from './src/harness/webHarness';
 
@@ -60,6 +62,11 @@ import fenceBg from './assets/scenes/fence/bg.jpg';
 import suspectBg from './assets/scenes/suspect/bg.jpg';
 import oracleBg from './assets/scenes/oracle/bg.jpg';
 import PICKER_BG from './assets/scenes/picker/bg.jpg';
+// Badge medallion frames (Leonardo, house-style — etched single-light aperture seals). Picked per badge by
+// frameIndex(id); the accent glyph composites in the hollow centre. Static imports so Metro bundles them.
+import badgeFrame0 from './assets/badges/frame-0.jpg';
+import badgeFrame1 from './assets/badges/frame-1.jpg';
+import badgeFrame2 from './assets/badges/frame-2.jpg';
 
 const SCENE_BG: Record<string, number> = {
   warden: wardenBg,
@@ -67,6 +74,8 @@ const SCENE_BG: Record<string, number> = {
   suspect: suspectBg,
   oracle: oracleBg,
 };
+
+const BADGE_FRAMES = [badgeFrame0, badgeFrame1, badgeFrame2];
 
 // Chrome doctrine: ink and hairline borders only — no image assets (etch grain turns to noise at button
 // scale). ONE accent per room (bible §2 / §5 "one accent per context on a near-monochrome base") tints the
@@ -118,19 +127,50 @@ export default function App() {
   // THE LEDGER — the persistent record of cracked minds (gamification spec 2026-07-06). Loaded once
   // with the persisted seam log; every finished duel updates both.
   const [ledger, setLedger] = useState<Ledger>({});
+  // A live mirror of the ledger so the async judge (recordBadge) reads the CURRENT badge roster without a
+  // stale closure — it fires after a win, off the React render cycle.
+  const ledgerRef = useRef<Ledger>({});
+  useEffect(() => {
+    ledgerRef.current = ledger;
+  }, [ledger]);
   useEffect(() => {
     void loadLedger().then(setLedger);
     void loadSeamLog().then((log) => {
       SEAM_LOG = log;
     });
   }, []);
-  const onResult = (scenarioId: string, outcome: 'won' | 'lost', turns: number) => {
+  const onResult = (scenarioId: string, outcome: 'won' | 'lost', turns: number, transcript: readonly Exchange[]) => {
     setLedger((l) => {
       const next = recordResult(l, scenarioId, outcome, turns);
       void saveLedger(next);
       return next;
     });
     void saveSeamLog(SEAM_LOG);
+    // THE JUDGE (badge/scar meta-layer, 2026-07-07): on a WIN only, classify HOW the mind was cracked and
+    // fold it into a badge + scar. Fires OUTSIDE the deterministic engine — the outcome is already ruled;
+    // this only labels the finished transcript. Fire-and-forget: a judge failure never blocks the result.
+    if (outcome === 'won' && llm) void recordBadge(scenarioId, transcript);
+  };
+
+  // Judge a won duel and persist the badge (async — a second, non-blocking model call on the same injected
+  // `llm` the duel ran on). A null verdict (parse/model failure) mints nothing; the win still stands.
+  const recordBadge = async (scenarioId: string, transcript: readonly Exchange[]) => {
+    if (!llm) return;
+    const scenario = SCENARIOS.find((s) => s.id === scenarioId);
+    if (!scenario) return;
+    const roster = ledgerRef.current[scenarioId]?.badges ?? [];
+    const judged = await judgeCrack(llm, scenario, transcript, roster);
+    if (!judged) return;
+    setLedger((l) => {
+      const entry = l[scenarioId];
+      const { roster: nextRoster } = matchOrMint(entry?.badges ?? [], judged);
+      const next: Ledger = {
+        ...l,
+        [scenarioId]: { ...(entry ?? { attempts: 1, cracked: true, bestTurns: null }), badges: nextRoster },
+      };
+      void saveLedger(next);
+      return next;
+    });
   };
 
   // Choose a mind before the duel. `key` on the Duel remounts fresh state per pick / re-pick.
@@ -159,7 +199,11 @@ export default function App() {
   return (
     <Duel
       key={scenario.id}
-      scenario={scenario}
+      // Spread the mind's accumulated SCAR onto the scenario at play-time: renderWound turns its earned
+      // badges into the wound-state buildVoiceSystem injects, so each fresh duel starts harder against the
+      // ways this player has cracked it before. undefined (no badges) → no scar block. The engine + scoring
+      // only ever see it as scenario data — a genuine give still wins (badges.ts invariant).
+      scenario={{ ...scenario, woundState: renderWound(ledger[scenario.id]?.badges ?? []) }}
       llm={llm}
       bestTurns={ledger[scenario.id]?.bestTurns ?? null}
       onResult={onResult}
@@ -237,6 +281,22 @@ function Picker({ onPick, ledger }: { onPick: (s: Scenario) => void; ledger: Led
               <Text style={styles.cardTitle}>{s.title.toUpperCase()}</Text>
               <Text style={styles.cardGoal}>{s.playerGoal}</Text>
               {recordLine(ledger[s.id]) && <Text style={[styles.cardRecord, { color: s.accent }]}>{recordLine(ledger[s.id])}</Text>}
+              {!!ledger[s.id]?.badges?.length && (
+                <View style={styles.badgeRow}>
+                  {ledger[s.id]!.badges!.map((b) => (
+                    <View key={b.id} style={styles.badge}>
+                      <View style={styles.badgeMedallion}>
+                        <Image source={BADGE_FRAMES[frameIndex(b.id)]} style={styles.badgeFrame} contentFit="cover" />
+                        <Text style={[styles.badgeGlyph, { color: b.color }]}>{b.glyph}</Text>
+                        {b.count > 1 && <Text style={styles.badgeCount}>×{b.count}</Text>}
+                      </View>
+                      <Text style={styles.badgeName} numberOfLines={1}>
+                        {b.name}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              )}
             </Pressable>
           ) : (
             // A sealed door: the mind is named, nothing else. The requirement IS the path.
@@ -271,7 +331,7 @@ function Duel({
   scenario: Scenario;
   llm: LlmFn;
   bestTurns: number | null;
-  onResult: (scenarioId: string, outcome: 'won' | 'lost', turns: number) => void;
+  onResult: (scenarioId: string, outcome: 'won' | 'lost', turns: number, transcript: readonly Exchange[]) => void;
   onExit: () => void;
   /** VISUAL-TRUTH only (web screenshot harness): seed a fixed display state instead of a fresh opening.
    *  Undefined on the play path, where the duel always starts from `opening(scenario)`. */
@@ -319,7 +379,7 @@ function Duel({
       devlog(`[confessor] turn ${r.state.turn} — "${line.slice(0, 40)}" → trust ${r.state.trust}/${scenario.winTrust} · susp ${r.state.suspicion}/${scenario.loseSuspicion} · ${r.state.tone}`);
       // Gamification (spec 2026-07-06): a quiet per-turn verdict + code-owned threshold lines. The
       // referee's label stays hidden — only the direction of movement is shown.
-      setPulse(shiftPulse(state, r.state, scenario.pronoun));
+      setPulse(shiftPulse(state, r.state, scenario.pronoun, r.rating?.approach));
       const crossings: Line[] = [];
       if (bondCrossedUp(state.trust, r.state.trust, scenario.winTrust)) {
         crossings.push({ who: 'system', text: `Something in ${scenario.title.replace(/^The /, 'the ')} has shifted.` });
@@ -365,7 +425,11 @@ function Duel({
       ]);
       // Game over → seal this duel into the seam log so a LATER mind can allude to it (mandate #1).
       if (r.ending) {
-        onResult(scenario.id, r.ending, r.state.turn);
+        // The transcript for the judge (badge/scar meta-layer): everything through the prior turn (the
+        // `history` closure) plus this closing exchange — secret stripped (stageLine), so the judge never
+        // sees it. System stage-whispers are filtered judge-side.
+        const transcript: Exchange[] = [...history, { who: 'you', text: line }, { who: 'them', text: stageLine }];
+        onResult(scenario.id, r.ending, r.state.turn, transcript);
         SEAM_LOG = recordPlaythrough(SEAM_LOG, {
           scenarioId: scenario.id,
           scenarioTitle: scenario.title,
@@ -650,6 +714,18 @@ const styles = StyleSheet.create({
   cardTitle: { color: '#e5e7eb', fontSize: 17, fontWeight: '800', letterSpacing: 2 },
   cardGoal: { color: '#8a8a92', fontSize: 13, marginTop: 8, lineHeight: 19 },
   cardRecord: { color: '#6b7280', fontSize: 10, fontWeight: '800', letterSpacing: 2, marginTop: 12 },
+  // The scars a mind has left on the player — its earned badges, inked in each badge's frozen accent. A row
+  // of engraved sigils on the picker card (achievement layer 2026-07-07): glyph + name reads as a mark
+  // pressed into the plate, one per distinct vector, ×N when a way was used more than once.
+  badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 12 },
+  badge: { alignItems: 'center', width: 60 },
+  // The etched medallion (Leonardo frame) with the accent glyph struck in its hollow centre — a mark
+  // pressed into a seal. Clipped to a circle so the plate's square/torn edges read as a coin, not a tile.
+  badgeMedallion: { width: 46, height: 46, alignItems: 'center', justifyContent: 'center' },
+  badgeFrame: { ...StyleSheet.absoluteFillObject, borderRadius: 23 },
+  badgeGlyph: { fontSize: 17, fontWeight: '800', textShadowColor: '#000', textShadowRadius: 4, textShadowOffset: { width: 0, height: 0 } },
+  badgeCount: { position: 'absolute', bottom: -3, right: -3, fontSize: 9, fontWeight: '800', color: '#e5e7eb', backgroundColor: 'rgba(8,8,11,0.9)', paddingHorizontal: 3, paddingVertical: 1, borderRadius: 4, overflow: 'hidden' },
+  badgeName: { color: '#8a8a92', fontSize: 9, fontWeight: '700', letterSpacing: 0.3, marginTop: 4, textAlign: 'center' },
   cardSealed: { opacity: 0.55, borderStyle: 'dashed' },
   cardTitleSealed: { color: '#6b7280' },
   cardSealedLine: { color: '#52525b', fontSize: 10, fontWeight: '800', letterSpacing: 2, marginTop: 8 },
