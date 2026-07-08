@@ -34,7 +34,7 @@ import { matchOrMint, renderWound, frameIndex } from './src/meta/badges';
 import { judgeCrack, type Exchange } from './src/engine/judge';
 import { THRESHOLD_ENTER, THRESHOLD_LINES } from './src/meta/threshold';
 import { useAudioDirector } from './src/audio/useAudioDirector';
-import { harnessDuel, parseHarness, seededLedger, type HarnessDuel } from './src/harness/webHarness';
+import { harnessDuel, parseHarness, seededLedger, seededBadgeLedger, type HarnessDuel } from './src/harness/webHarness';
 
 type Line = { who: 'them' | 'you' | 'system'; text: string };
 
@@ -190,6 +190,7 @@ export default function App() {
   // VISUAL-TRUTH: a `?harness=` URL short-circuits to a fixed screen (web-only, after all hooks so the
   // rules-of-hooks hold). Each returns the REAL component with injected display state — no model wait.
   if (HARNESS?.kind === 'picker-seeded') return <Picker onPick={() => undefined} ledger={seededLedger()} />;
+  if (HARNESS?.kind === 'picker-badges') return <Picker onPick={() => undefined} ledger={seededBadgeLedger()} />;
   if (HARNESS?.kind === 'threshold') return <Threshold onEnter={() => undefined} />;
   if (HARNESS?.kind === 'duel') {
     const h = harnessDuel(HARNESS);

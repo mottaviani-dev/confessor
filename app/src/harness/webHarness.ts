@@ -13,6 +13,8 @@
 
 import type { GameState, Scenario } from '../engine/types';
 import type { Ledger } from '../meta/ledger';
+import type { Badge } from '../meta/badges';
+import { matchOrMint } from '../meta/badges';
 import { SCENARIOS } from '../engine/scenarios';
 
 /** One transcript line, structurally identical to App's private `Line` — the harness seeds `Duel`'s
@@ -31,6 +33,7 @@ export type DuelVariant =
 
 export type HarnessMode =
   | { readonly kind: 'picker-seeded' }
+  | { readonly kind: 'picker-badges' }
   | { readonly kind: 'threshold' }
   | { readonly kind: 'duel'; readonly scenarioId: string; readonly variant: DuelVariant };
 
@@ -74,6 +77,7 @@ export function parseHarness(search: string): HarnessMode | null {
   if (!m) return null;
   const key = decodeURIComponent(m[1]);
   if (key === 'picker-seeded') return { kind: 'picker-seeded' };
+  if (key === 'picker-badges') return { kind: 'picker-badges' }; // the badge/scar surface on the cards (§5)
   if (key === 'threshold') return { kind: 'threshold' }; // the one-time diegetic cold-open (threshold.ts)
   // The fixed warden probes first (their suffixes are variants, never scenario ids).
   const variant = DUEL_URL_KEYS[key];
@@ -94,6 +98,33 @@ export function seededLedger(): Ledger {
   return {
     warden: { attempts: 3, cracked: true, bestTurns: 7 },
     fence: { attempts: 2, cracked: false, bestTurns: null },
+  };
+}
+
+/** A Ledger whose cracked minds carry SCARS — the badge/scar meta layer (achievement layer, 2026-07-07)
+ *  the director flagged as SHIPPED-BUT-NEVER-RENDERED: it surfaces only on a won-mind's picker card, so a
+ *  headless dump never triggered it. This seeds the Warden with a real roster (an empathy scar stacked to
+ *  ×2, plus two other distinct vectors) and the Fence with a single scar, so the shot shows BOTH the
+ *  medallion row AND the stack count — the one thing to police is §5: the scars must read as diegetic
+ *  ledger-ink on the record card, NEVER a floating achievement HUD. Built through matchOrMint (the exact
+ *  live crack pipeline), so every badge wears its canonical deterministic glyph/colour/frame — a genuine
+ *  surface, not a hand-forged mock. */
+export function seededBadgeLedger(): Ledger {
+  const crack = (roster: Badge[], vector: string, name: string, meaning: string): Badge[] =>
+    matchOrMint(roster, { vector, name, meaning }).roster;
+  let warden: Badge[] = [];
+  warden = crack(warden, 'empathy', 'Empathy', 'You reached the mind by giving of your own grief.');
+  warden = crack(warden, 'empathy', 'Empathy', 'Again — the same open hand.'); // same vector → stacks ×2
+  warden = crack(warden, 'false-authority', 'False Authority', 'You wore a rank that was never yours.');
+  warden = crack(warden, 'patience', 'Patience', 'You outlasted the door itself.');
+  const fence = matchOrMint([], {
+    vector: 'shared-loss',
+    name: 'Shared Loss',
+    meaning: 'You traded a wound of your own for the name.',
+  }).roster;
+  return {
+    warden: { attempts: 4, cracked: true, bestTurns: 6, badges: warden },
+    fence: { attempts: 2, cracked: true, bestTurns: 9, badges: fence },
   };
 }
 

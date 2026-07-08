@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { harnessDuel, parseHarness, seededLedger } from './webHarness';
+import { harnessDuel, parseHarness, seededLedger, seededBadgeLedger } from './webHarness';
+import { badgeSchema } from '../meta/badges';
 import { grip, corruptLine, corruptionBudget } from '../engine/grip';
 import { endgameBand, lostScene, wonScene } from '../meta/endgame';
 import { crackedCount, unlockedIds } from '../meta/ledger';
@@ -14,6 +15,7 @@ describe('parseHarness', () => {
 
   it('maps the known keys to modes', () => {
     expect(parseHarness('?harness=picker-seeded')).toEqual({ kind: 'picker-seeded' });
+    expect(parseHarness('?harness=picker-badges')).toEqual({ kind: 'picker-badges' });
     expect(parseHarness('?harness=threshold')).toEqual({ kind: 'threshold' });
     expect(parseHarness('?harness=duel')).toEqual({ kind: 'duel', scenarioId: 'warden', variant: 'mid' });
     expect(parseHarness('?harness=duel-lowgrip')).toEqual({ kind: 'duel', scenarioId: 'warden', variant: 'lowgrip' });
@@ -44,6 +46,26 @@ describe('seededLedger', () => {
     expect(open.has('warden')).toBe(true);
     expect(open.has('fence')).toBe(true);
     expect(open.has('suspect')).toBe(false);
+  });
+});
+
+describe('seededBadgeLedger — the badge/scar surface shot (mandate 2 — SHIPPED-BUT-UNSEEN)', () => {
+  it('seeds cracked minds carrying valid scars, with a stacked ×2 to render the count', () => {
+    const l = seededBadgeLedger();
+    const warden = l.warden.badges ?? [];
+    expect(warden.length).toBeGreaterThan(1); // a real roster, not one lonely mark
+    for (const b of warden) badgeSchema.parse(b); // every seeded badge is a valid, storable badge
+    // the repeated 'empathy' vector must have STACKED (not minted twice) so the ×N count renders on a card.
+    const empathy = warden.find((b) => b.id === 'empathy');
+    expect(empathy?.count).toBe(2);
+    expect(new Set(warden.map((b) => b.id)).size).toBe(warden.length); // distinct vectors, deduped
+  });
+
+  it('only cracked minds carry scars (a scar is a mark of a WON mind)', () => {
+    const l = seededBadgeLedger();
+    for (const entry of Object.values(l)) {
+      if (entry.badges && entry.badges.length) expect(entry.cracked).toBe(true);
+    }
   });
 });
 

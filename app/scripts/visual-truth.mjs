@@ -49,6 +49,7 @@ const SHOTS = [
   { name: 'threshold', url: '/?harness=threshold', desc: 'the one-time diegetic cold-open — the room teaches talk-not-force + the shut door + on-device privacy (§4 Q5)' },
   { name: 'picker', url: '/', desc: 'mind-picker + Ledger header + sealed-door cards (fresh ledger)' },
   { name: 'picker-seeded', url: '/?harness=picker-seeded', desc: 'Ledger with a cracked record + an unlocked door + sealed doors' },
+  { name: 'picker-badges', url: '/?harness=picker-badges', desc: 'the badge/scar surface — earned scars inked on the picker cards (empathy ×2 + others); police §5: diegetic ledger-ink, NOT a floating achievement HUD' },
   { name: 'duel', url: '/?harness=duel', desc: 'a duel scene — backdrop, orb, tone, objective (Grip high)' },
   { name: 'duel-lowgrip', url: '/?harness=duel-lowgrip', desc: 'the low-Grip interface corruption — the echo rendered colder (§2)' },
   { name: 'duel-askpenalty', url: '/?harness=duel-askpenalty', desc: 'the diegetic ask-penalty line in the open transcript (mandate 1)' },
