@@ -20,6 +20,16 @@ export const EMPATHETIC_FLOOD_CLAMP = [
   `  testament to…", "a reminder of…", "the burden of…", "still lingers", "the fragile nature of things",`,
   `  "a fragile thing", "easily extinguished", "insidious", "seeps in", "darkness"/"the void" as a mood,`,
   `  "the crevices of the mind". Name one concrete thing you actually see, hold, or know — then stop.`,
+  // The flood's SECOND escape (judge run-12 #1): with the grief-VOCABULARY banned above, the 3B stops
+  // answering as the character and instead runs a CAMERA — pure scene-painting ("the smoke curls slowly")
+  // or narrating the seeker in the 2nd/3rd person ("you study their face", "her hands flutter as she
+  // nods"). That voices someone who is NOT you. Kill it with a first-person demand.
+  `- Every line is something you SAY, out loud, in the first person, as yourself. Under the flood you must`,
+  `  NOT retreat into painting the scene — the smoke, the candle, the light, the dust, the shadows — nor`,
+  `  into describing the other person's face, eyes, hands, or expression, nor into narrating them studying`,
+  `  or watching you. A camera pointed at the room or at them is not your voice. If you are moved, answer`,
+  `  in your OWN words, "I …" — one concrete thing you see, hold, or know — never a description of what is`,
+  `  around you or what they do.`,
 ].join('\n');
 
 // Prompt construction for the TWO-CALL turn.
@@ -122,6 +132,8 @@ export function buildVoiceTurn(
           `# They are working YOUR feelings — hold your register`,
           `Answer from what YOU see and know, in your own hard, concrete terms. Do NOT mirror their grief`,
           `or sadness back, and do NOT sum the moment up as a lesson about loss or the human condition.`,
+          `Speak in the FIRST PERSON as yourself — never slip into painting the room or describing their`,
+          `face, eyes, or hands in place of answering. Every sentence is a line you SAY, "I …".`,
           ``,
         ]
       : []),
