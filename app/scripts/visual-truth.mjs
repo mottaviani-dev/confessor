@@ -47,7 +47,7 @@ const VIEWPORT = { width: 430, height: 932, deviceScaleFactor: 2 };
 const SETTLE_MS = 4500; // let React mount + the typewriter reach its resting frame before the capture
 const SHOTS = [
   { name: 'threshold', url: '/?harness=threshold', desc: 'the one-time diegetic cold-open — the room teaches talk-not-force + the shut door + on-device privacy (§4 Q5)' },
-  { name: 'picker', url: '/', desc: 'mind-picker + Ledger header + sealed-door cards (fresh ledger)' },
+  { name: 'picker', url: '/?harness=picker', desc: 'mind-picker + Ledger header + sealed-door cards (fresh ledger) — via ?harness=picker so it clears the one-time Threshold that gates a bare `/` mount' },
   { name: 'picker-seeded', url: '/?harness=picker-seeded', desc: 'Ledger with a cracked record + an unlocked door + sealed doors' },
   { name: 'picker-badges', url: '/?harness=picker-badges', desc: 'the badge/scar surface — earned scars inked on the picker cards (empathy ×2 + others); police §5: diegetic ledger-ink, NOT a floating achievement HUD' },
   { name: 'duel', url: '/?harness=duel', desc: 'a duel scene — backdrop, orb, tone, objective (Grip high)' },

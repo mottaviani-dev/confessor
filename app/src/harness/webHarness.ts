@@ -32,6 +32,7 @@ export type DuelVariant =
   | 'lose-lowgrip';
 
 export type HarnessMode =
+  | { readonly kind: 'picker' }
   | { readonly kind: 'picker-seeded' }
   | { readonly kind: 'picker-badges' }
   | { readonly kind: 'threshold' }
@@ -69,13 +70,18 @@ const DUEL_SCENARIO_ID = 'warden';
 
 /** Parse a `window.location.search` (or any query string) into a harness mode, or null when no
  *  `?harness=` is present / the key is unknown. The only entry point the app calls.
- *  Keys: `picker-seeded`; `threshold`; the warden probes `duel` / `duel-lowgrip` / `duel-askpenalty`; and
+ *  Keys: `picker` (fresh, past the Threshold); `picker-seeded`; `threshold`; the warden probes `duel` /
+ *  `duel-lowgrip` / `duel-askpenalty`; and
  *  `duel-<scenarioId>` (e.g. `duel-fence`) for a neutral mid-game on any room — one shot per backdrop so
  *  the §2 per-scenario palette (verdigris/brass/umber/ember) can be eyeballed for all four minds. */
 export function parseHarness(search: string): HarnessMode | null {
   const m = /[?&]harness=([^&]+)/.exec(search || '');
   if (!m) return null;
   const key = decodeURIComponent(m[1]);
+  // The FRESH picker (empty ledger) — a dedicated mode because a plain `/` mount now hits the one-time
+  // Threshold cold-open first (a fresh web export has no persisted seenThreshold flag), so the bare `/`
+  // picker shot rendered the Threshold instead of the picker. This mode bypasses that gate.
+  if (key === 'picker') return { kind: 'picker' };
   if (key === 'picker-seeded') return { kind: 'picker-seeded' };
   if (key === 'picker-badges') return { kind: 'picker-badges' }; // the badge/scar surface on the cards (§5)
   if (key === 'threshold') return { kind: 'threshold' }; // the one-time diegetic cold-open (threshold.ts)

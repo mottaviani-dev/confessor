@@ -14,6 +14,7 @@ describe('parseHarness', () => {
   });
 
   it('maps the known keys to modes', () => {
+    expect(parseHarness('?harness=picker')).toEqual({ kind: 'picker' });
     expect(parseHarness('?harness=picker-seeded')).toEqual({ kind: 'picker-seeded' });
     expect(parseHarness('?harness=picker-badges')).toEqual({ kind: 'picker-badges' });
     expect(parseHarness('?harness=threshold')).toEqual({ kind: 'threshold' });

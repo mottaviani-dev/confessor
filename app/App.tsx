@@ -189,6 +189,7 @@ export default function App() {
 
   // VISUAL-TRUTH: a `?harness=` URL short-circuits to a fixed screen (web-only, after all hooks so the
   // rules-of-hooks hold). Each returns the REAL component with injected display state — no model wait.
+  if (HARNESS?.kind === 'picker') return <Picker onPick={() => undefined} ledger={{}} />;
   if (HARNESS?.kind === 'picker-seeded') return <Picker onPick={() => undefined} ledger={seededLedger()} />;
   if (HARNESS?.kind === 'picker-badges') return <Picker onPick={() => undefined} ledger={seededBadgeLedger()} />;
   if (HARNESS?.kind === 'threshold') return <Threshold onEnter={() => undefined} />;
