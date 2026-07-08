@@ -265,4 +265,11 @@ export type SeamLog = readonly SeamRecord[];
 export interface SeamBrief {
   /** The uncanny half-memory the character MAY surface once — phrased as guidance, not a script. */
   readonly hint: string;
+  /** The verbatim FRAGMENT the persona is ordered to echo (the QUOTE-FIRST lead, seam.ts seamFragment) —
+   *  the words that MUST surface for the flagship callback to land. Carried out of the engine so the seam
+   *  turn can verify the model actually spoke them and, if the ship-target 3B dropped the order (judge
+   *  run-13: seam 0/2 — generic filler where the quote should be), the engine can guarantee the dread by
+   *  leading with the fragment itself (Principle 5 — code owns the callback). Absent on the phraseless
+   *  "we have met before" allusion (no quote to enforce). */
+  readonly quote?: string;
 }

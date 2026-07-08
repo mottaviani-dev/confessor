@@ -69,7 +69,10 @@ export function selectSeam(log: SeamLog, scenario: Scenario): SeamBrief | null {
     newestFirst.find((r) => r.scenarioId !== scenario.id);
   if (!pick) return null;
 
-  return { hint: buildHint(pick, seamScaffoldIndex(log), scenario.id) };
+  // The verbatim fragment the QUOTE-FIRST scaffold orders the voice to echo — surfaced out of the brief so
+  // the engine can VERIFY it landed and, if the 3B dropped it, guarantee the callback (engine.enforceSeamQuote).
+  const quote = pick.playerPhrase ? seamFragment(pick.playerPhrase) : undefined;
+  return { hint: buildHint(pick, seamScaffoldIndex(log), scenario.id), quote };
 }
 
 /** Which presentation scaffold this run's seam carries (mandate #1 / judge run-4 Top 1 — kill the canned

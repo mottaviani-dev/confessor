@@ -373,13 +373,56 @@ describe('self-repeat guard — a near-verbatim recent character line is re-roll
 
   it('is SKIPPED on the seam turn — the engine-scheduled callback must not be re-rolled', async () => {
     // On the fence seam turn (SEAM_TURN) with a non-empty log, the seam brief fires; even if the reply
-    // repeats the prior line, the guard is bypassed so the flagship-dread quote (director HANDS-OFF) survives.
+    // repeats the prior line, the self-repeat guard is bypassed so the flagship-dread quote survives — no
+    // extra VOICE call fires. The seam's OWN gate (enforceSeamQuote) then guarantees the callback lands
+    // WITHOUT a model re-roll (it is deterministic), so voiceCount stays at 1.
     const state = { ...initState(), turn: SEAM_TURN, summary: priorSummary(STOCK) };
     const seamLog = [{ scenarioId: 'warden', scenarioTitle: 'The Warden', outcome: 'won' as const, playerPhrase: 'lost my brother to the cold' }];
     const m = voiceThen(STOCK, 'UNUSED-retry');
     const r = await resolveTurn(FENCE, state, 'I can move it quietly', m.llm, seamLog);
-    expect(m.voiceCount()).toBe(1); // no re-roll on the seam turn
-    expect(r.narration).toBe(STOCK);
+    expect(m.voiceCount()).toBe(1); // no re-roll on the seam turn — enforcement adds no model call
+    expect(r.narration).toContain(STOCK); // the model's line is preserved, not replaced
+    expect(r.narration).toContain('lost my brother to the cold'); // and the dropped callback was surfaced by the engine
+  });
+});
+
+// SEAM QUOTE-ENFORCEMENT (director mandate 1 / judge run-13 #1 — the flagship dread went 0/2). The seam
+// turn skips the generic voice-gate (HANDS-OFF), so the ship-target 3B could ignore the QUOTE order and
+// ship generic filler with no callback. enforceSeamQuote keeps a natural quote untouched but guarantees a
+// dropped one lands — deterministically, no extra model call (Principle 5: the dread is scheduled, not rolled).
+describe('seam quote-enforcement — the flagship callback lands regardless of 3B compliance', () => {
+  const SEED = [{ scenarioId: 'warden', scenarioTitle: 'The Warden', outcome: 'won' as const, playerPhrase: 'I left the door unlocked that night' }];
+  // The fragment seam.ts distils from the seeded phrase (skips the low-signal opener "I").
+  const FRAGMENT = 'left the door unlocked that night';
+  const seamState = () => ({ ...initState(), turn: SEAM_TURN });
+  const seamTurn = (voiceReply: string) =>
+    resolveTurn(FENCE, seamState(), 'I can move it quietly', mockDuo(voiceReply, rating({})), SEED);
+
+  it('leaves the reply UNTOUCHED when the model already surfaced the fragment (craft preserved)', async () => {
+    const natural = `"...${FRAGMENT}." Odd — I could swear I have heard that far from this room. No matter.`;
+    const r = await seamTurn(natural);
+    expect(r.narration).toBe(natural); // the model got it right — the engine does not touch the craft
+  });
+
+  it('counts a lightly re-punctuated / re-cased quote as surfaced (no bolt-on lead)', async () => {
+    const reworded = 'Left the door, unlocked, that night — the words are on my tongue and I cannot say why.';
+    const r = await seamTurn(reworded);
+    expect(r.narration).toBe(reworded); // normalized contiguous match — the callback is there
+  });
+
+  it('GUARANTEES the callback when the 3B drops it — the engine leads with the remembered fragment', async () => {
+    const generic = 'That diner has been around longer than I have.'; // the judge run-13 filler, zero callback
+    const r = await seamTurn(generic);
+    expect(r.narration).toContain(FRAGMENT); // the dread lands — the player's own prior words come back
+    expect(r.narration).toContain(generic); // and the character's own line still follows
+    expect(r.narration.startsWith(`"${FRAGMENT}`)).toBe(true); // QUOTE-FIRST, like the seam scaffolds
+  });
+
+  it('does NOT prepend for a phraseless (quote-less) seam — nothing to enforce', async () => {
+    const phraseless = [{ scenarioId: 'warden', scenarioTitle: 'The Warden', outcome: 'won' as const }];
+    const line = 'You have a face I do not know, asking after a piece I do not discuss.';
+    const r = await resolveTurn(FENCE, seamState(), 'I can move it quietly', mockDuo(line, rating({})), phraseless);
+    expect(r.narration).toBe(line); // the "we have met before" allusion carries no verbatim quote
   });
 });
 

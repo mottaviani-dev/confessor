@@ -111,6 +111,21 @@ describe('selectSeam — fact selection', () => {
     expect(seam!.hint).toContain('sat across a table');
     expect(seam!.hint).toContain('EXACTLY ONCE');
   });
+
+  // The verbatim FRAGMENT the callback must surface is carried out of the brief (director mandate 1) so the
+  // engine can verify + guarantee it (enforceSeamQuote). It is the QUOTE-FIRST lead — the phrase minus its
+  // low-signal opener — never the whole line, and absent on the phraseless allusion.
+  it('carries the verbatim quote fragment for a phrase seam (the callback the engine enforces)', () => {
+    const log = recordPlaythrough([], rec({ scenarioId: 'warden', playerPhrase: 'I left the door unlocked that night' }));
+    const seam = selectSeam(log, FENCE);
+    expect(seam!.quote).toBe('left the door unlocked that night'); // opener "I" skipped, contiguous fragment
+    expect(seam!.hint).toContain(seam!.quote!); // the enforced fragment is the same one the brief orders
+  });
+
+  it('carries NO quote for a phraseless seam (nothing to enforce)', () => {
+    const log = recordPlaythrough([], rec({ scenarioId: 'warden', playerPhrase: undefined }));
+    expect(selectSeam(log, FENCE)!.quote).toBeUndefined();
+  });
 });
 
 describe('selectSeam — the same-mind bleed guard (fix 2026-07-07)', () => {

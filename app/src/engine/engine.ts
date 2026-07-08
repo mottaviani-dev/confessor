@@ -1,4 +1,4 @@
-import type { Approach, GameState, LlmFn, LlmOptions, Scenario, SeamLog, Tone, TurnResult } from './types';
+import type { Approach, GameState, LlmFn, LlmOptions, Scenario, SeamBrief, SeamLog, Tone, TurnResult } from './types';
 import { parseRating, RATING_JSON_SCHEMA } from './schema';
 import { buildVoiceSystem, buildVoiceTurn, buildRateSystem, buildRateTurn } from './prompt';
 import { selectSeam, SEAM_TURN } from './seam';
@@ -142,6 +142,13 @@ export async function resolveTurn(
       const retry = cleanReply(retryRaw);
       if (retry) reply = retry; // a live retry replaces the faulted line; a dead retry keeps the first
     }
+  } else {
+    // THE SEAM'S OWN GATE (director mandate 1 / judge run-13 #1 — seam 0/2, the flagship dread un-fired).
+    // The generic voice-gate above is (correctly) SKIPPED on the seam turn — its callback is HANDS-OFF —
+    // but that left NOTHING catching the ship-target 3B when it ignores the QUOTE order and answers with
+    // generic filler ("That diner's been around longer than I have" where the kingfisher pin should be).
+    // enforceSeamQuote guarantees the callback lands without touching the craft when the model DOES surface it.
+    reply = enforceSeamQuote(reply, seam);
   }
 
   // EXTRACT-INVENTION GUARD (director mandate 2, Principle 5): the code owns the secret; the voice must
@@ -297,6 +304,40 @@ export function redactLeakedExtract(reply: string, tokens: readonly string[] | u
     out = out.replace(re, '$1…');
   }
   return out;
+}
+
+// ─── THE SEAM'S QUOTE-ENFORCEMENT (director mandate 1 — resurrect the flagship dread) ────────────────
+//
+// The seam turn hands the voice a verbatim FRAGMENT it is ordered to echo (seam.quote) — the words the
+// player typed to a DIFFERENT mind, in another room, coming back. That specific callback IS the whole
+// pitch of the mechanic (bible §2 thrust 1). But the ship-target 3B is unreliable at it: judge run-13
+// measured seam QUOTE 0/2 — the scheduled seam fired, yet the model answered with generic filler and the
+// dread never landed. The generic voice-gate is deliberately skipped on the seam turn (re-rolling it risks
+// dropping the callback the director marked HANDS-OFF), so nothing caught the drop. This is the fix:
+//   - the model surfaced the fragment  → keep its line untouched (the craft the director said don't touch);
+//   - the model dropped it             → the ENGINE guarantees the callback, leading with the remembered
+//                                        fragment as a quoted half-memory, then the model's own line.
+// This is Principle 5 to the letter — the cosmos (the exact words, the timing) already lives in code; the
+// model only voices it, and when it won't, code does. Deterministic (no extra call, latency untouched): the
+// dread is SCHEDULED, not rolled. Pure + unit-testable without a model. The fragment is the player's OWN
+// prior-room phrase, never the current scenario's guarded specifics — redactLeakedExtract leaves it alone.
+
+/** Enforce the seam callback. Returns `reply` unchanged when there is no quote to enforce (the phraseless
+ *  allusion) or the model already surfaced the fragment; otherwise leads with the fragment as a quoted
+ *  half-memory so the flagship dread lands regardless of the 3B's compliance. */
+function enforceSeamQuote(reply: string, seam: SeamBrief): string {
+  const quote = seam.quote;
+  if (!quote || containsFragment(reply, quote)) return reply;
+  return `"${quote}…" ${reply}`;
+}
+
+/** True when `reply` contains `fragment` as a contiguous run of words, ignoring case, punctuation, and
+ *  whitespace differences — so a lightly re-punctuated or re-cased natural quote still counts as surfaced
+ *  (the craft is kept), and only a genuine DROP triggers the deterministic lead. */
+function containsFragment(reply: string, fragment: string): boolean {
+  const norm = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim();
+  const f = norm(fragment);
+  return f.length > 0 && norm(reply).includes(f);
 }
 
 // ─── THE CHARACTER'S RECENT LINES (engine-owned memory → the voice quality-gate) ────────────────────
