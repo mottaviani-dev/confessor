@@ -143,7 +143,13 @@ export type VoiceFault =
    *  the scene instead of the character speaking as itself (a POV-flip; voiceAbandonment). This is the
    *  wound the grief-lexicon ban DISPLACED but did not kill (judge run-12 #1): no banned word fires, yet
    *  nobody is home. `tells` = the structural pattern labels that fired, so the re-roll can name the break. */
-  | { readonly kind: 'abandonment'; readonly tells: readonly string[] };
+  | { readonly kind: 'abandonment'; readonly tells: readonly string[] }
+  /** The reply DRIFTED into ambient scene-description with NO address to the seeker — an "ash-camera"
+   *  painting the flames/smoke/candles instead of the persona speaking TO someone (judge run-13 #3, the
+   *  abandonment detector's blind twin: oracle → nature-cam, fence → nostalgia-memoirist). First-person-
+   *  free scenery that no banned word and no POV-flip grammar catches. `nouns` = the scenery words that
+   *  fired, fed to the re-roll so it re-anchors on the seeker. Soft, like abandonment — a subtle tell. */
+  | { readonly kind: 'scenery'; readonly nouns: readonly string[] };
 // RESERVED (not yet emitted): a within-line degenerate loop — a single reply that circles the same clause
 // with no new information (the suspect's "I didn't say I went home, I said I went home…"). Deferred: no
 // lexical signal separates it from legitimate anaphora/parallelism ("I gave you my father. I gave you my

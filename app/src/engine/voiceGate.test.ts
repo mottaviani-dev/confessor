@@ -76,4 +76,22 @@ describe('validateVoice', () => {
       expect(validateVoice('I counted the rivets on that bulkhead again today. Nine, then eight.', [], WARDEN)).toBeNull();
     });
   });
+
+  describe('scenery-drift (live gate — the abandonment detector\'s blind twin, judge run-13 #3)', () => {
+    it('flags an ash-camera line with no address to the seeker (no banned word, no POV-flip)', () => {
+      const fault = validateVoice('The flames that fuel the cleft burn with a consistency not native to this time of year.', [], WARDEN);
+      expect(fault?.kind).toBe('scenery');
+      if (fault?.kind === 'scenery') expect(fault.nouns).toContain('flames');
+    });
+
+    it('a persona-break WORD is caught before the scenery drift (sharper tell first)', () => {
+      // 'darkness' is a banned lexicon word AND the line is address-less scenery — the persona fault wins.
+      const fault = validateVoice('The darkness gathers where the candle smoke curls against the far bulkhead.', [], WARDEN);
+      expect(fault?.kind).toBe('persona');
+    });
+
+    it('does NOT flag a scene line that still addresses the seeker (a legit omen)', () => {
+      expect(validateVoice('The smoke leans toward you tonight, and the candle gutters as you speak.', [], WARDEN)).toBeNull();
+    });
+  });
 });

@@ -182,6 +182,13 @@ function correctionLines(fault: VoiceFault): string[] {
         `not you. Do not paint the room or the light either. Answer as yourself: name one concrete thing YOU`,
         `see, hold, or know. One or two sentences, plain prose.`,
       ];
+    case 'scenery':
+      return [
+        `# You drifted into describing the room — you stopped speaking TO them`,
+        `Do NOT paint the scene — the smoke, the flames, the candle, the light, the weather. A camera on the`,
+        `room is not your voice. Speak to the person in front of you: address THEM directly, in the first`,
+        `person, and name what YOU see, want, or know of them. One or two sentences, plain prose.`,
+      ];
     default: {
       const _exhaustive: never = fault;
       return _exhaustive;

@@ -1,5 +1,5 @@
 import type { Scenario, VoiceFault } from './types';
-import { personaCoherence, voiceAbandonment } from './personaCoherence';
+import { personaCoherence, voiceAbandonment, sceneryDrift } from './personaCoherence';
 
 // THE VOICE QUALITY-GATE — one place the freshly-voiced reply is validated before it ships, and one
 // bounded re-roll when it fails (engine.resolveTurn calls validateVoice, then re-rolls VOICE once with a
@@ -48,6 +48,15 @@ export function validateVoice(
   //    a word); a repeat or an off-register word is the sharper break and gets the one re-roll first.
   const abandonment = voiceAbandonment(reply);
   if (abandonment.abandoned) return { kind: 'abandonment', tells: abandonment.tells };
+
+  // 4. SCENERY-DRIFT (live, structural) — the abandonment detector's BLIND TWIN (judge run-13 #3). The
+  //    reply is sprawling ambient scene-description with NO second-person address to the seeker and no
+  //    first-person stance — the oracle nature-cam / fence nostalgia-memoirist. First-person-free and
+  //    banned-word-free, so (1)+(2)+(3) all scored it clean while the persona evaporated. Checked LAST: it
+  //    is the most conservative signal (gated on a scenery noun + length), so a sharper break wins the
+  //    single re-roll first, and a terse in-voice fact never trips.
+  const scenery = sceneryDrift(reply);
+  if (scenery.drifted) return { kind: 'scenery', nouns: scenery.nouns };
 
   return null;
 }

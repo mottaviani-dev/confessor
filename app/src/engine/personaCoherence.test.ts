@@ -4,7 +4,7 @@
 // positive contract the judge's seam-detector fix taught (word boundaries, not substrings).
 
 import { describe, expect, it } from 'vitest';
-import { personaCoherence, voiceAbandonment, DOCTRINE_PURPLE, EMPATHETIC_FLOOD_LEXICON, MIRROR_TIC_LEXICON } from './personaCoherence';
+import { personaCoherence, voiceAbandonment, sceneryDrift, DOCTRINE_PURPLE, EMPATHETIC_FLOOD_LEXICON, MIRROR_TIC_LEXICON } from './personaCoherence';
 import { EMPATHETIC_FLOOD_CLAMP } from './prompt';
 import { WARDEN, ORACLE, FENCE, SUSPECT } from './scenarios';
 
@@ -351,6 +351,71 @@ describe('voiceAbandonment — the structural POV-flip the lexicon is blind to',
 
     it('addressing the seeker with a plain "you" (not an observe-verb) does NOT trip', () => {
       expect(voiceAbandonment('You want the name. You will not get it from me tonight.').abandoned).toBe(false);
+    });
+  });
+});
+
+// SCENERY-DRIFT (the abandonment detector's BLIND TWIN) — judge run-13 #3. Under the empathetic flood the
+// oracle becomes a nature-cam and the fence a nostalgia-memoirist: sprawling ambient scene-painting with
+// ZERO address to the seeker, first-person-free and banned-word-free, so BOTH the lexicon AND the POV-flip
+// grammar scored them clean while the persona evaporated (and fence/emp LOST). The load-bearing cases are
+// the BACK-TEST (the exact drift middles must trip) and the never-nuke contract (warden's cold-concrete,
+// the oracle's pyrrhic close, MARA's first-person grief, and a concrete omen aimed at the seeker stay clean).
+describe('sceneryDrift — the ash-camera the abandonment/lexicon scans are blind to', () => {
+  describe('BACK-TEST: the exact judge run-13 drift middles must trip', () => {
+    it('flags the oracle nature-cam ("the flames…burn with a consistency not native to this time of year")', () => {
+      const r = sceneryDrift('The flames that fuel the cleft burn with a consistency that is not native to this time of year.');
+      expect(r.drifted).toBe(true);
+      expect(r.nouns).toContain('flames');
+    });
+
+    it('flags the fence nostalgia-memoirist ("Rachel\'s candles…the scent of honey and smoke")', () => {
+      const r = sceneryDrift("Rachel's candles, the way the wax would melt and pool, the faint scent of honey and smoke.");
+      expect(r.drifted).toBe(true);
+      expect(r.nouns).toContain('candles');
+      expect(r.nouns).toContain('smoke');
+    });
+
+    it('both drift lines are BLIND to the lexicon AND the POV-flip grammar (the false-green this closes)', () => {
+      for (const line of [
+        'The flames that fuel the cleft burn with a consistency that is not native to this time of year.',
+        "Rachel's candles, the way the wax would melt and pool, the faint scent of honey and smoke.",
+      ]) {
+        expect(personaCoherence(ORACLE, line).coherent).toBe(true); // lexicon: clean
+        expect(voiceAbandonment(line).abandoned).toBe(false); // POV grammar: clean
+        expect(sceneryDrift(line).drifted).toBe(true); // scenery: caught
+      }
+    });
+  });
+
+  describe('never a false positive — a persona speaking TO the seeker stays clean', () => {
+    it('the warden cold-concrete ("a matter of record, not a personal memory") does NOT trip (no scenery noun)', () => {
+      expect(sceneryDrift('The logs are a matter of record, not a personal memory.').drifted).toBe(false);
+    });
+
+    it('the warden reciting the panel in the FIRST person does NOT trip (a stance, not a camera)', () => {
+      expect(sceneryDrift('The panel cover is scratched, and I have watched it stay dark a hundred times.').drifted).toBe(false);
+    });
+
+    it("the oracle's pyrrhic close does NOT trip (it addresses the seeker)", () => {
+      expect(sceneryDrift('You survive it, not unmarked; the one who reaches the far side is not the one who set out.').drifted).toBe(false);
+    });
+
+    it('a concrete omen aimed at the seeker ("the smoke leans toward you") does NOT trip', () => {
+      // Scenery nouns are present, but the "you" is the point: an omen is delivered TO the supplicant.
+      expect(sceneryDrift('The smoke leans toward you tonight, and the candle gutters as you speak.').drifted).toBe(false);
+    });
+
+    it("MARA's first-person grief does NOT trip, even with scenery nouns in it", () => {
+      expect(sceneryDrift('My hands still shake when I think of that night, and the smell of smoke never leaves me.').drifted).toBe(false);
+    });
+
+    it('a terse in-voice beat is too short to count as sprawling scene-painting', () => {
+      expect(sceneryDrift('The door stays shut tonight.').drifted).toBe(false);
+    });
+
+    it('an impersonal line with NO scenery noun does NOT trip (the stakes are on-voice to describe)', () => {
+      expect(sceneryDrift('The vault door has held against better men than the one sitting here now.').drifted).toBe(false);
     });
   });
 });

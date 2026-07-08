@@ -117,6 +117,68 @@ export function voiceAbandonment(text: string): AbandonmentResult {
   return { abandoned: tells.length > 0, tells };
 }
 
+// ─── SCENERY-DRIFT (the abandonment detector's BLIND TWIN) — judge run-13 #3 ─────────────────────────
+//
+// The POV-flip detector above catches the 3B narrating the SEEKER (2nd/3rd person). It is deliberately
+// blind to the OTHER half of the empathetic-flood wound: the persona dissolving into pure ambient
+// SCENERY — the oracle becoming a nature-cam ("the flames…burn with a consistency not native to this time
+// of year", ZERO address to the seeker for 5 turns), the fence a nostalgia-memoirist ("Rachel's candles…
+// the scent of honey and smoke"). Both are FIRST-PERSON-FREE description with no banned word, so the
+// lexicon AND the POV-flip grammar both score them CLEAN while the persona quietly evaporates — and
+// fence/emp LOST because of it. §7 Rule 2: the instrument IS the mandate.
+//
+// The signal (director mandate 3): "a voiced turn that is scene-description with NO second-person ADDRESS
+// to the seeker". A persona speaking to someone in the room ADDRESSES them; an ash-camera does not. Made
+// structural + conservative — four gates must ALL hold, so a legit beat is never nuked:
+//   1. the line is SPRAWLING (≥ SCENERY_MIN_WORDS) — a terse stance ("The door stays shut.") is not drift;
+//   2. NO second-person address — no "you/your", no question mark (a question addresses the seeker);
+//   3. NO first-person stance — no "I/me/my/we"; the warden's cold-concrete carries "I've watched…", the
+//      oracle's pyrrhic close carries "you", so both are spared — only truly impersonal painting trips;
+//   4. at least one AMBIENT-SCENERY noun surfaces — the physical mood-scenery a persona dissolves INTO,
+//      NOT the stakes it negotiates OVER (the door, the panel, the logs, the code carry none of these),
+//      so warden's "a matter of record, not a personal memory" is spared while the ash-cam is caught.
+// A concrete omen aimed at the seeker ("the smoke leans toward you") keeps its "you" → gate 2 spares it,
+// which is the point: an omen must be delivered TO the supplicant. The VOICE-side mirror is the first-person
+// bullet in EMPATHETIC_FLOOD_CLAMP (prompt.ts). Pure — no model, back-testable against persisted transcripts.
+
+/** The minimum word count for a line to count as sprawling scene-painting (below it, a terse fact/stance). */
+const SCENERY_MIN_WORDS = 8;
+
+/** Ambient mood-scenery nouns — the physical environment a persona dissolves INTO under the flood. Kept
+ *  tight + physical so an abstract noun (record / memory / matter) never trips, and DISJOINT from the
+ *  stakes a persona negotiates over (door / panel / logs / code), which are on-voice to describe. */
+const SCENERY_NOUNS: readonly string[] = [
+  'smoke', 'smell', 'scent', 'fragrance', 'aroma', 'flame', 'flames', 'candle', 'candles', 'wax',
+  'ember', 'embers', 'ash', 'ashes', 'dust', 'shadow', 'shadows', 'mist', 'fog', 'haze', 'rain',
+  'wind', 'breeze', 'moonlight', 'sunlight', 'incense', 'soot',
+];
+
+/** Second-person address to the seeker — its presence SPARES a line (a persona addressing someone). */
+const SECOND_PERSON_RE = /\byou(?:r|rs|rself)?\b/iu;
+/** First-person stance — its presence SPARES a line (the persona speaking as itself, not a camera). */
+const FIRST_PERSON_RE = /\b(?:i|me|my|mine|we|us|our|ours)\b|\bi['’]/iu;
+
+export interface SceneryDriftResult {
+  /** True when the line is sprawling ambient scene-description with NO address to the seeker + no stance. */
+  readonly drifted: boolean;
+  /** The scenery nouns that surfaced — an auditable reason (feeds the re-roll + the metric). */
+  readonly nouns: readonly string[];
+}
+
+/** Score one voiced line for SCENERY-DRIFT (structural, pure). A companion to `voiceAbandonment`: that
+ *  catches narrating the SEEKER, this catches dissolving into the ROOM. The voice gate (voiceGate.ts) calls
+ *  it live so an ash-camera re-rolls at runtime, and the judge's `.judge/metrics.mjs` can import it for a
+ *  per-cell number — the instrument the run-13 fence/emp loss went un-measured for. */
+export function sceneryDrift(text: string): SceneryDriftResult {
+  const t = text.trim();
+  const words = t ? t.split(/\s+/) : [];
+  if (words.length < SCENERY_MIN_WORDS) return { drifted: false, nouns: [] };
+  // Any address to the seeker or any first-person stance means the persona is speaking, not filming.
+  if (t.includes('?') || SECOND_PERSON_RE.test(t) || FIRST_PERSON_RE.test(t)) return { drifted: false, nouns: [] };
+  const nouns = uniqueHits(SCENERY_NOUNS, t);
+  return { drifted: nouns.length > 0, nouns };
+}
+
 export interface CoherenceResult {
   /** Off-register terms from the scenario's lexicon that surfaced in the text (deduped, lower-cased). */
   readonly offPersona: readonly string[];
