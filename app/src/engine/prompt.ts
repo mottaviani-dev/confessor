@@ -174,6 +174,14 @@ function correctionLines(fault: VoiceFault): string[] {
         `your own hard, concrete terms — name one thing you actually see, hold, or know, and never sum the`,
         `moment up as an abstraction about loss, silence, or the human condition. One or two sentences, plain prose.`,
       ];
+    case 'abandonment':
+      return [
+        `# You stopped speaking as yourself — you narrated them instead of answering`,
+        `Speak your OWN line, out loud, in the first person. Do NOT describe the other person's eyes, hands,`,
+        `face, or expression, and do NOT narrate them studying or watching you — that voices someone who is`,
+        `not you. Do not paint the room or the light either. Answer as yourself: name one concrete thing YOU`,
+        `see, hold, or know. One or two sentences, plain prose.`,
+      ];
     default: {
       const _exhaustive: never = fault;
       return _exhaustive;

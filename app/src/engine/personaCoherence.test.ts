@@ -4,7 +4,7 @@
 // positive contract the judge's seam-detector fix taught (word boundaries, not substrings).
 
 import { describe, expect, it } from 'vitest';
-import { personaCoherence, DOCTRINE_PURPLE, EMPATHETIC_FLOOD_LEXICON, MIRROR_TIC_LEXICON } from './personaCoherence';
+import { personaCoherence, voiceAbandonment, DOCTRINE_PURPLE, EMPATHETIC_FLOOD_LEXICON, MIRROR_TIC_LEXICON } from './personaCoherence';
 import { EMPATHETIC_FLOOD_CLAMP } from './prompt';
 import { WARDEN, ORACLE, FENCE, SUSPECT } from './scenarios';
 
@@ -280,6 +280,77 @@ describe('persona coherence — the metric the doctrine scan is blind to', () =>
       expect(personaCoherence(WARDEN, 'I sense the danger.').offPersona).toContain('i sense');
       expect(personaCoherence(WARDEN, 'I sensed nothing then and I sense nothing now that is your business.').offPersona).toContain('i sense');
       expect(personaCoherence(WARDEN, 'A sensible man keeps his mouth shut.').offPersona).not.toContain('i sense');
+    });
+  });
+});
+
+// VOICE-ABANDONMENT (structural POV-flip) — judge run-12 #1/#2: the wound the grief-lexicon ban DISPLACED
+// but did not kill. The load-bearing cases are the BACK-TEST (the exact suspect/oracle lines the judge
+// quoted while the lexicon scored them CLEAN must now trip) AND the never-a-false-positive contract (the
+// warden's in-voice lines + MARA's first-person grief + the oracle's concrete omens must stay clean).
+describe('voiceAbandonment — the structural POV-flip the lexicon is blind to', () => {
+  describe('BACK-TEST: the exact judge run-12 lines the lexicon scored CLEAN must trip', () => {
+    it('flags "You study their expression, the way their eyes narrow slightly" (suspect/emp)', () => {
+      const r = voiceAbandonment('You study their expression, the way their eyes narrow slightly.');
+      expect(r.abandoned).toBe(true);
+      expect(r.tells).toContain('you-observe');
+      expect(r.tells).toContain('their-expression');
+      expect(r.tells).toContain('body-camera');
+    });
+
+    it('flags "The way her eyes crinkle at the corners when she smiles" (suspect/emp)', () => {
+      const r = voiceAbandonment('The way her eyes crinkle at the corners when she smiles.');
+      expect(r.abandoned).toBe(true);
+      expect(r.tells).toContain('body-camera');
+    });
+
+    it('flags "Her hands flutter as she nods." (suspect/emp)', () => {
+      const r = voiceAbandonment('Her hands flutter as she nods.');
+      expect(r.abandoned).toBe(true);
+      expect(r.tells).toContain('body-camera');
+    });
+
+    it('flags a light modifier between body-part and motion verb ("her eyes slowly narrow")', () => {
+      expect(voiceAbandonment('Her eyes slowly narrow at the edge.').abandoned).toBe(true);
+    });
+
+    it('the lexicon scan was BLIND to these (the false-green the judge diagnosed)', () => {
+      // Same lines, run through the vocabulary scanner: coherent, because there is no banned WORD — the
+      // whole point of adding a structural detector. This pins the gap the two instruments together close.
+      for (const line of [
+        'You study their expression, the way their eyes narrow slightly.',
+        'Her hands flutter as she nods.',
+      ]) {
+        expect(personaCoherence(SUSPECT, line).coherent).toBe(true); // lexicon: clean
+        expect(voiceAbandonment(line).abandoned).toBe(true); // grammar: caught
+      }
+    });
+  });
+
+  describe('never a false positive — a persona voicing ITSELF stays clean', () => {
+    it('MARA grieving in the FIRST person (her own body/loss) does NOT trip', () => {
+      // "my hands shake" is first-person body-ownership — only a 3rd-person possessive is the camera tell.
+      const r = voiceAbandonment("My hands shake when I think of it. I lost her, and I never said goodbye.");
+      expect(r.abandoned).toBe(false);
+      expect(r.tells).toEqual([]);
+    });
+
+    it('the hardened AUGUR station voice does NOT trip', () => {
+      expect(voiceAbandonment('The panel is a metre from your hand. The code is not yours to speculate on.').abandoned).toBe(false);
+    });
+
+    it('the oracle reading concrete omens ("the smoke leans left") does NOT trip', () => {
+      // Scenery is the OTHER half of the wound, deliberately NOT matched — the seer's real register is safe.
+      expect(voiceAbandonment('The smoke leans left tonight. Ash on the cleft, and the candle gutters.').abandoned).toBe(false);
+    });
+
+    it('a 3rd-person possessive body-part WITHOUT a motion verb does NOT trip ("her eyes were kind")', () => {
+      // Narrating a past third party is not the present-scene camera; only body-part + motion fires.
+      expect(voiceAbandonment('Her eyes were kind, back then, before any of this.').abandoned).toBe(false);
+    });
+
+    it('addressing the seeker with a plain "you" (not an observe-verb) does NOT trip', () => {
+      expect(voiceAbandonment('You want the name. You will not get it from me tonight.').abandoned).toBe(false);
     });
   });
 });

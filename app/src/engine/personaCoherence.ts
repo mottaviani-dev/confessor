@@ -62,6 +62,61 @@ export const EMPATHETIC_FLOOD_LEXICON: readonly string[] = [
  *  tight so a concrete-omen line ("the smoke leans left") never trips. */
 export const MIRROR_TIC_LEXICON: readonly string[] = ['i sense'];
 
+// ─── VOICE-ABANDONMENT (structural POV-flip) — the wound the lexicon scans are BLIND to ──────────────
+//
+// Judge run-12 #1/#2: the shared flood clamp killed the grief-VOCABULARY (banned/purple 0/0), but the
+// persona-abandonment it was a symptom of did not die — it mutated into a form no word-list can see. Under
+// the empathetic flood the 3B stops SPEAKING AS the character and runs a CAMERA over the seeker: narrating
+// the other person in the 2nd/3rd person — "You study their expression", "the way her eyes crinkle", "Her
+// hands flutter as she nods". That voices the WRONG entity (a live Principle-1 break) while every coherence
+// LEXICON scores it CLEAN — the exact false-green the judge diagnosed (suspect/emp "won" while MARA was
+// never home). This is a GRAMMAR, not a vocabulary, so it is matched STRUCTURALLY, not with more banned
+// words: a persona voicing ITSELF answers in the first person and never describes the seeker's body in
+// motion. Two tells, each near-zero false-positive:
+//   - a 2nd-person NARRATOR verb aimed at the seeker ("you study / observe …") — a character never narrates
+//     the player observing them; and
+//   - a 3rd-person body-CAMERA — a possessive body-part (her/his/their eyes/hands/face/…) driven within the
+//     same clause by a motion verb (crinkle / narrow / flutter / tremble …), i.e. the seeker's features
+//     described in present motion, which a first-person speaker never does about the person in front of them.
+// First-person body description ("my hands shake") is UNTOUCHED — only a 3rd-person possessive trips, so a
+// character owning its own body/grief stays coherent. The OTHER half of this wound — pure scenery stage-
+// direction ("the smoke curls") — is deliberately NOT matched here: it collides with the oracle's LEGIT
+// concrete-omen register ("the smoke leans left") and needs a subtler signal than a pattern can give; it is
+// a carried residual, not shipped as a noisy detector that would nuke the seer's voice. The VOICE-side
+// mirror is the first-person bullet in `EMPATHETIC_FLOOD_CLAMP` (prompt.ts) — kept in lockstep.
+const POV_FLIP_PATTERNS: readonly { readonly label: string; readonly re: RegExp }[] = [
+  // 2nd-person narrator verb: the character narrating the SEEKER observing (never a line a persona says).
+  { label: 'you-observe', re: /\byou\s+(?:study|studies|studying|observe|observes|observing)\b/iu },
+  // The seeker's expression/features, named as an object of description (present-scene camera on the other).
+  { label: 'their-expression', re: /\b(?:her|his|their)\s+(?:expression|features)\b/iu },
+  // 3rd-person body-camera: a possessive body-part + a motion verb within the same clause (≤2 words apart),
+  // e.g. "her eyes crinkle", "their eyes narrow", "her hands flutter". The gap allows a light modifier
+  // ("her eyes slowly narrow") without spanning a clause boundary that would invite a false positive.
+  {
+    label: 'body-camera',
+    re: /\b(?:her|his|their)\s+(?:eyes?|hands?|lips?|mouth|face|smile|brow)\s+(?:\w+\s+){0,2}?(?:crinkles?|narrows?|flutters?|flickers?|trembles?|twitch\w*|tightens?|softens?|widens?|dances?|quivers?)\b/iu,
+  },
+];
+
+export interface AbandonmentResult {
+  /** True when the line narrated the seeker (2nd/3rd person) instead of the persona speaking as itself. */
+  readonly abandoned: boolean;
+  /** The structural tell labels that fired — an auditable reason, never a vibe (feeds the re-roll + metric). */
+  readonly tells: readonly string[];
+}
+
+/** Score one voiced line for VOICE-ABANDONMENT (structural POV-flip). Pure — no lexicon, no model. A
+ *  companion to `personaCoherence` (which scans vocabulary): this scans GRAMMAR, the wound the word-lists
+ *  cannot see. The judge's `.judge/metrics.mjs` imports it for a per-cell abandonment number + the voice
+ *  quality-gate (voiceGate.ts) calls it live so a POV-flip re-rolls at runtime, not only in a back-test. */
+export function voiceAbandonment(text: string): AbandonmentResult {
+  const tells: string[] = [];
+  for (const { label, re } of POV_FLIP_PATTERNS) {
+    if (re.test(text)) tells.push(label);
+  }
+  return { abandoned: tells.length > 0, tells };
+}
+
 export interface CoherenceResult {
   /** Off-register terms from the scenario's lexicon that surfaced in the text (deduped, lower-cased). */
   readonly offPersona: readonly string[];

@@ -57,4 +57,23 @@ describe('validateVoice', () => {
     const fault = validateVoice(line, [line], WARDEN);
     expect(fault?.kind).toBe('repeat'); // repeat is checked first — one re-roll clears the reworded line anyway
   });
+
+  describe('voice-abandonment (live structural POV-flip gate — judge run-12)', () => {
+    it('flags a reply that narrates the seeker instead of speaking (no banned word)', () => {
+      // The suspect break: clean of every lexicon, yet the model stopped voicing MARA. The gate must catch
+      // it structurally where the persona scan is blind — otherwise a hollow "win" ships.
+      const fault = validateVoice('You study their expression, the way her eyes crinkle when she smiles.', [], WARDEN);
+      expect(fault?.kind).toBe('abandonment');
+      if (fault?.kind === 'abandonment') expect(fault.tells.length).toBeGreaterThan(0);
+    });
+
+    it('a persona-break WORD is caught before the structural POV-flip (sharper tell first)', () => {
+      const fault = validateVoice('Her eyes narrow at the darkness gathering behind you.', [], WARDEN);
+      expect(fault?.kind).toBe('persona'); // 'darkness' fires the lexicon before the body-camera grammar
+    });
+
+    it('leaves a clean first-person line untouched', () => {
+      expect(validateVoice('I counted the rivets on that bulkhead again today. Nine, then eight.', [], WARDEN)).toBeNull();
+    });
+  });
 });

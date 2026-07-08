@@ -138,7 +138,12 @@ export type VoiceFault =
    *  (personaCoherence, promoted from an offline telemetry instrument to a LIVE gate). `terms` = the exact
    *  words that tripped it, fed to the re-roll as an explicit avoid-list so the retry answers from the
    *  station in concrete terms instead of the greeting-card register. */
-  | { readonly kind: 'persona'; readonly terms: readonly string[] };
+  | { readonly kind: 'persona'; readonly terms: readonly string[] }
+  /** The reply ABANDONED the persona structurally — it narrated the seeker in the 2nd/3rd person or painted
+   *  the scene instead of the character speaking as itself (a POV-flip; voiceAbandonment). This is the
+   *  wound the grief-lexicon ban DISPLACED but did not kill (judge run-12 #1): no banned word fires, yet
+   *  nobody is home. `tells` = the structural pattern labels that fired, so the re-roll can name the break. */
+  | { readonly kind: 'abandonment'; readonly tells: readonly string[] };
 // RESERVED (not yet emitted): a within-line degenerate loop — a single reply that circles the same clause
 // with no new information (the suspect's "I didn't say I went home, I said I went home…"). Deferred: no
 // lexical signal separates it from legitimate anaphora/parallelism ("I gave you my father. I gave you my

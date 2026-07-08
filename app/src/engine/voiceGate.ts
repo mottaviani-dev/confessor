@@ -1,5 +1,5 @@
 import type { Scenario, VoiceFault } from './types';
-import { personaCoherence } from './personaCoherence';
+import { personaCoherence, voiceAbandonment } from './personaCoherence';
 
 // THE VOICE QUALITY-GATE — one place the freshly-voiced reply is validated before it ships, and one
 // bounded re-roll when it fails (engine.resolveTurn calls validateVoice, then re-rolls VOICE once with a
@@ -40,6 +40,14 @@ export function validateVoice(
   //    instead of shipping (the leak the 2026-07-07 sincere-run playtest caught).
   const coherence = personaCoherence(scenario, reply);
   if (!coherence.coherent) return { kind: 'persona', terms: [...coherence.offPersona, ...coherence.purple] };
+
+  // 3. VOICE-ABANDONMENT (live, structural) — the POV-flip the lexicon in (2) is BLIND to (judge run-12
+  //    #1/#2): the reply narrated the seeker in the 2nd/3rd person or painted the scene instead of the
+  //    persona speaking as itself. No banned word fired above, yet the model left the building — so it
+  //    re-rolls with a first-person correction. Checked LAST because it is the subtlest tell (grammar, not
+  //    a word); a repeat or an off-register word is the sharper break and gets the one re-roll first.
+  const abandonment = voiceAbandonment(reply);
+  if (abandonment.abandoned) return { kind: 'abandonment', tells: abandonment.tells };
 
   return null;
 }
