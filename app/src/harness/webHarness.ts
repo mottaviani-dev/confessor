@@ -31,6 +31,7 @@ export type DuelVariant =
 
 export type HarnessMode =
   | { readonly kind: 'picker-seeded' }
+  | { readonly kind: 'threshold' }
   | { readonly kind: 'duel'; readonly scenarioId: string; readonly variant: DuelVariant };
 
 /** The full display state a harness `?harness=duel*` URL mounts into `Duel` (in place of the fresh
@@ -65,7 +66,7 @@ const DUEL_SCENARIO_ID = 'warden';
 
 /** Parse a `window.location.search` (or any query string) into a harness mode, or null when no
  *  `?harness=` is present / the key is unknown. The only entry point the app calls.
- *  Keys: `picker-seeded`; the warden probes `duel` / `duel-lowgrip` / `duel-askpenalty`; and
+ *  Keys: `picker-seeded`; `threshold`; the warden probes `duel` / `duel-lowgrip` / `duel-askpenalty`; and
  *  `duel-<scenarioId>` (e.g. `duel-fence`) for a neutral mid-game on any room — one shot per backdrop so
  *  the §2 per-scenario palette (verdigris/brass/umber/ember) can be eyeballed for all four minds. */
 export function parseHarness(search: string): HarnessMode | null {
@@ -73,6 +74,7 @@ export function parseHarness(search: string): HarnessMode | null {
   if (!m) return null;
   const key = decodeURIComponent(m[1]);
   if (key === 'picker-seeded') return { kind: 'picker-seeded' };
+  if (key === 'threshold') return { kind: 'threshold' }; // the one-time diegetic cold-open (threshold.ts)
   // The fixed warden probes first (their suffixes are variants, never scenario ids).
   const variant = DUEL_URL_KEYS[key];
   if (variant) return { kind: 'duel', scenarioId: DUEL_SCENARIO_ID, variant };

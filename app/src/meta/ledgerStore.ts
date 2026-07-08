@@ -7,6 +7,7 @@ import { parseLedger, serializeLedger, type Ledger } from './ledger';
 
 const LEDGER_KEY = 'confessor.ledger.v1';
 const SEAM_KEY = 'confessor.seam.v1';
+const THRESHOLD_KEY = 'confessor.threshold.v1';
 
 export async function loadLedger(): Promise<Ledger> {
   try {
@@ -48,5 +49,25 @@ export async function saveSeamLog(log: SeamLog): Promise<void> {
     await AsyncStorage.setItem(SEAM_KEY, JSON.stringify(log));
   } catch {
     // best-effort, same as the ledger
+  }
+}
+
+// THE THRESHOLD FLAG — whether the player has crossed the one-time diegetic cold-open (threshold.ts).
+// Present + '1' → already seen; absent/unreadable → treat as a first run and show it. A failed READ
+// defaults to seen (false-negative bias): a returning player who briefly loses storage would rather skip
+// the intro than sit through it again, and a genuine first run's storage is empty anyway (returns false).
+export async function loadSeenThreshold(): Promise<boolean> {
+  try {
+    return (await AsyncStorage.getItem(THRESHOLD_KEY)) === '1';
+  } catch {
+    return true; // storage unavailable → don't trap the player behind the intro; play the game
+  }
+}
+
+export async function saveSeenThreshold(): Promise<void> {
+  try {
+    await AsyncStorage.setItem(THRESHOLD_KEY, '1');
+  } catch {
+    // best-effort: a failed save re-shows the intro next launch, never blocks play
   }
 }

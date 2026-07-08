@@ -14,6 +14,7 @@ describe('parseHarness', () => {
 
   it('maps the known keys to modes', () => {
     expect(parseHarness('?harness=picker-seeded')).toEqual({ kind: 'picker-seeded' });
+    expect(parseHarness('?harness=threshold')).toEqual({ kind: 'threshold' });
     expect(parseHarness('?harness=duel')).toEqual({ kind: 'duel', scenarioId: 'warden', variant: 'mid' });
     expect(parseHarness('?harness=duel-lowgrip')).toEqual({ kind: 'duel', scenarioId: 'warden', variant: 'lowgrip' });
     expect(parseHarness('?harness=duel-askpenalty')).toEqual({ kind: 'duel', scenarioId: 'warden', variant: 'askpenalty' });

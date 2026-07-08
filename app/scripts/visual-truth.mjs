@@ -46,6 +46,7 @@ const OUT_DIR = join(APP_DIR, '..', '.judge', 'visual-truth');
 const VIEWPORT = { width: 430, height: 932, deviceScaleFactor: 2 };
 const SETTLE_MS = 4500; // let React mount + the typewriter reach its resting frame before the capture
 const SHOTS = [
+  { name: 'threshold', url: '/?harness=threshold', desc: 'the one-time diegetic cold-open — the room teaches talk-not-force + the shut door + on-device privacy (§4 Q5)' },
   { name: 'picker', url: '/', desc: 'mind-picker + Ledger header + sealed-door cards (fresh ledger)' },
   { name: 'picker-seeded', url: '/?harness=picker-seeded', desc: 'Ledger with a cracked record + an unlocked door + sealed doors' },
   { name: 'duel', url: '/?harness=duel', desc: 'a duel scene — backdrop, orb, tone, objective (Grip high)' },

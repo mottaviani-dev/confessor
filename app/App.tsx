@@ -29,9 +29,10 @@ import { devlog } from './src/llm/devlog';
 import { bondCrossedUp, bondState, shiftPulse, suspicionWarning } from './src/meta/bond';
 import { lostScene, wonScene } from './src/meta/endgame';
 import { crackedCount, recordResult, unlockedIds, type Ledger } from './src/meta/ledger';
-import { loadLedger, loadSeamLog, saveLedger, saveSeamLog } from './src/meta/ledgerStore';
+import { loadLedger, loadSeamLog, loadSeenThreshold, saveLedger, saveSeamLog, saveSeenThreshold } from './src/meta/ledgerStore';
 import { matchOrMint, renderWound, frameIndex } from './src/meta/badges';
 import { judgeCrack, type Exchange } from './src/engine/judge';
+import { THRESHOLD_ENTER, THRESHOLD_LINES } from './src/meta/threshold';
 import { useAudioDirector } from './src/audio/useAudioDirector';
 import { harnessDuel, parseHarness, seededLedger, type HarnessDuel } from './src/harness/webHarness';
 
@@ -133,12 +134,22 @@ export default function App() {
   useEffect(() => {
     ledgerRef.current = ledger;
   }, [ledger]);
+  // THE THRESHOLD (threshold.ts) — the one-time diegetic cold-open. `null` while the persisted flag is
+  // still resolving (render holds on a bare tar frame so a first-run player never flashes the picker
+  // BEFORE the intro, and a returning one never flashes the intro before the picker); then true = seen,
+  // false = show it once. Loaded alongside the ledger + seam log.
+  const [seenThreshold, setSeenThreshold] = useState<boolean | null>(null);
   useEffect(() => {
     void loadLedger().then(setLedger);
     void loadSeamLog().then((log) => {
       SEAM_LOG = log;
     });
+    void loadSeenThreshold().then(setSeenThreshold);
   }, []);
+  const crossThreshold = () => {
+    setSeenThreshold(true);
+    void saveSeenThreshold();
+  };
   const onResult = (scenarioId: string, outcome: 'won' | 'lost', turns: number, transcript: readonly Exchange[]) => {
     setLedger((l) => {
       const next = recordResult(l, scenarioId, outcome, turns);
@@ -179,6 +190,7 @@ export default function App() {
   // VISUAL-TRUTH: a `?harness=` URL short-circuits to a fixed screen (web-only, after all hooks so the
   // rules-of-hooks hold). Each returns the REAL component with injected display state — no model wait.
   if (HARNESS?.kind === 'picker-seeded') return <Picker onPick={() => undefined} ledger={seededLedger()} />;
+  if (HARNESS?.kind === 'threshold') return <Threshold onEnter={() => undefined} />;
   if (HARNESS?.kind === 'duel') {
     const h = harnessDuel(HARNESS);
     return (
@@ -193,6 +205,11 @@ export default function App() {
       />
     );
   }
+
+  // First run gates on the persisted flag: hold on the tar frame until it resolves, then cross the
+  // threshold once before the picker is ever seen (bible §4 Q5 / Principle 6).
+  if (seenThreshold === null) return <View style={styles.root} />;
+  if (!seenThreshold) return <Threshold onEnter={crossThreshold} />;
 
   if (!scenario) return <Picker onPick={setScenario} ledger={ledger} />;
   if (!llm) return <Boot prep={prep} scenario={scenario} onExit={() => setScenario(null)} />;
@@ -251,6 +268,33 @@ function bootLine(prep: ProviderState): string {
     default:
       return 'Preparing…';
   }
+}
+
+// THE THRESHOLD — the one-time diegetic cold-open (threshold.ts · bible §4 Q5 first-run · Principle 6).
+// The room addresses the player once before their first duel: it teaches TALK-not-force, the door shuts
+// if you reach straight for the secret, and the whole thing is private/on-device — in the game's own cold
+// voice, on the picker's own dimmed room, NOT a HUD tutorial (§5). Crossed once, then never shown again.
+function Threshold({ onEnter }: { onEnter: () => void }) {
+  return (
+    <View style={styles.root}>
+      <StatusBar style="light" />
+      {/* The vestibule itself, barely lit — you are already standing in it */}
+      <Image source={PICKER_BG} style={styles.bootBg} contentFit="cover" />
+      <View style={styles.thresholdWrap}>
+        <View style={styles.thresholdLines}>
+          {THRESHOLD_LINES.map((line, i) => (
+            // The last line is the diegetic device note (Principle 6) — set apart + dimmer than the frame.
+            <Text key={i} style={[styles.thresholdLine, i === THRESHOLD_LINES.length - 1 && styles.thresholdNote]}>
+              {line}
+            </Text>
+          ))}
+        </View>
+        <Pressable style={styles.thresholdEnter} onPress={onEnter} hitSlop={12}>
+          <Text style={styles.thresholdEnterText}>{THRESHOLD_ENTER}</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
 }
 
 function Picker({ onPick, ledger }: { onPick: (s: Scenario) => void; ledger: Ledger }) {
@@ -698,6 +742,15 @@ const styles = StyleSheet.create({
   bootWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 18 },
   bootText: { color: '#9ca3af', fontSize: 15, textAlign: 'center', lineHeight: 22, paddingHorizontal: 30 },
   bootBack: { color: '#6b7280', fontSize: 14, marginTop: 8 },
+  // Threshold (the one-time cold-open): the room's lines centered on the dimmed vestibule, bone italic —
+  // reads as the room speaking, not a UI card. The "Step inside" affordance is a hairline plate, not a
+  // filled button, so it stays diegetic (§5). Generous line spacing = the séance's pause (§1 P6 latency).
+  thresholdWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 34 },
+  thresholdLines: { gap: 22, marginBottom: 46 },
+  thresholdLine: { color: '#cfcfd6', fontSize: 18, lineHeight: 27, textAlign: 'center', fontStyle: 'italic', fontWeight: '500' },
+  thresholdNote: { color: '#7a7a83', fontSize: 14, lineHeight: 21, marginTop: 8, letterSpacing: 0.3 },
+  thresholdEnter: { borderWidth: 1, borderColor: '#2a2a33', borderRadius: 6, paddingVertical: 13, paddingHorizontal: 30, backgroundColor: 'rgba(12,12,16,0.6)' },
+  thresholdEnterText: { color: '#c9c9cf', fontSize: 14, fontWeight: '700', letterSpacing: 2 },
   pickerHead: { marginTop: 40, marginBottom: 24, alignItems: 'center' },
   brand: { color: '#e5e7eb', fontSize: 30, fontWeight: '900', letterSpacing: 6 },
   brandSub: { color: '#7a7a83', fontSize: 13, marginTop: 12, textAlign: 'center', lineHeight: 19, fontStyle: 'italic' },
