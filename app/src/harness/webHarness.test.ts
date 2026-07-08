@@ -17,6 +17,7 @@ describe('parseHarness', () => {
     expect(parseHarness('?harness=picker')).toEqual({ kind: 'picker' });
     expect(parseHarness('?harness=picker-seeded')).toEqual({ kind: 'picker-seeded' });
     expect(parseHarness('?harness=picker-badges')).toEqual({ kind: 'picker-badges' });
+    expect(parseHarness('?harness=picker-homecoming')).toEqual({ kind: 'picker-homecoming' });
     expect(parseHarness('?harness=threshold')).toEqual({ kind: 'threshold' });
     expect(parseHarness('?harness=duel')).toEqual({ kind: 'duel', scenarioId: 'warden', variant: 'mid' });
     expect(parseHarness('?harness=duel-lowgrip')).toEqual({ kind: 'duel', scenarioId: 'warden', variant: 'lowgrip' });

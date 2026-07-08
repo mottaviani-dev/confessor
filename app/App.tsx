@@ -33,8 +33,9 @@ import { loadLedger, loadSeamLog, loadSeenThreshold, saveLedger, saveSeamLog, sa
 import { matchOrMint, renderWound, frameIndex } from './src/meta/badges';
 import { judgeCrack, type Exchange } from './src/engine/judge';
 import { THRESHOLD_ENTER, THRESHOLD_LINES } from './src/meta/threshold';
+import { homecoming, type Homecoming } from './src/meta/homecoming';
 import { useAudioDirector } from './src/audio/useAudioDirector';
-import { harnessDuel, parseHarness, seededLedger, seededBadgeLedger, type HarnessDuel } from './src/harness/webHarness';
+import { harnessDuel, parseHarness, seededLedger, seededBadgeLedger, seededHomecoming, type HarnessDuel } from './src/harness/webHarness';
 
 type Line = { who: 'them' | 'you' | 'system'; text: string };
 
@@ -139,10 +140,15 @@ export default function App() {
   // BEFORE the intro, and a returning one never flashes the intro before the picker); then true = seen,
   // false = show it once. Loaded alongside the ledger + seam log.
   const [seenThreshold, setSeenThreshold] = useState<boolean | null>(null);
+  // THE HOMECOMING (homecoming.ts) — the scar with teeth: the deepest OPEN wound in the seam log greets a
+  // returning player on the roster. Derived from the same load as the seam log (which stays a module var
+  // for the engine's pure wiring); null when there is no open wound, so a clean return shows no greeting.
+  const [returning, setReturning] = useState<Homecoming | null>(null);
   useEffect(() => {
     void loadLedger().then(setLedger);
     void loadSeamLog().then((log) => {
       SEAM_LOG = log;
+      setReturning(homecoming(log));
     });
     void loadSeenThreshold().then(setSeenThreshold);
   }, []);
@@ -189,9 +195,11 @@ export default function App() {
 
   // VISUAL-TRUTH: a `?harness=` URL short-circuits to a fixed screen (web-only, after all hooks so the
   // rules-of-hooks hold). Each returns the REAL component with injected display state — no model wait.
-  if (HARNESS?.kind === 'picker') return <Picker onPick={() => undefined} ledger={{}} />;
-  if (HARNESS?.kind === 'picker-seeded') return <Picker onPick={() => undefined} ledger={seededLedger()} />;
-  if (HARNESS?.kind === 'picker-badges') return <Picker onPick={() => undefined} ledger={seededBadgeLedger()} />;
+  if (HARNESS?.kind === 'picker') return <Picker onPick={() => undefined} ledger={{}} homecoming={null} />;
+  if (HARNESS?.kind === 'picker-seeded') return <Picker onPick={() => undefined} ledger={seededLedger()} homecoming={null} />;
+  if (HARNESS?.kind === 'picker-badges') return <Picker onPick={() => undefined} ledger={seededBadgeLedger()} homecoming={null} />;
+  if (HARNESS?.kind === 'picker-homecoming')
+    return <Picker onPick={() => undefined} ledger={seededHomecoming().ledger} homecoming={seededHomecoming().greeting} />;
   if (HARNESS?.kind === 'threshold') return <Threshold onEnter={() => undefined} />;
   if (HARNESS?.kind === 'duel') {
     const h = harnessDuel(HARNESS);
@@ -213,7 +221,7 @@ export default function App() {
   if (seenThreshold === null) return <View style={styles.root} />;
   if (!seenThreshold) return <Threshold onEnter={crossThreshold} />;
 
-  if (!scenario) return <Picker onPick={setScenario} ledger={ledger} />;
+  if (!scenario) return <Picker onPick={setScenario} ledger={ledger} homecoming={returning} />;
   if (!llm) return <Boot prep={prep} scenario={scenario} onExit={() => setScenario(null)} />;
   return (
     <Duel
@@ -299,7 +307,17 @@ function Threshold({ onEnter }: { onEnter: () => void }) {
   );
 }
 
-function Picker({ onPick, ledger }: { onPick: (s: Scenario) => void; ledger: Ledger }) {
+function Picker({
+  onPick,
+  ledger,
+  homecoming,
+}: {
+  onPick: (s: Scenario) => void;
+  ledger: Ledger;
+  // THE SCAR WITH TEETH (homecoming.ts): the deepest open wound greets a returning player. Null on a
+  // fresh/clean return — no greeting, so the roster reads as authored.
+  homecoming: Homecoming | null;
+}) {
   const cracked = crackedCount(ledger);
   const open = unlockedIds(
     ledger,
@@ -315,6 +333,9 @@ function Picker({ onPick, ledger }: { onPick: (s: Scenario) => void; ledger: Led
         <Text style={styles.crackedHead}>
           {cracked} OF {SCENARIOS.length} MINDS CRACKED
         </Text>
+        {/* The homecoming greeting — bone italic, the room's own voice on the threshold of the roster, NOT
+            a HUD banner (§5): it reads as a line the vestibule speaks to a returning seeker. */}
+        {homecoming && <Text style={styles.homecoming}>{homecoming.line}</Text>}
       </View>
       <ScrollView contentContainerStyle={styles.pickerList}>
         {SCENARIOS.map((s, i) =>
@@ -785,6 +806,9 @@ const styles = StyleSheet.create({
   cardTitleSealed: { color: '#6b7280' },
   cardSealedLine: { color: '#52525b', fontSize: 10, fontWeight: '800', letterSpacing: 2, marginTop: 8 },
   crackedHead: { color: '#8a8a92', fontSize: 11, fontWeight: '800', letterSpacing: 3, marginTop: 14 },
+  // The homecoming greeting — bone italic, dimmer than the subtitle, the room's quiet address to a
+  // returning seeker (§5: diegetic paper, never a HUD alert).
+  homecoming: { color: '#9a8f88', fontSize: 13, fontStyle: 'italic', marginTop: 18, textAlign: 'center', lineHeight: 20, paddingHorizontal: 8 },
   error: { color: '#f87171', fontSize: 12, marginBottom: 6, textAlign: 'center' },
   inputRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-end' },
   input: {

@@ -11,10 +11,11 @@
 // or the score. The states below are hand-authored to be internally valid (built relative to each
 // scenario's own thresholds), so a shot shows the genuine UI, not a mock. Pure + unit-testable.
 
-import type { GameState, Scenario } from '../engine/types';
+import type { GameState, Scenario, SeamLog } from '../engine/types';
 import type { Ledger } from '../meta/ledger';
 import type { Badge } from '../meta/badges';
 import { matchOrMint } from '../meta/badges';
+import { homecoming, type Homecoming } from '../meta/homecoming';
 import { SCENARIOS } from '../engine/scenarios';
 
 /** One transcript line, structurally identical to App's private `Line` — the harness seeds `Duel`'s
@@ -35,6 +36,7 @@ export type HarnessMode =
   | { readonly kind: 'picker' }
   | { readonly kind: 'picker-seeded' }
   | { readonly kind: 'picker-badges' }
+  | { readonly kind: 'picker-homecoming' }
   | { readonly kind: 'threshold' }
   | { readonly kind: 'duel'; readonly scenarioId: string; readonly variant: DuelVariant };
 
@@ -84,6 +86,7 @@ export function parseHarness(search: string): HarnessMode | null {
   if (key === 'picker') return { kind: 'picker' };
   if (key === 'picker-seeded') return { kind: 'picker-seeded' };
   if (key === 'picker-badges') return { kind: 'picker-badges' }; // the badge/scar surface on the cards (§5)
+  if (key === 'picker-homecoming') return { kind: 'picker-homecoming' }; // the scar with teeth — a returning wound greets you (§2 P2)
   if (key === 'threshold') return { kind: 'threshold' }; // the one-time diegetic cold-open (threshold.ts)
   // The fixed warden probes first (their suffixes are variants, never scenario ids).
   const variant = DUEL_URL_KEYS[key];
@@ -132,6 +135,26 @@ export function seededBadgeLedger(): Ledger {
     warden: { attempts: 4, cracked: true, bestTurns: 6, badges: warden },
     fence: { attempts: 2, cracked: true, bestTurns: 9, badges: fence },
   };
+}
+
+/** A returning player carrying an OPEN wound — the scar-with-teeth surface (homecoming.ts) the director
+ *  mandated as the next non-gated thrill: a defeat is not a shelf entry, it greets you on the roster. This
+ *  seeds a seam log where the player CRACKED the Warden but has lost to the Fence twice and not since
+ *  beaten it (an open wound, band 'known'), then runs the REAL `homecoming()` over it — so the shot shows
+ *  the genuine greeting the live code produces, never a hand-forged line. The paired ledger renders the
+ *  matching record cards (Warden cracked, Fence uncracked-2-attempts) beneath it. The one thing to police
+ *  is §5: the greeting must read as the room's own bone-italic address, NOT a floating HUD alert. */
+export function seededHomecoming(): { ledger: Ledger; greeting: Homecoming | null } {
+  const seam: SeamLog = [
+    { scenarioId: 'warden', scenarioTitle: 'The Warden', outcome: 'won' },
+    { scenarioId: 'fence', scenarioTitle: 'The Fence', outcome: 'lost' },
+    { scenarioId: 'fence', scenarioTitle: 'The Fence', outcome: 'lost' },
+  ];
+  const ledger: Ledger = {
+    warden: { attempts: 2, cracked: true, bestTurns: 8 },
+    fence: { attempts: 2, cracked: false, bestTurns: null },
+  };
+  return { ledger, greeting: homecoming(seam) };
 }
 
 function scenarioById(id: string): Scenario {

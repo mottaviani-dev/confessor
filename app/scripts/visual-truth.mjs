@@ -50,6 +50,7 @@ const SHOTS = [
   { name: 'picker', url: '/?harness=picker', desc: 'mind-picker + Ledger header + sealed-door cards (fresh ledger) — via ?harness=picker so it clears the one-time Threshold that gates a bare `/` mount' },
   { name: 'picker-seeded', url: '/?harness=picker-seeded', desc: 'Ledger with a cracked record + an unlocked door + sealed doors' },
   { name: 'picker-badges', url: '/?harness=picker-badges', desc: 'the badge/scar surface — earned scars inked on the picker cards (empathy ×2 + others); police §5: diegetic ledger-ink, NOT a floating achievement HUD' },
+  { name: 'picker-homecoming', url: '/?harness=picker-homecoming', desc: 'the SCAR WITH TEETH — a returning open wound (lost twice to the Fence) greets you in the room voice above the roster; police §5: bone-italic room address, NOT a HUD banner (§2 P2)' },
   { name: 'duel', url: '/?harness=duel', desc: 'a duel scene — backdrop, orb, tone, objective (Grip high)' },
   { name: 'duel-lowgrip', url: '/?harness=duel-lowgrip', desc: 'the low-Grip interface corruption — the echo rendered colder (§2)' },
   { name: 'duel-askpenalty', url: '/?harness=duel-askpenalty', desc: 'the diegetic ask-penalty line in the open transcript (mandate 1)' },
