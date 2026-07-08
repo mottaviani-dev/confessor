@@ -1,4 +1,4 @@
-import type { Approach, GameState, LlmFn, LlmOptions, Scenario, SeamBrief, SeamLog, Tone, TurnResult } from './types';
+import type { Approach, GameState, LlmFn, LlmOptions, Scenario, SeamBrief, SeamLog, Tone, TurnResult, VoiceFault } from './types';
 import { parseRating, RATING_JSON_SCHEMA } from './schema';
 import { buildVoiceSystem, buildVoiceTurn, buildRateSystem, buildRateTurn } from './prompt';
 import { selectSeam, SEAM_TURN } from './seam';
@@ -121,27 +121,17 @@ export async function resolveTurn(
   }
 
   // THE VOICE QUALITY-GATE (VOICE path only). One validation pass over the fresh reply (voiceGate.ts:
-  // validateVoice) + ONE bounded re-roll when it fails — the single choke point that replaced a scatter of
-  // inline single-symptom guards. It catches the 3B's cross-turn stock-line loop (judge run-6: the same
-  // line re-asked opening AND post-seam, turns apart — so it is checked against EVERY recent spoken line,
-  // not just the last) AND a persona break (off-register / grief-flood words — personaCoherence, now a
-  // LIVE gate rather than offline-only telemetry). On a fault, re-roll VOICE ONCE with a fault-specific
-  // correction (buildVoiceTurn maps the fault kind → instruction) and take the retry (keep the first if
-  // the retry dies — bounded: at most one extra call, latency stays capped; the retry is NOT re-validated,
-  // which holds the latency envelope). SKIPPED on the seam turn: its callback is engine-scheduled with its
-  // own anti-echo override (seam.ts / buildHint), and re-rolling it would risk dropping the flagship-dread
-  // quote the director marked HANDS-OFF.
+  // validateVoice) + a FAULT-TIERED bounded re-roll when it fails — the single choke point that replaced a
+  // scatter of inline single-symptom guards. It catches the 3B's cross-turn stock-line loop (judge run-6),
+  // a persona break (off-register / grief-flood words), and the structural POV / scenery drift. The budget
+  // is tiered by whether the PLAYER can see the fault (judge run-13 #2 — the old single un-re-validated
+  // re-roll could not clear the 3B's temperature-0-ish stuck loop, so banned words and verbatim repeats
+  // shipped anyway): hard faults (repeat / persona) get a re-validated 2nd re-roll and, failing that, a
+  // neutral engine beat so the flagged line NEVER ships; soft faults (grammar tells) keep the single-shot
+  // budget. See gateVoice. SKIPPED on the seam turn: its callback is engine-scheduled and re-rolling it
+  // would risk dropping the flagship-dread quote the director marked HANDS-OFF (enforceSeamQuote guards it).
   if (!seam) {
-    const fault = validateVoice(reply, recentCharacterReplies(state.summary), scenario);
-    if (fault) {
-      const retryRaw = await llm(
-        buildVoiceSystem(scenario),
-        buildVoiceTurn(scenario, state, playerLine, null, fault),
-        VOICE_OPTS,
-      );
-      const retry = cleanReply(retryRaw);
-      if (retry) reply = retry; // a live retry replaces the faulted line; a dead retry keeps the first
-    }
+    reply = await gateVoice(scenario, state, playerLine, reply, llm);
   } else {
     // THE SEAM'S OWN GATE (director mandate 1 / judge run-13 #1 — seam 0/2, the flagship dread un-fired).
     // The generic voice-gate above is (correctly) SKIPPED on the seam turn — its callback is HANDS-OFF —
@@ -304,6 +294,66 @@ export function redactLeakedExtract(reply: string, tokens: readonly string[] | u
     out = out.replace(re, '$1…');
   }
   return out;
+}
+
+// ─── THE VOICE QUALITY-GATE LOOP (director mandate 2 — make the re-roll STICK on the 3B's stuck loops) ─
+//
+// Judge run-13 #2: validateVoice correctly DETECTS a persona break / verbatim repeat, but the old gate
+// took the ONE re-roll WITHOUT re-validating it — so on the ship-target 3B's near-deterministic stuck
+// loop the retry reproduced the same line and the banned word shipped anyway ("…darkness…" verbatim ×3).
+// The fix tiers the budget by whether the PLAYER can SEE the fault:
+//   - SOFT faults (abandonment / scenery — subtle grammar tells the player rarely clocks): ONE re-roll,
+//     take whatever returns; keep the first line if the retry dies. Latency capped at one extra call.
+//   - HARD faults (repeat / persona — a verbatim echo or an off-persona/banned word the player DOES see):
+//     RE-VALIDATE every retry and allow a 2nd bounded re-roll. A line that trips the SAME class of hard
+//     fault twice — or a dead retry — falls back to a NEUTRAL engine beat: the flagged line NEVER ships.
+// Bounded at TWO extra calls, so the latency envelope holds. Pure of scoring — this only chooses which
+// line the character SAYS; trust/suspicion are untouched.
+
+/** The two HARD voice faults the player can SEE: a near-verbatim REPEAT and an off-persona/banned WORD.
+ *  They earn the re-validated 2nd re-roll + neutral fallback; the subtler grammar tells stay single-shot. */
+function isHardFault(fault: VoiceFault): boolean {
+  return fault.kind === 'repeat' || fault.kind === 'persona';
+}
+
+/** The character falls quiet — the fallback when the 3B is stuck reproducing a HARD fault and no clean
+ *  line can be coaxed out. Doctrine-blessed (bible §1: "you fall quiet or look away") and, critically,
+ *  ships NO flagged word. Same shape as the dead-voice no-op; the clock still runs, the turn still scores. */
+const NEUTRAL_BEAT = '…';
+
+/** Validate the fresh reply and re-roll VOICE on a fault, with the fault-tiered budget described above. */
+async function gateVoice(
+  scenario: Scenario,
+  state: GameState,
+  playerLine: string,
+  reply: string,
+  llm: LlmFn,
+): Promise<string> {
+  const prior = recentCharacterReplies(state.summary);
+  const reroll = async (fault: VoiceFault): Promise<string> =>
+    cleanReply(await llm(buildVoiceSystem(scenario), buildVoiceTurn(scenario, state, playerLine, null, fault), VOICE_OPTS));
+
+  const first = validateVoice(reply, prior, scenario);
+  if (!first) return reply;
+
+  // SOFT fault: one re-roll, take whatever returns (a dead retry keeps the first — bounded, never worse).
+  if (!isHardFault(first)) {
+    const retry = await reroll(first);
+    return retry || reply;
+  }
+
+  // HARD fault: re-validate every retry so the flagged line can never ship. Up to TWO re-rolls, correcting
+  // against the freshest fault each time; a retry that clears the hard fault (at most a soft residual left)
+  // is taken; a dead retry or a still-hard retry after the budget falls back to the neutral beat.
+  let fault: VoiceFault = first;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const retry = await reroll(fault);
+    if (!retry) break; // dead retry → never keep the flagged first line → neutral beat
+    const retryFault = validateVoice(retry, prior, scenario);
+    if (!retryFault || !isHardFault(retryFault)) return retry; // clean, or only a soft residual → ship it
+    fault = retryFault; // still a hard fault → correct against the NEW one and try once more
+  }
+  return NEUTRAL_BEAT;
 }
 
 // ─── THE SEAM'S QUOTE-ENFORCEMENT (director mandate 1 — resurrect the flagship dread) ────────────────

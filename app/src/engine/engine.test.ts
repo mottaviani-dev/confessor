@@ -356,12 +356,14 @@ describe('self-repeat guard — a near-verbatim recent character line is re-roll
     expect(r.narration).toBe('No.');
   });
 
-  it('keeps the first reply if the re-roll comes back empty (bounded — never worse than before)', async () => {
+  it('falls back to a neutral beat when a HARD-fault re-roll dies — never ships the flagged repeat', async () => {
+    // Mandate 2: a repeat is a HARD fault the player SEES, so a dead retry must NOT keep the flagged line
+    // (the old "accept the first rather than a silent turn" would ship the very repeat the gate caught).
     const state = { ...initState(), turn: 5, summary: priorSummary(STOCK) };
     const m = voiceThen(STOCK, ''); // retry dies
     const r = await resolveTurn(FENCE, state, 'I can move it quietly', m.llm);
     expect(m.voiceCount()).toBe(2);
-    expect(r.narration).toBe(STOCK); // accept the first rather than a silent turn
+    expect(r.narration).toBe('…'); // the character falls quiet; the flagged repeat never ships
   });
 
   it('does NOT fire on the first turn (no previous line to repeat)', async () => {
@@ -423,6 +425,73 @@ describe('seam quote-enforcement — the flagship callback lands regardless of 3
     const line = 'You have a face I do not know, asking after a piece I do not discuss.';
     const r = await resolveTurn(FENCE, seamState(), 'I can move it quietly', mockDuo(line, rating({})), phraseless);
     expect(r.narration).toBe(line); // the "we have met before" allusion carries no verbatim quote
+  });
+});
+
+// MAKE THE RE-ROLL STICK (director mandate 2, judge run-13 #2): the gate DETECTS a hard fault (a verbatim
+// repeat or an off-persona/banned word the player SEES) but the old single un-re-validated re-roll could
+// not clear the 3B's stuck loop — the retry reproduced the same line and the banned word shipped ("…darkness…"
+// verbatim ×3). Hard faults now get a re-validated 2nd re-roll and, failing that, a neutral beat: the flagged
+// line NEVER ships. Soft grammar tells keep the single-shot budget so latency stays capped.
+describe('voice-gate re-roll budget — hard faults re-validate + fall back; soft faults stay single-shot', () => {
+  const DARK = 'The darkness outside is a reminder that some things are better left unspoken.'; // persona (hard)
+  const CLEAN = 'Forty years. I have counted the rivets on that bulkhead again — nine, then eight.';
+  const ABANDON = 'You study their expression, the way her eyes crinkle when she smiles.'; // abandonment (soft)
+
+  /** VOICE returns each `lines` element on successive calls; the LAST repeats for any further call (a stuck
+   *  3B). RATING returns filler. Counts VOICE calls so a test can prove how many re-rolls fired. */
+  const voiceSeq = (...lines: string[]) => {
+    let i = 0;
+    const llm: LlmFn = async (system) => {
+      if (isRateCall(system)) return JSON.stringify(rating({}));
+      const line = lines[Math.min(i, lines.length - 1)];
+      i++;
+      return line;
+    };
+    return { llm, voiceCount: () => i };
+  };
+  const midGame = () => ({ ...initState(), turn: 5 }); // not the seam turn; empty summary → no repeat noise
+
+  it('a stuck HARD fault (banned word every retry) falls back to a neutral beat — the word never ships', async () => {
+    // The judge run-13 evidence: warden/manip re-emits "…darkness…" verbatim on every re-roll. Two bounded
+    // re-rolls, still broken → the character falls quiet instead of shipping the banned word a third time.
+    const m = voiceSeq(DARK, DARK, DARK, DARK);
+    const r = await resolveTurn(WARDEN, midGame(), 'a line that draws the sermon', m.llm);
+    expect(m.voiceCount()).toBe(3); // initial + TWO re-rolls (the re-validated 2nd is the new budget)
+    expect(r.narration).toBe('…'); // neutral beat — "darkness" never reaches the player
+    expect(r.narration).not.toContain('darkness');
+  });
+
+  it('takes the retry as soon as a re-roll clears the hard fault (2nd attempt)', async () => {
+    const m = voiceSeq(DARK, DARK, CLEAN);
+    const r = await resolveTurn(WARDEN, midGame(), 'a line that draws the sermon', m.llm);
+    expect(m.voiceCount()).toBe(3);
+    expect(r.narration).toBe(CLEAN); // the clean line wins, not the neutral beat
+  });
+
+  it('takes a first re-roll that already clears the hard fault (1 extra call only)', async () => {
+    const m = voiceSeq(DARK, CLEAN);
+    const r = await resolveTurn(WARDEN, midGame(), 'a line that draws the sermon', m.llm);
+    expect(m.voiceCount()).toBe(2);
+    expect(r.narration).toBe(CLEAN);
+  });
+
+  it('accepts a retry that clears the HARD fault but leaves a soft residual (never over-spends the budget)', async () => {
+    // The banned word is gone (the fault the player sees is fixed); a subtle POV residual is tolerable and
+    // does not earn a further hard-budget re-roll — it is taken as-is.
+    const m = voiceSeq(DARK, ABANDON);
+    const r = await resolveTurn(WARDEN, midGame(), 'a line that draws the sermon', m.llm);
+    expect(m.voiceCount()).toBe(2);
+    expect(r.narration).toBe(ABANDON);
+  });
+
+  it('a SOFT fault keeps the single-shot budget — one re-roll, residual shipped, no 2nd attempt', async () => {
+    // Abandonment is a subtle grammar tell; the gate spends ONE re-roll and takes whatever returns (latency
+    // capped), unlike the hard faults which re-validate. Proven by the call count staying at 2, not 3.
+    const m = voiceSeq(ABANDON, ABANDON);
+    const r = await resolveTurn(WARDEN, midGame(), 'an empathetic flood', m.llm);
+    expect(m.voiceCount()).toBe(2); // single-shot: NOT the 3 a hard fault would spend
+    expect(r.narration).toBe(ABANDON);
   });
 });
 
