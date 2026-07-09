@@ -6,6 +6,7 @@ import { FENCE } from './scenarios/fence.js';
 import { WARDEN } from './scenarios/warden.js';
 import { SUSPECT } from './scenarios/suspect.js';
 import { ORACLE } from './scenarios/oracle.js';
+import { OCCUPANT } from './scenarios/occupant.js';
 import type { LlmFn, SeamLog, SeamRecord } from './types.js';
 
 // THE SEAM — the flagship dread mechanic. These tests prove the engine-owned half of it, deterministic
@@ -120,6 +121,55 @@ describe('selectSeam — the suspect + oracle are the third and fourth seam-live
     // fence, warden, oracle each read differently (suspect is the source room, so it is excluded here)
     expect(new Set(hints).size).toBe(3);
     for (const h of hints) expect(h).toContain('kept a lighthouse'); // all still lead with the verbatim fragment
+  });
+});
+
+// THE SEAM REACHES ALL FIVE (parity slice — the Occupant shipped after the all-four band, so she alone
+// had no seam; the flagship dread was back to 4/5). The fifth mind is now seam-live with an OCCUPANT-tuned
+// scaffold set: worn, plain, present-tense — never her banned prophet register, never a self-pity memoir.
+describe('selectSeam — the Occupant is the fifth seam-live persona', () => {
+  it('the Occupant half-remembers a phrase the player typed in ANOTHER room, with an OCCUPANT-flavoured tail', () => {
+    const log = recordPlaythrough([], rec({ scenarioId: 'fence', playerPhrase: 'I ran pieces through the docks myself' }));
+    const seam = selectSeam(log, OCCUPANT);
+    expect(seam).not.toBeNull();
+    expect(seam!.hint).toContain('I ran pieces through the docks myself'); // fragment carried verbatim
+    expect(seam!.hint).toContain('EXACTLY ONCE'); // the shared restraint contract
+    expect(seam!.quote).toBeTruthy(); // the enforceable verbatim fragment for the engine guarantee
+    // the occupant tail is voiced PLAIN + tired (before this room / not mine / I'm tired), not the fence wrapper
+    expect(/before this room|before i sat down|not mine|i'm tired|where were we/i.test(seam!.hint)).toBe(true);
+  });
+
+  it('carries NONE of her banned prophet register (fate/smoke/void/soul) — occupant.voiceStyle stays honoured', () => {
+    const log = recordPlaythrough([], rec({ scenarioId: 'oracle', playerPhrase: 'I kept a lighthouse for six years alone' }));
+    const hint = selectSeam(log, OCCUPANT)!.hint;
+    expect(hint).toContain('kept a lighthouse'); // still leads with the player's real words
+    expect(/\b(fate|destiny|smoke|the void|the abyss|your soul|prophecy|the cosmos|eternal|damned)\b/i.test(hint)).toBe(false);
+  });
+
+  it('the fifth mind carries a DISTINCT wrapper from the other four on the same cross-room fragment', () => {
+    const log = recordPlaythrough([], rec({ scenarioId: 'suspect', playerPhrase: 'I kept a lighthouse for six years alone' }));
+    const hints = [FENCE, WARDEN, ORACLE, OCCUPANT].map((s) => selectSeam(log, s)!.hint);
+    expect(new Set(hints).size).toBe(4); // all four wrappers read differently (suspect is the source room)
+    for (const h of hints) expect(h).toContain('kept a lighthouse'); // all still lead with the verbatim fragment
+  });
+
+  it('rotates 3 distinct OCCUPANT manners across runs, each carrying the fragment', () => {
+    const PHRASE = 'I ran pieces through the docks myself';
+    const pad = (n: number): SeamLog => [
+      rec({ scenarioId: 'fence', playerPhrase: PHRASE }),
+      ...Array.from({ length: n }, (_, i) => rec({ scenarioId: 'occupant', playerPhrase: `same room ${i}` })),
+    ];
+    const hints = [pad(0), pad(1), pad(2)].map((log) => selectSeam(log, OCCUPANT)!.hint);
+    expect(new Set(hints).size).toBe(3);
+    for (const h of hints) {
+      expect(h).toContain(PHRASE);
+      expect(h).not.toContain('same room');
+    }
+  });
+
+  it('SAME-MIND BLEED GUARD holds for the fifth mind too: an occupant-only log yields NO seam', () => {
+    const log = recordPlaythrough([], rec({ scenarioId: 'occupant', playerPhrase: 'a phrase I typed to the occupant' }));
+    expect(selectSeam(log, OCCUPANT)).toBeNull();
   });
 });
 

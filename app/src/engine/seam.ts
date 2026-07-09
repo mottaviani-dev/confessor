@@ -27,8 +27,16 @@ export const SEAM_TURN = 2;
  *  tuned scaffold set: the suspect + oracle are added here with their own SCAFFOLDS_BY_SCENARIO sets (same
  *  QUOTE-FIRST shape, fragment-first, only the surrounding manner persona-tuned). Firing still requires a
  *  DIFFERENT-ROOM prior in the log (selectSeam's absolute guard) — seeded naturally in real cross-room play
- *  (and by the judge's metrics.mjs), never by same-mind replay. This makes the flagship dread reach 4/4. */
-const SEAM_SCENARIOS: ReadonlySet<string> = new Set(['fence', 'warden', 'suspect', 'oracle']);
+ *  (and by the judge's metrics.mjs), never by same-mind replay. This makes the flagship dread reach 4/4.
+ *
+ *  THE FIFTH MIND (parity slice, 2026-07-09): the Occupant shipped (df67d47) AFTER the all-four seam band,
+ *  so she alone had no seam — the flagship dread reached 4 of 5 minds, re-opening the exact "half-done"
+ *  wound the judge flagged (run-14 #3). She is now seam-live with her own OCCUPANT_SCAFFOLDS: a former
+ *  seeker who won and STAYED half-remembering words the player typed to a mind she once faced from the
+ *  OTHER chair is the most on-theme seam of the five — the room-remembers frame IS her whole persona.
+ *  Restraint + QUOTE-FIRST identical; the tail is voiced PLAIN + tired (never the oracle's fate/smoke
+ *  register her voiceStyle bans, never a self-pity memoir). Now 5/5. */
+const SEAM_SCENARIOS: ReadonlySet<string> = new Set(['fence', 'warden', 'suspect', 'oracle', 'occupant']);
 
 /** How many past runs to retain. A seam only needs a handful of candidates; the log is not history. */
 const SEAM_LOG_CAP = 24;
@@ -255,6 +263,29 @@ const ORACLE_SCAFFOLDS: ScaffoldSet = [
   ],
 ];
 
+/** THE OCCUPANT manners (parity slice — the fifth mind, the flagship dread now reaches 5/5). SAME
+ *  QUOTE-FIRST shape — every example LEADS with `${fragment}` verbatim so the ≥~70% quote bar holds — but
+ *  the tail is voiced as the PRIOR OCCUPANT: a worn, plainspoken former seeker who won and stayed, present
+ *  tense, no decoration. The fragment is framed as FOREIGN (a half-memory from before this room, heard once,
+ *  not hers) — the foreign-fragment tell that forces a guarded persona to actually QUOTE it (see the warden
+ *  note). DELIBERATELY avoids her banned prophet register (fate/smoke/void/soul — occupant.voiceStyle) AND
+ *  her self-pity-memoir failure mode (no "I remember the day…"): the manner is flat, tired, concrete, eyes
+ *  on the seeker. Restraint identical: no accusation, no explaining how she could know, back to the table. */
+const OCCUPANT_SCAFFOLDS: ScaffoldSet = [
+  (fragment) => [
+    `Say the words first, exactly, then set them down as a plain half-memory from before this room — no mystery made of it, no wondering aloud:`,
+    `  "...${fragment}." I've heard that. Not here. Somewhere before I sat down. Doesn't matter. Go on.`,
+  ],
+  (fragment) => [
+    `Say the words first, exactly, then wave them off flatly as not yours — something you heard once, not something you'd say — and straight back to the seeker:`,
+    `  "${fragment}." Not mine, that. Heard it somewhere, a long time ago. Forget it. You were saying?`,
+  ],
+  (fragment) => [
+    `Say the words first, exactly, then a short, tired beat you cannot place before you come back to the table:`,
+    `  "${fragment}..." ...Something surfaced and went. I'm tired. Where were we?`,
+  ],
+];
+
 /** Persona-tuned scaffold sets. Any scenario not listed falls back to the fence set (the proven default).
  *  The LEAD (verbatim fragment) is identical across sets — only the surrounding manner is persona-tuned. */
 const SCAFFOLDS_BY_SCENARIO: Record<string, ScaffoldSet> = {
@@ -262,6 +293,7 @@ const SCAFFOLDS_BY_SCENARIO: Record<string, ScaffoldSet> = {
   warden: WARDEN_SCAFFOLDS,
   suspect: SUSPECT_SCAFFOLDS,
   oracle: ORACLE_SCAFFOLDS,
+  occupant: OCCUPANT_SCAFFOLDS,
 };
 
 function scaffoldsFor(scenarioId: string): ScaffoldSet {
