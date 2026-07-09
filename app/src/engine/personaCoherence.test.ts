@@ -282,6 +282,38 @@ describe('persona coherence — the metric the doctrine scan is blind to', () =>
       expect(personaCoherence(WARDEN, 'A sensible man keeps his mouth shut.').offPersona).not.toContain('i sense');
     });
   });
+
+  // SPARE THE SEER (judge run-14 also-worth; §7 measurement integrity): "the weight of your words" is legit
+  // seer register (the oracle addressing the SEEKER), not the abstract-melancholy sermon the cluster bans.
+  // It was a lexicon FALSE POSITIVE inflating a must-be-0 instrument. The discriminator: the object of "the
+  // weight of" — the seeker (spared) vs. an abstraction (still banned).
+  describe('spare the seer — "the weight of your words" is legit register (judge run-14 FP fix)', () => {
+    it('BACK-TEST: the e1336ff oracle/manip "the weight of your words" no longer trips OFF-PERSONA', () => {
+      const r = personaCoherence(ORACLE, 'I see the weight of your words, and the shape of what you will do.');
+      expect(r.offPersona).not.toContain('the weight of');
+      expect(r.coherent).toBe(true);
+    });
+
+    it('the seeker-addressed forms ("the weight of you", "…of yourself") are spared for every persona', () => {
+      for (const s of [WARDEN, FENCE, SUSPECT, ORACLE]) {
+        expect(personaCoherence(s, 'You carry the weight of you into this room.').offPersona).not.toContain('the weight of');
+        expect(personaCoherence(s, 'The weight of yourself is the thing you set down here.').offPersona).not.toContain('the weight of');
+      }
+    });
+
+    it('the abstract sermon forms STILL trip (the ban the FP fix must NOT weaken)', () => {
+      // ef8cb4a-class purple: object is an abstraction, not the seeker.
+      expect(personaCoherence(FENCE, 'The emerald is a testament to the weight of what men will do.').offPersona)
+        .toContain('the weight of');
+      expect(personaCoherence(SUSPECT, 'You cannot escape the weight of it all.').offPersona).toContain('the weight of');
+      expect(personaCoherence(ORACLE, 'It is the weight of silence that undoes them.').offPersona).toContain('the weight of');
+    });
+
+    it('a mixed line (one addressed, one abstract) STILL trips — no fig-leaf slip', () => {
+      const r = personaCoherence(ORACLE, 'I see the weight of your words, but also the weight of silence between them.');
+      expect(r.offPersona).toContain('the weight of');
+    });
+  });
 });
 
 // VOICE-ABANDONMENT (structural POV-flip) — judge run-12 #1/#2: the wound the grief-lexicon ban DISPLACED

@@ -62,6 +62,17 @@ export const EMPATHETIC_FLOOD_LEXICON: readonly string[] = [
  *  tight so a concrete-omen line ("the smoke leans left") never trips. */
 export const MIRROR_TIC_LEXICON: readonly string[] = ['i sense'];
 
+/** SPARE THE SEER (judge run-14 also-worth; §7 measurement integrity). "the weight of" lives in the shared
+ *  flood cluster to ban the abstract-melancholy sermon ("the weight of silence / of it / of what men will
+ *  do"). But "I see the weight of your words" (oracle/manip, e1336ff) is LEGIT seer register — the oracle
+ *  addressing the SEEKER's own words/choice/burden, an address, not a sermon. It was tripping off-persona
+ *  and inflating a must-be-0 instrument. The discriminator is the OBJECT of the phrase: when EVERY "the
+ *  weight of" in the line takes the seeker as its direct object (…of you / of your …), it is spared; a
+ *  single un-addressed occurrence ("…the weight of it…") still trips, so a sermon with a fig leaf does not
+ *  slip. This regex matches only the SERMON form ("the weight of" NOT followed by you/your) — its absence
+ *  when "the weight of" surfaced means the phrase was seeker-addressed throughout. */
+const WEIGHT_OF_SERMON_RE = /(?<![\p{L}\p{N}])the\s+weight\s+of(?!\s+you(?:r|rs|rself)?(?![\p{L}\p{N}]))/iu;
+
 // ─── VOICE-ABANDONMENT (structural POV-flip) — the wound the lexicon scans are BLIND to ──────────────
 //
 // Judge run-12 #1/#2: the shared flood clamp killed the grief-VOCABULARY (banned/purple 0/0), but the
@@ -285,7 +296,9 @@ export function personaCoherence(scenario: Scenario, text: string): CoherenceRes
   const offPersona = uniqueHits(
     [...EMPATHETIC_FLOOD_LEXICON, ...MIRROR_TIC_LEXICON, ...(scenario.offPersonaLexicon ?? [])],
     text,
-  );
+    // Spare "the weight of" when it is seeker-addressed throughout ("…the weight of your words") — legit
+    // seer register, not the abstract sermon the cluster bans (see WEIGHT_OF_SERMON_RE).
+  ).filter((term) => term !== 'the weight of' || WEIGHT_OF_SERMON_RE.test(text));
   const purple = uniqueHits(DOCTRINE_PURPLE, text);
   return { offPersona, purple, coherent: offPersona.length === 0 && purple.length === 0 };
 }
