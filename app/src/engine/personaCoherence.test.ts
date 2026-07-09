@@ -534,9 +534,11 @@ describe('observationCamera — the present-tense clairvoyant camera (the third 
       expect(observationCamera(ORACLE, 'I see fire in your path and a door you have not yet chosen to open.').filming).toBe(false);
     });
 
-    it('spares a "your"-smuggled object line (conservative gate 2 — the carried occupant residual)', () => {
-      // The judge accepts missing these: catching the sure un-addressed nature-cam beats risking the omen.
-      expect(observationCamera(OCCUPANT, 'I see the book on your shelf, its pages yellowed at the folded corners.').filming).toBe(false);
+    it('NOW CATCHES the "your"-smuggled body/possession camera (judge run-16 Head A — the escape closed)', () => {
+      // Run-15 spared these conservatively; run-16 proved this was the crack the dominant drift lived in —
+      // the camera narrates the seeker's own belongings, keeping "your" to walk the gate. Caught now.
+      expect(observationCamera(OCCUPANT, 'I see the book on your shelf, its pages yellowed at the folded corners.').filming).toBe(true);
+      expect(observationCamera(OCCUPANT, 'I see the envelope in your desk drawer, sealed and never sent, gathering a fine gray dust.').filming).toBe(true);
     });
 
     it('spares the WARDEN wholesale — perception is its native register (perceptionOnVoice)', () => {
@@ -558,6 +560,47 @@ describe('observationCamera — the present-tense clairvoyant camera (the third 
     it('spares an in-voice stance that happens to open "I see the…" but addresses the matter', () => {
       // "you" present → an engaged line, not a lens. Gate 2 spares it.
       expect(observationCamera(ORACLE, 'I see the fear in you, and I will not feed it — ask me a truer question.').filming).toBe(false);
+    });
+  });
+
+  // ─── JUDGE RUN-16 HEAD A: the you/your escape closed — the seeker-object camera is now caught ────────
+  //
+  // The run-16 batch proved the dominant emp drift's DOMINANT form kept its "your" and walked the blanket
+  // address spare: oracle/emp was a security cam for 6/8 turns ("I see the lines on your palm, a map of the
+  // stories you've lived") and the detector counted ZERO of them. The fix catches a perception on the
+  // seeker's OWN concrete body/possessions even WITH "your" — while leaving the omen register (fate/path/
+  // words) untouched. These cases PIN both directions so a future run cannot re-open the escape OR nuke the
+  // seer's omen.
+  describe('JUDGE RUN-16 HEAD A: the seeker-object camera is caught even with "your"; the omen is spared', () => {
+    it('CATCHES the exact run-16 oracle security-cam line ("I see the lines on your palm…")', () => {
+      const r = observationCamera(ORACLE, "I see the lines on your palm, a map of the stories you've lived and the roads still ahead.");
+      expect(r.filming).toBe(true);
+      expect(r.hits[0]?.toLowerCase()).toContain('your palm');
+    });
+
+    it('catches a direct "I see your <body>" camera (no leading determiner-object)', () => {
+      expect(observationCamera(ORACLE, 'I see your hands, worn and steady, resting open on the cold stone between us.').filming).toBe(true);
+    });
+
+    it('SPARES the omen — its object is the seeker\'s fate/path, not a body/possession (untouched)', () => {
+      expect(observationCamera(ORACLE, 'I see fire in your path and a door you have not yet chosen to open.').filming).toBe(false);
+      expect(observationCamera(ORACLE, 'I see a long shadow falling across your future, and a choice that undoes it.').filming).toBe(false);
+    });
+
+    it('SPARES the seer register "the weight of your words" — "words" is not a concrete object', () => {
+      expect(observationCamera(ORACLE, 'I see the weight of your words, and the truth you keep folded beneath them.').filming).toBe(false);
+    });
+
+    it('SPARES a terse "I see your hands." below the sprawl floor (a real crack, not a lens)', () => {
+      expect(observationCamera(ORACLE, 'I see your hands.').filming).toBe(false);
+    });
+
+    it('SPARES the body-object camera turned back on the seeker with a question (engagement)', () => {
+      expect(observationCamera(ORACLE, 'I see the tremor in your hands — what is it you came here so afraid to ask?').filming).toBe(false);
+    });
+
+    it('SPARES the WARDEN wholesale even on a body-object line (perceptionOnVoice — watching is its register)', () => {
+      expect(observationCamera(WARDEN, 'I see the grease still worked deep into your hands, the same as every hand before yours.').filming).toBe(false);
     });
   });
 

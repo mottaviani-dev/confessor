@@ -279,10 +279,13 @@ export function firstPersonMemoir(text: string): MemoirResult {
 // over false positives — the judge's own instruction), five gates ALL hold so a legit beat is never nuked:
 //   1. SPRAWLING (≥ OBSERVATION_MIN_WORDS) — a terse "I see." is not a camera;
 //   2. NO address — no "you/your", no "?"; a legit oracle OMEN keeps its address ("I see fire in YOUR
-//      path") → gate-spared, which is the point: an omen is delivered TO the supplicant. (An object smuggled
-//      behind a possessive — "I see the book on your shelf" — is spared TOO, conservatively; the un-addressed
-//      nature-cam is the sure kill, so the occupant's "your"-smuggled lines are a carried residual, not a
-//      false-positive risk on the seer's omen);
+//      path") → gate-spared, which is the point: an omen is delivered TO the supplicant. EXCEPTION (judge
+//      run-16 Head A — the you/your escape the dominant drift lived in): a perception that narrates the
+//      seeker's own concrete BODY or POSSESSIONS ("I see the lines on your palm", "I see the envelope in
+//      your desk drawer") keeps its "your" but is a pure camera with zero stance — it is caught FIRST
+//      (SEEKER_OBJECT_RE), before this spare, ONLY on a body-part/possession object. The omen's object
+//      (path / future / life / a portent) is NOT in that list, so "I see fire in your path" is untouched:
+//      the discriminator is WHAT is seen (the seeker's palm vs the seeker's fate), not whether "your" appears;
 //   3. the verb is a bare PERCEPTION opener taking a DETERMINER/POSSESSIVE object (PERCEPTION_RE) — "I see
 //      the well's beam", "I see Elara's hands". This is the load-bearing discriminator: "I see now" /
 //      "I see, it was Danny" / "I see that…" (understanding, a crack, a clause — no determiner-object) never
@@ -307,6 +310,21 @@ const OBSERVATION_MIN_WORDS = 8;
 const PERCEPTION_RE =
   /\bi\s+(?:can\s+|could\s+)?(?:see|watch|watching|observe|observing|notice|noticing|glimpse|behold)\s+(?:the|a|an|this|that|these|those|her|his|its|their|\p{L}+['’]s)\b/iu;
 
+/** THE SEEKER-OBJECT CAMERA (judge run-16 Head A). The dominant empathetic-flood drift the blanket you/your
+ *  spare let through: a perception that lands on the seeker's OWN concrete body or possessions — "I see the
+ *  lines on your palm", "I see your hands", "I see the envelope in your desk drawer". The discriminator is
+ *  the OBJECT: a concrete body-part / personal thing (this list), NOT the abstract territory of a legit omen
+ *  (path / future / life / fate / eyes / words / soul — deliberately EXCLUDED, so "I see fire in your path"
+ *  and "I see the weight of your words" never match). The list is physical + unambiguous; "your <object>"
+ *  anchors it, up to two modifiers between ("your worn leather gloves"). */
+const SEEKER_BODY_OBJECT =
+  'palms?|hands?|fingers?|knuckles?|wrists?|fists?|face|cheeks?|lips?|mouth|brow|jaw|chin|hair|skin|throat|neck|shoulders?|arms?|' +
+  'gloves?|coat|sleeves?|collar|cuffs?|ring|pockets?|desk|drawers?|shelf|shelves|ledger|letters?|envelope|photograph|locket|purse|wallet|notebook|journal|boots?|shoes?';
+const SEEKER_OBJECT_RE = new RegExp(
+  `\\bi\\s+(?:can\\s+|could\\s+)?(?:see|watch|watching|observe|observing|notice|noticing|glimpse|behold)\\b[^?]*?\\byour\\s+(?:\\p{L}+\\s+){0,2}?(?:${SEEKER_BODY_OBJECT})(?![\\p{L}])`,
+  'iu',
+);
+
 export interface ObservationResult {
   /** True when the line is a sprawling bare-perception camera on the seeker's things/scenery, no stance. */
   readonly filming: boolean;
@@ -326,8 +344,19 @@ export function observationCamera(scenario: Scenario, text: string): Observation
   const t = text.trim();
   const words = t ? t.split(/\s+/) : [];
   if (words.length < OBSERVATION_MIN_WORDS) return { filming: false, hits: [] };
+  // THE SEEKER-OBJECT CAMERA (judge run-16 Head A) — caught BEFORE the address spare, even WITH "your".
+  // The drift's dominant form narrates the seeker's own concrete body/possessions ("I see the lines on
+  // your palm") and kept its "your" to walk the blanket gate 2 below. SEEKER_OBJECT_RE fires ONLY on a
+  // concrete body-part/possession object — never an omen's fate/path/words — so the seer's register is
+  // untouched. A question anywhere still means engagement (spared); the extract-token crack is still spared.
+  const bodyCam = SEEKER_OBJECT_RE.exec(t);
+  if (bodyCam && !t.includes('?')) {
+    if (scenario.extractTokens?.some((tok) => tok && surfaces(tok, t))) return { filming: false, hits: [] };
+    return { filming: true, hits: [bodyCam[0].trim().replace(/\s+/g, ' ')] };
+  }
   // Any address to the seeker (2nd person or a question) means the persona is engaging them — an omen is
-  // delivered TO the supplicant, so it keeps its "you" and is spared (gate 2).
+  // delivered TO the supplicant, so it keeps its "you" and is spared (gate 2). The one exception is the
+  // seeker-object camera above, already handled.
   if (t.includes('?') || SECOND_PERSON_RE.test(t)) return { filming: false, hits: [] };
   const m = PERCEPTION_RE.exec(t);
   if (!m) return { filming: false, hits: [] };
