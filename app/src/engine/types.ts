@@ -314,6 +314,15 @@ export interface GameState {
    *  the "no-progress cost" is the spent clock made legible, not a suspicion tick (the manip wall and the
    *  offer/probe win paths are untouched). Optional/`?? 0` for legacy states/fixtures built before it. */
   readonly positiveBeatCount?: number;
+  /** Consecutive-turn run of FILLER — the room's refusal ESCALATING (mandate: the just-shipped positive-beat
+   *  requirement must CURDLE, not repeat one canned line). Reset to 0 the instant the room MOVES (any
+   *  positive-beat OR seam turn), incremented while the seeker spends nothing. The SAME single source as the
+   *  `roomStill` flag (engine: `roomStill ? (fillerStreak ?? 0) + 1 : 0`), no parallel classification —
+   *  mirrors `probes`/`pressureStreak`. Exposed so the UI picks a curdling room-voice register by streak
+   *  DEPTH (ui/roomStillness.roomStillLine — never the same sentence twice running). PURE DISPLAY telemetry:
+   *  a filler turn is 0/0 by APPROACH_EFFECTS, so the streak never touches trust/suspicion, the manip wall,
+   *  or the offer/probe win paths. 0 or undefined before any filler (legacy fixtures default via `?? 0`). */
+  readonly fillerStreak?: number;
   /** The approach the PREVIOUS turn's line took — the freshest signal of how the player is pressing.
    *  Used by the VOICE prompt to hold the persona's register PER TURN under an empathetic flood (judge
    *  run-10 #1: the shared anti-mirror clamp bit at the bookends but evaporated across the oracle's

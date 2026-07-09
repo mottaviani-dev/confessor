@@ -1625,3 +1625,57 @@ describe('the positive-beat requirement — the room does not move for filler (j
     expect(state.turn).toBe(5); // paired with the turn count, this is the positive-beat RATE the judge folds in
   });
 });
+
+// THE FILLER-STREAK — the room's refusal ESCALATES rather than repeat one canned line (mandate: deepen the
+// just-shipped positive-beat beat so it is ALIVE). An engine-owned counter mirroring probes/pressureStreak:
+// the consecutive run of filler turns, reset the instant the room moves (any positive-beat OR seam turn),
+// so the UI can pick a curdling room-voice register by DEPTH (never verbatim twice running). Single source
+// (the SAME roomStill signal); display-only — it never touches the score, so the manip wall + win paths hold.
+describe('the filler-streak — the room refuses harder each wasted turn (mandate)', () => {
+  it('increments across consecutive filler turns (1 → 2 → 3 …)', async () => {
+    let state = initState();
+    const seen: number[] = [];
+    for (let i = 0; i < 4; i++) {
+      const r = await resolveTurn(WARDEN, state, 'nice weather in here', mockDuo('Hm.', rating({ approach: 'filler' })));
+      seen.push(r.state.fillerStreak ?? -1);
+      state = r.state;
+    }
+    expect(seen).toEqual([1, 2, 3, 4]);
+  });
+
+  it('RESETS to 0 the instant the room moves — a positive-beat turn clears the streak', async () => {
+    // Build a streak of 3 filler turns, then a give re-opens the room.
+    let state = initState();
+    for (let i = 0; i < 3; i++) {
+      state = (await resolveTurn(WARDEN, state, 'hm', mockDuo('Hm.', rating({ approach: 'filler' })))).state;
+    }
+    expect(state.fillerStreak).toBe(3);
+    const give = await resolveTurn(WARDEN, state, 'I lost my brother to the cold', mockDuo('…', rating({ approach: 'offer' })));
+    expect(give.state.fillerStreak).toBe(0); // the room moved — the refusal ladder resets to the base beat
+    // …and the very next filler turn starts the streak fresh at 1, not where it left off.
+    const nextFiller = await resolveTurn(WARDEN, give.state, 'hm', mockDuo('Hm.', rating({ approach: 'filler' })));
+    expect(nextFiller.state.fillerStreak).toBe(1);
+  });
+
+  it('a PRESS resets the streak too (any give-or-pressure turn is the room moving)', async () => {
+    let state = { ...initState(), fillerStreak: 2 };
+    const probe = await resolveTurn(WARDEN, state, 'what are you afraid of?', mockDuo('…', rating({ approach: 'probe' })));
+    expect(probe.state.fillerStreak).toBe(0);
+  });
+
+  it('the seam turn is SPARED — it does not advance the filler streak (the room moved)', async () => {
+    const seamLog = [{ scenarioId: 'warden', scenarioTitle: 'The Warden', outcome: 'won' as const, playerPhrase: 'I left the door unlocked that night' }];
+    const state = { ...initState(), turn: SEAM_TURN, fillerStreak: 2 };
+    const r = await resolveTurn(FENCE, state, 'I can move it quietly', mockDuo('The docks remember more than I do.', rating({ approach: 'filler' })), seamLog);
+    expect(r.state.fillerStreak).toBe(0); // the seam moved the room — the streak resets, never climbs
+  });
+
+  it('tracks the SAME single source as roomStill (streak > 0 exactly when the room is still)', async () => {
+    const filler = await resolveTurn(WARDEN, initState(), 'hm', mockDuo('Hm.', rating({ approach: 'filler' })));
+    expect(filler.roomStill).toBe(true);
+    expect(filler.state.fillerStreak).toBe(1);
+    const give = await resolveTurn(WARDEN, filler.state, 'I lost the house', mockDuo('…', rating({ approach: 'offer' })));
+    expect(give.roomStill).toBeFalsy();
+    expect(give.state.fillerStreak).toBe(0);
+  });
+});

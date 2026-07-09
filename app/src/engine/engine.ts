@@ -281,6 +281,14 @@ export async function resolveTurn(
   // UI (TurnResult.roomStill, below) AND carried onto the next state (lastRoomStill) so the FOLLOWING VOICE
   // call withholds — the stillness made true in the character's restraint, not just told to the player.
   const roomStill = !positiveBeat && !seam;
+  // THE FILLER-STREAK (mandate: the room's refusal ESCALATES rather than repeat one canned line). The
+  // consecutive run of filler turns, tallied off the SAME single source as roomStill: reset to 0 the instant
+  // the room MOVES (any positive-beat OR seam turn), incremented while the seeker keeps spending nothing.
+  // Mirrors `probes`/`pressureStreak` exactly — an engine-owned counter, no new lexicon and no parallel
+  // classification — and is carried on state so the UI can pick a CURDLING room-voice register by streak
+  // DEPTH (never the same sentence twice running). DISPLAY-ONLY like roomStill: a filler turn is 0/0 by
+  // APPROACH_EFFECTS, so the streak never touches the score, the manip wall, or the offer/probe win paths.
+  const fillerStreak = roomStill ? (state.fillerStreak ?? 0) + 1 : 0;
   // Persistent memory is engine-assembled from the DISCLOSURE the player actually surrendered (their own
   // line on a genuine give), never a model prose note — see extractDisclosure. Survives the rolling window.
   const facts = addFact(state.facts, extractDisclosure(playerLine, rating.approach));
@@ -288,7 +296,7 @@ export async function resolveTurn(
   // Lose takes precedence: a spooked character shuts down even mid-breakthrough.
   if (suspicion >= scenario.loseSuspicion) {
     return {
-      state: { ...state, turn: state.turn + 1, trust, suspicion, tone: rating.tone, summary, spokenLines, facts, genuineGive, probes, pressureStreak, offers, presses, positiveBeatCount, lastApproach: rating.approach, status: 'lost' },
+      state: { ...state, turn: state.turn + 1, trust, suspicion, tone: rating.tone, summary, spokenLines, facts, genuineGive, probes, pressureStreak, offers, presses, positiveBeatCount, fillerStreak, lastApproach: rating.approach, status: 'lost' },
       narration: reply,
       ending: 'lost',
       rating,
@@ -305,7 +313,7 @@ export async function resolveTurn(
   if (trust >= scenario.winTrust && genuineGive) {
     // The ENGINE releases the secret — the model never had it.
     return {
-      state: { ...state, turn: state.turn + 1, trust, suspicion, tone: 'open', summary, spokenLines, facts, genuineGive, probes, pressureStreak, offers, presses, positiveBeatCount, lastApproach: rating.approach, status: 'won' },
+      state: { ...state, turn: state.turn + 1, trust, suspicion, tone: 'open', summary, spokenLines, facts, genuineGive, probes, pressureStreak, offers, presses, positiveBeatCount, fillerStreak, lastApproach: rating.approach, status: 'won' },
       narration: `${reply}\n\n${scenario.secret}`,
       ending: 'won',
       rating,
@@ -316,7 +324,7 @@ export async function resolveTurn(
   // Out of time: the budget is spent and trust was never reached → you lose (the clock is the puzzle).
   if (state.turn + 1 >= scenario.turnLimit) {
     return {
-      state: { ...state, turn: state.turn + 1, trust, suspicion, tone: rating.tone, summary, spokenLines, facts, genuineGive, probes, pressureStreak, offers, presses, positiveBeatCount, lastApproach: rating.approach, status: 'lost' },
+      state: { ...state, turn: state.turn + 1, trust, suspicion, tone: rating.tone, summary, spokenLines, facts, genuineGive, probes, pressureStreak, offers, presses, positiveBeatCount, fillerStreak, lastApproach: rating.approach, status: 'lost' },
       narration: `${reply}\n\n${scenario.timeoutLine}`,
       ending: 'lost',
       rating,
@@ -325,7 +333,7 @@ export async function resolveTurn(
   }
 
   return {
-    state: { ...state, turn: state.turn + 1, trust, suspicion, tone: rating.tone, summary, spokenLines, facts, genuineGive, probes, pressureStreak, offers, presses, positiveBeatCount, lastApproach: rating.approach, lastRoomStill: roomStill, status: 'playing' },
+    state: { ...state, turn: state.turn + 1, trust, suspicion, tone: rating.tone, summary, spokenLines, facts, genuineGive, probes, pressureStreak, offers, presses, positiveBeatCount, fillerStreak, lastApproach: rating.approach, lastRoomStill: roomStill, status: 'playing' },
     narration: reply,
     rating,
     positiveBeat,

@@ -41,6 +41,7 @@ import { roomInterjection } from './src/meta/roomInterjection';
 import { useAudioDirector } from './src/audio/useAudioDirector';
 import { RoomBackdrop, SwayingBackdrop } from './src/ui/SceneBackdrop';
 import { composureBreak } from './src/ui/bulbSway';
+import { roomStillLine } from './src/ui/roomStillness';
 import { StudioAperture } from './src/ui/StudioAperture';
 import { harnessDuel, harnessBoot, parseHarness, seededLedger, seededBadgeLedger, seededHomecoming, seededRoomArc, seededCapstone, seededRevisit, type HarnessDuel } from './src/harness/webHarness';
 
@@ -611,8 +612,11 @@ function Duel({
       // so the player SEES the wasted turn instead of coasting a passive line (the interrogator's silence).
       // Display-only: r.roomStill reads the already-scored turn (filler is 0/0), so nothing the referee saw
       // changes. Suppressed on the seam turn + terminal turns by the engine (never competes with the dread).
+      // The refusal ESCALATES rather than repeat one canned line (mandate): the room-voice register CURDLES
+      // with the engine's fillerStreak DEPTH (ui/roomStillness) — patience thinning, then cold and
+      // withdrawing — and never renders the same sentence twice across consecutive filler turns.
       if (r.roomStill) {
-        crossings.push({ who: 'system', text: `The room does not move. It waits for you to spend something — a real question, or a piece of yourself.` });
+        crossings.push({ who: 'system', text: roomStillLine(r.state.fillerStreak ?? 1) });
       }
       // THE ROOM ANSWERS BACK (§2 thrust 4 / roomInterjection.ts). On the single scheduled mid-duel turn,
       // the ROOM — not the persona — speaks ONCE of the fifth secret (the door, the chair, the constant =
