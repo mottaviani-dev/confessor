@@ -165,6 +165,23 @@ export interface Scenario {
    *  no double reveal). Cleared to `undefined` by `applyRevisit` on a second visit (the revisit secret is
    *  self-contained; a base sliver would mismatch it). */
   readonly revealByPath?: { readonly empathy: string; readonly pressure: string };
+  /** OPTIONAL deeper-give SECOND-TIER reveal (Branch-A content depth — judge run-17: content-hours 1.62h vs
+   *  the ≥3h §7 launch bar; "deeper per-scenario branching, not a 6th scenario"). The thing UNDER the first
+   *  secret — a deeper cut the mind surrenders ONLY to a seeker whose duel was carried by giving that
+   *  decisively outweighed pressure (meta/endgame.deepGive: cumulative `offers` ≥ `presses` + a margin, read
+   *  off the SAME score-neutral telemetry `revealByPath` uses). So a stranger who reaches a mind through
+   *  near-total vulnerability — not one who scraped the win with probing — earns a further revelation in the
+   *  same session: a real reason to play a mind DEEPLY, first-visit content the launch bar wants (distinct
+   *  from the REPLAY-factor `revisit` layer, which is a second VISIT). Woven onto the reveal in `wonScene`
+   *  AFTER the (empathy) path sliver — a deepGive win is always an empathy-path win by construction, so it
+   *  escalates core → empathy reading → deepest cut. DISPLAY-LAYER only, exactly like `revealByPath` /
+   *  `endgameVoice`: never on the scoring path (the win/lose thresholds + the manip wall are untouched — a
+   *  deeper give re-colours the prize, it never gates the win) and NOT corrupted by Grip (the mind gives it
+   *  clean, the parting word, like the path sliver). Engine-owned + banned-word clean (§1 P3). Omitted for a
+   *  mind with no authored deeper layer — the reveal then stands at the core + sliver. Cleared to `undefined`
+   *  by `applyRevisit` on a second visit (the revisit reveal is self-contained; a first-secret deeper cut
+   *  woven onto it would misquote — same rule as `revealByPath`). */
+  readonly deeperSecret?: string;
 }
 
 export type Tone = 'hostile' | 'guarded' | 'wary' | 'softening' | 'open';

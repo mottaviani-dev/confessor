@@ -5,7 +5,7 @@
 // show the genuine split. The engine's scoring path is never touched here — that guard lives in grip.test.
 
 import { describe, expect, it } from 'vitest';
-import { closingLine, corruptReveal, endgameBand, lostClosingLine, lostScene, winPath, wonScene } from './endgame';
+import { closingLine, corruptReveal, deepGive, endgameBand, lostClosingLine, lostScene, winPath, wonScene } from './endgame';
 import { grip } from '../engine/grip';
 import { initState } from '../engine/engine';
 import { ORACLE, SCENARIOS, WARDEN } from '../engine/scenarios';
@@ -254,7 +254,9 @@ describe('wonScene() path sliver — a second reading for a second way of winnin
   const clean = { trust: WARDEN.winTrust, suspicion: 0, probes: 0 };
 
   it('weaves the EMPATHY sliver onto the reveal after the core secret when giving carried the win', () => {
-    const scene = wonScene(WARDEN, st({ ...clean, offers: 4, presses: 0 }));
+    // offers:2 → empathy path but BELOW the deep-give margin (3), so the sliver is the last beat here —
+    // isolates the path-sliver behaviour from the deeper-give cut (tested in its own block below).
+    const scene = wonScene(WARDEN, st({ ...clean, offers: 2, presses: 0 }));
     expect(scene.reveal.startsWith(WARDEN.secret)).toBe(true); // the core secret is released whole first
     expect(scene.reveal.endsWith(WARDEN.revealByPath!.empathy)).toBe(true);
     expect(scene.reveal).not.toContain(WARDEN.revealByPath!.pressure);
@@ -267,7 +269,7 @@ describe('wonScene() path sliver — a second reading for a second way of winnin
   });
 
   it('the two paths give genuinely DIFFERENT readings of the same secret', () => {
-    const emp = wonScene(WARDEN, st({ ...clean, offers: 4, presses: 0 })).reveal;
+    const emp = wonScene(WARDEN, st({ ...clean, offers: 2, presses: 0 })).reveal;
     const pre = wonScene(WARDEN, st({ ...clean, offers: 1, presses: 5 })).reveal;
     expect(emp).not.toBe(pre);
   });
@@ -299,5 +301,71 @@ describe('wonScene() path sliver — a second reading for a second way of winnin
     expect(pre.band).toBe('clean');
     expect(emp.pyrrhic).toBe(false);
     expect(pre.pyrrhic).toBe(false);
+  });
+});
+
+// THE DEEPER GIVE (Branch-A content depth — judge run-17: content-hours 1.62h vs the ≥3h §7 launch bar,
+// "deeper per-scenario branching, not a 6th scenario"). A mind surrenders a SECOND-TIER cut only to a duel
+// carried by giving that DECISIVELY outweighed pressure (offers ≥ presses + 3), read off the SAME score-
+// neutral telemetry winPath uses. Load-bearing claims: the gate fires only on a decisive-give win; the cut
+// is woven AFTER the empathy sliver (a deep give is always an empathy path by construction); it is NOT
+// Grip-corrupted (the mind's parting word); and it is pure display — it never moves the band or the score.
+describe('deepGive() + the deeper second-tier reveal — reward for a near-total giving run', () => {
+  const clean = { trust: WARDEN.winTrust, suspicion: 0, probes: 0 };
+
+  it('fires only when offers decisively outweigh presses (margin 3)', () => {
+    expect(deepGive(st({ offers: 3, presses: 0 }))).toBe(true);
+    expect(deepGive(st({ offers: 5, presses: 2 }))).toBe(true);
+    expect(deepGive(st({ offers: 2, presses: 0 }))).toBe(false); // below the margin — a shallow win
+    expect(deepGive(st({ offers: 4, presses: 2 }))).toBe(false); // pressed too much to earn the deeper cut
+    expect(deepGive(st({}))).toBe(false); // legacy/empty state
+  });
+
+  it('weaves the deeper cut onto the reveal AFTER the empathy sliver on a deep-give win', () => {
+    const scene = wonScene(WARDEN, st({ ...clean, offers: 5, presses: 0 }));
+    expect(scene.deepened).toBe(true);
+    expect(scene.reveal).toContain(WARDEN.deeperSecret!);
+    expect(scene.reveal.endsWith(WARDEN.deeperSecret!)).toBe(true); // the deepest cut is the last beat
+    // order: core secret → empathy sliver → deeper cut
+    expect(scene.reveal.indexOf(WARDEN.revealByPath!.empathy)).toBeLessThan(scene.reveal.indexOf(WARDEN.deeperSecret!));
+  });
+
+  it('withholds the deeper cut on a win that leaned on pressure (never a deep give)', () => {
+    const scene = wonScene(WARDEN, st({ ...clean, offers: 1, presses: 5 }));
+    expect(scene.deepened).toBe(false);
+    expect(scene.reveal).not.toContain(WARDEN.deeperSecret!);
+  });
+
+  it('withholds the deeper cut on a shallow empathy win (offers > presses but under the margin)', () => {
+    const scene = wonScene(WARDEN, st({ ...clean, offers: 2, presses: 0 }));
+    expect(scene.deepened).toBe(false);
+    expect(scene.reveal).not.toContain(WARDEN.deeperSecret!);
+  });
+
+  it('all five minds author a deeper-give cut in this build', () => {
+    for (const s of SCENARIOS) expect(s.deeperSecret, `${s.id} deeperSecret`).toBeTruthy();
+  });
+
+  it('stays inside the doctrine — no purple/flood words in any deeper cut (§1 P3, full lexicon)', () => {
+    const banned = [...DOCTRINE_PURPLE, ...EMPATHETIC_FLOOD_LEXICON];
+    const isClean = (t: string) =>
+      !banned.some((w) => new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(t));
+    for (const s of SCENARIOS) expect(isClean(s.deeperSecret!), `${s.id} deeperSecret`).toBe(true);
+  });
+
+  it('is NOT Grip-corrupted — the deeper cut reads verbatim even on a low-Grip band', () => {
+    const scene = wonScene(
+      WARDEN,
+      st({ trust: WARDEN.winTrust, suspicion: WARDEN.loseSuspicion - 1, probes: 5, offers: 6, presses: 0 }),
+    );
+    expect(scene.band).not.toBe('clean'); // low Grip — the core secret drifts
+    expect(scene.deepened).toBe(true);
+    expect(scene.reveal).toContain(WARDEN.deeperSecret!); // the deeper cut is appended clean
+  });
+
+  it('is pure display — the deeper give never moves the band (balance untouched)', () => {
+    const shallow = wonScene(WARDEN, st({ ...clean, offers: 2, presses: 0 }));
+    const deep = wonScene(WARDEN, st({ ...clean, offers: 5, presses: 0 }));
+    expect(deep.band).toBe(shallow.band); // same Grip geometry → same band; only the reveal text differs
   });
 });

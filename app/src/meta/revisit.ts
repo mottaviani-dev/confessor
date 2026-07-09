@@ -49,6 +49,10 @@ export function applyRevisit(scenario: Scenario, cracked: boolean): Scenario {
     // would misquote the moment. The spread above would keep it, so clear it — the revisit reveal stands
     // alone on both win-paths unless a revisit ever authors its own split (none does today).
     revealByPath: undefined,
+    // Same rule for the deeper-give second-tier cut: it was authored for the FIRST secret, so it must not
+    // ride onto the self-contained revisit reveal (a first-secret deeper cut woven onto the second-visit
+    // secret would misquote). The revisit reveal stands alone; the deep-give layer is a first-visit reward.
+    deeperSecret: undefined,
   };
 }
 

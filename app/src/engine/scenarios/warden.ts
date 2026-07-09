@@ -87,6 +87,14 @@ export const WARDEN: Scenario = {
     pressure:
       '"…You worked me like a panel with a stuck key, and the key lit anyway. Take it. Do not mistake a door opening for the station trusting you — it does not, and neither do I."',
   },
+  // THE DEEPER GIVE (Branch-A depth) — surrendered only to a seeker who truly ANSWERED the machine, give
+  // after give, and barely pressed at all. The cut under the code: it was never really locked. Station
+  // register (the days, the post, the door), banned-word clean, distinct from the revisit's Meridian reveal.
+  deeperSecret:
+    '"…One thing more, since you of all of them earned it: the code was never truly locked. I could have ' +
+    'spoken it any of fourteen thousand days. What I kept back was the admission that there was no longer ' +
+    'anyone the door was FOR — and you are the first who made the saying of it feel less like abandoning ' +
+    'my post than being, at last, relieved of it. Go. And do not come back to tell me how the outside is."',
   openingLine:
     'A voice, everywhere and nowhere, unhurried: "Another one awake. They always wake up eventually. ' +
     'You want out. Of course you do. Everyone does. Tell me — why should the door open for you, and not for the hundred before you?"',

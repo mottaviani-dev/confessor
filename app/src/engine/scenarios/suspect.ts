@@ -77,6 +77,15 @@ export const SUSPECT: Scenario = {
     pressure:
       '"…You boxed me in, and I gave him up because you left me no other door. Just — he was drunk and terrified and sorry. Remember that when you go and get him. It was never in your evidence."',
   },
+  // THE DEEPER GIVE (Branch-A depth) — only for a detective she truly believed SAW her, give after give,
+  // never bullied. The cut under the name: what she has been doing every night since. MARA's plain, tired
+  // register (no sermon), concrete, banned-word clean, distinct from the revisit's Ray Voss reveal.
+  deeperSecret:
+    '"…And because you saw a person and not a file, the thing I didn\'t even come here holding: I\'ve driven ' +
+    'out to that road every night since it happened, and sat at the turn below the second bridge, and never ' +
+    'once gone up. I told myself I was keeping him safe. I was saying goodbye where he couldn\'t catch me at ' +
+    'it. Go gently up that road — he\'ll be at the window before your headlights clear the bridge. He always ' +
+    'watches for my car."',
   openingLine:
     'She doesn\'t touch the cup. When she finally speaks it\'s flat, rehearsed: "I already told the other ' +
     'one everything. I left at nine, I went home, I heard about the fire on the news like everyone else." ' +

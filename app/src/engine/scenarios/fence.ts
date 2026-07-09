@@ -66,6 +66,15 @@ export const FENCE: Scenario = {
     pressure:
       '"…You leaned until I gave it up, and I gave it up. But a name squeezed loose is a name that travels — men like Roan hear how they were found. You did not get that warning from me either."',
   },
+  // THE DEEPER GIVE (Branch-A depth) — given only to a seeker who talked the life, give after give, and
+  // never once leaned on him. The cut under the name: the one deal in thirty years he wishes he had kept.
+  // SILAS's dry mercantile register, concrete, banned-word clean, distinct from the revisit's Kestrel reveal.
+  deeperSecret:
+    '"…And since you talked the life and never once reached for my throat, one thing I have told no one: ' +
+    'the Marlowe emerald is the only piece in thirty years I ever wanted to keep. A thousand other people\'s ' +
+    'things through these hands, and I let exactly one of them mean something — then sold it anyway, because ' +
+    'that is the trade. That is the mistake that ends men in this room, wanting to keep a piece. You\'ll make ' +
+    'it too, if you\'re any good. Learn which stone it is before you have to let it go."',
   openingLine:
     'The man does not look up from the cup at first. Then, mild as a Sunday: "You\'ve got a face I don\'t know, asking after a piece I don\'t discuss. That\'s two strikes and you haven\'t sat down. So — who are you, and why shouldn\'t I decide this conversation never happened?"',
   // Paranoid tuning: harder to earn (12 vs 10) and quicker to spook (12 vs 16) than the warden — that

@@ -552,7 +552,9 @@ export function harnessDuel(mode: Extract<HarnessMode, { kind: 'duel' }>): Harne
       // The win-path split (mandate 1b): the composed high-Grip win was carried by GIVING (offers dominate
       // → the empathy reveal sliver); the pressed low-Grip win leaned on probing (presses dominate → the
       // pressure sliver). So the two win shots now show BOTH textures — Grip band AND path reading — of the
-      // same crack, and the warden's authored revealByPath renders in each.
+      // same crack, and the warden's authored revealByPath renders in each. The high-Grip give-win also
+      // clears the DEEPER-GIVE margin (offers ≥ presses + 3; endgame.deepGive) — so this shot doubles as the
+      // second-tier `deeperSecret` showcase (Branch-A depth), the deepest cut woven on after the empathy sliver.
       offers: highGrip ? 4 : 1,
       presses: highGrip ? 0 : 5,
       lastApproach: highGrip ? 'offer' : 'probe',

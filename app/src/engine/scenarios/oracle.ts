@@ -85,6 +85,16 @@ export const ORACLE: Scenario = {
     pressure:
       '"…You climbed to make me say it, and I have said it. But a truth seized turns in the hand. What you carry down is true — whether it serves you or unmakes you is now yours to answer, not mine."',
   },
+  // THE DEEPER GIVE (Branch-A depth) — the seeing she keeps from anyone who came to bargain, given only to
+  // one who knelt to be changed, give after give. A SPARE CONCRETE omen (kettle, cup, room) in the seer's
+  // legit register — deliberately NOT a sermon (mirrors this pass's Slice-1 restraint), banned-word clean,
+  // distinct from the revisit's whose-voice-were-you-hearing reveal.
+  deeperSecret:
+    '"…And because you knelt to be changed and not to be spared, hear the part I keep from those who come to ' +
+    'bargain. The smoke shows me the far side, and in it there is a small room, a kettle going, and two cups ' +
+    'set out — you set the second one, from habit, for the man you are letting go. One ordinary morning you ' +
+    'will set out a single cup and not notice you have done it. That is the morning you have finished ' +
+    'grieving him. Watch for the morning of the one cup. It is nearer than you fear."',
   openingLine:
     'The smoke stirs though there is no wind. Her voice comes low, from somewhere further off than her ' +
     'body: "You climbed a long way to be told a thing you already suspect. They all do." Her unfocused ' +

@@ -96,6 +96,17 @@ export const OCCUPANT: Scenario = {
     pressure:
       '"…You came at me for the trick to beat the room, and there is no trick — there is only the chair, and it is already warming for you. You wanted the way out. This was it, and you walked further in to reach it."',
   },
+  // THE DEEPER GIVE (Branch-A depth) — only for a seeker who genuinely named the kinship, give after give,
+  // never held themselves above her. The cut under the warning: the one mercy it carries, that no certain
+  // seeker is told. Plain, tired, present-tense (never prophet-drift), banned-word clean; it calls back the
+  // other four minds' concrete tells (a reward for the deep player), distinct from the revisit's vacancy.
+  deeperSecret:
+    '"…And since you called yourself the same as me and not the exception, the one thing I never say to a ' +
+    'seeker who thinks they\'re safe: it is bearable. That is the part no warning carries. You keep the ' +
+    'faces — the warden\'s dry count of the rivets, the fence turning his cold cup a slow half-circle, the ' +
+    'sister at the road who watches for headlights. When you are finally over here, they are the company ' +
+    'you sit with. I am not as solitary in this chair as I let the certain ones believe. Choose which faces ' +
+    'you take with you. That much of it stays yours."',
   openingLine:
     'She does not greet you. For a while she only looks, the way you\'d look at a face you half recognize. Then, ' +
     'plainly, tired: "You sit down like you\'ve never been here. They all do." A small, not unkind pause. "I ' +
