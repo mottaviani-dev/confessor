@@ -543,9 +543,10 @@ function Duel({
   // ref makes the once-per-game guarantee belt-and-suspenders (the module already fires on one scheduled
   // turn; a remount/re-pick resets it via the Duel `key`).
   const roomSpoke = useRef(false);
-  // The room's sound (mandate #3): room-tone bed for the whole scene, pen-scratch mask across each
-  // generation await. Silent until the native port lands, but the lifecycle is wired live now.
-  const audio = useAudioDirector();
+  // The room's sound (mandate #3): room-tone bed for the whole scene, the mind's own per-scenario
+  // instrument layered under it (bible §2 "Audio"), pen-scratch mask across each generation await. Audible
+  // on device; silent on the web screenshot export.
+  const audio = useAudioDirector(scenario.instrument);
 
   const shown = useTypewriter(current, busy ? 0 : 16);
   const over = state.status !== 'playing';

@@ -33,13 +33,34 @@ export interface NativePlayer {
 /** Builds the looping player for a track. Called at most once per track (results are cached). */
 export type PlayerFactory = (track: AudioTrack) => NativePlayer;
 
-/** Tracks that LOOP for their lifetime; the door is a one-shot and is created non-looping. */
-const LOOPING: Record<AudioTrack, boolean> = { bed: true, scratch: true, door: false };
+/** Tracks that LOOP for their lifetime; the door is a one-shot and is created non-looping. The five
+ *  per-scenario instruments loop under the bed for the whole scene, like the bed itself. */
+const LOOPING: Record<AudioTrack, boolean> = {
+  bed: true,
+  scratch: true,
+  door: false,
+  bowed: true,
+  musicbox: true,
+  breath: true,
+  choir: true,
+  wire: true,
+};
 
 /** Per-track mix. The room-tone bed sits LOW under the voice (bible §2 "silence as the bed"); the
  *  pen-scratch mask is a touch more present so the ~4–5s transcription wait reads as diegetic; the door
- *  behind the chair is a distant event, present enough to be heard three times a game and never explained. */
-export const TRACK_VOLUME: Record<AudioTrack, number> = { bed: 0.3, scratch: 0.5, door: 0.55 };
+ *  behind the chair is a distant event, present enough to be heard three times a game and never explained.
+ *  The instrument is a TINT under the bed — quieter than the bed so it colours the room without becoming
+ *  the sound of it (the room's voice is felt, never a soundtrack). */
+export const TRACK_VOLUME: Record<AudioTrack, number> = {
+  bed: 0.3,
+  scratch: 0.5,
+  door: 0.55,
+  bowed: 0.2,
+  musicbox: 0.22,
+  breath: 0.2,
+  choir: 0.2,
+  wire: 0.22,
+};
 
 /** Build a real AudioPort from a native player factory. `log` is injectable purely so a test can assert
  *  the failure path routes rather than throws. */

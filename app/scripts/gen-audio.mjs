@@ -142,9 +142,149 @@ function doorBehindChair() {
   return out;
 }
 
+// ── PER-SCENARIO INSTRUMENTS ────────────────────────────────────────────────────────────────────────
+// Bible §2 "Audio": one single instrument per mind, layered LOW under the room-tone bed for the whole
+// scene — the sonic twin of the visual `accent`. All 8.0s and seamlessly loopable: the continuous drones
+// (bowed / choir) use only frequencies that complete WHOLE cycles in 8s (a multiple of 1/8 = 0.125Hz) so
+// the waveform meets itself at the seam with no click; the event-based voices (musicbox / breath / wire)
+// decay to silence away from the loop boundary and are edge-windowed. Kept quiet here AND mixed low in
+// nativeAudioPort (TRACK_VOLUME) — a tint that colours the room, never the sound of it. Deterministic
+// (seeded LCG per asset), like the three v1 sounds.
+const IDUR = 8;
+const IN = SR * IDUR;
+
+/** Window the first/last `ms` milliseconds of a buffer to zero — a click-free loop seam for the event
+ *  voices (whose edges are already near-silent). */
+function edgeWindow(out, ms = 12) {
+  const edge = Math.floor((ms / 1000) * SR);
+  for (let j = 0; j < edge; j++) {
+    const g = j / edge;
+    out[j] *= g;
+    out[out.length - 1 - j] *= g;
+  }
+  return out;
+}
+
+// WARDEN — bowed metal. A low, cold drone: fundamental + faint octave + two INHARMONIC partials (the
+// metallic ring of a bowed bar, at ~2.76× and ~5.40× the fundamental, rounded to whole-cycle freqs) under
+// a slow bow-pressure tremolo. Continuous — no gaps — so seamlessness rides on the whole-cycle frequencies.
+function bowedMetal() {
+  const out = new Float32Array(IN);
+  for (let i = 0; i < IN; i++) {
+    const t = i / SR;
+    const f0 = 98; // G2 — 784 whole cycles in 8s
+    let s = 0.06 * Math.sin(2 * Math.PI * f0 * t);
+    s += 0.03 * Math.sin(2 * Math.PI * (f0 * 2) * t); // faint octave for body
+    s += 0.028 * Math.sin(2 * Math.PI * 270.5 * t); // inharmonic partial ~2.76× (2164 cycles)
+    s += 0.014 * Math.sin(2 * Math.PI * 529.25 * t); // inharmonic partial ~5.40× (4234 cycles)
+    s *= 1 + 0.22 * Math.sin(2 * Math.PI * 0.75 * t); // bow-pressure tremolo (6 cycles — whole)
+    out[i] = s;
+  }
+  return out;
+}
+
+// FENCE — music box. Sparse plucked high tines: a short pentatonic figure, each note a sine + two faint
+// harmonics under a fast exponential decay, spaced with silence between so the room breathes. The last
+// note dies well before the seam.
+function musicBox() {
+  const out = new Float32Array(IN);
+  const notes = [
+    { t: 0.3, f: 1046.5 }, // C6
+    { t: 1.5, f: 1568.0 }, // G6
+    { t: 2.4, f: 1318.5 }, // E6
+    { t: 3.8, f: 1760.0 }, // A6
+    { t: 5.2, f: 1174.7 }, // D6
+    { t: 6.3, f: 1046.5 }, // C6 — resolves, then silence to the seam
+  ];
+  for (const { t: nt, f } of notes) {
+    const start = Math.floor(nt * SR);
+    const len = Math.floor(1.1 * SR);
+    for (let j = 0; j < len && start + j < IN; j++) {
+      const tt = j / SR;
+      const env = Math.exp(-tt / 0.18); // bright pluck, fast decay
+      const body =
+        Math.sin(2 * Math.PI * f * tt) +
+        0.32 * Math.sin(2 * Math.PI * f * 2 * tt) + // tine harmonics
+        0.14 * Math.sin(2 * Math.PI * f * 3 * tt);
+      out[start + j] += 0.11 * env * body;
+    }
+  }
+  return edgeWindow(out);
+}
+
+// SUSPECT — breath. Low band-limited noise (one-pole lowpass) under a slow inhale/exhale envelope — two
+// breaths across the loop, the envelope zero at both ends so the seam is silent. A cornered person's own
+// held breath under the table light.
+function breath() {
+  const out = new Float32Array(IN);
+  const rnd = lcg(0xb2ea7e);
+  let lp = 0;
+  for (let i = 0; i < IN; i++) {
+    const t = i / SR;
+    lp += (rnd() - lp) * 0.045; // one-pole lowpass → soft, airy noise
+    const env = 0.5 - 0.5 * Math.cos(2 * Math.PI * 0.25 * t); // 0→1→0→1→0 over 8s (two breaths, zero ends)
+    out[i] = 0.13 * env * lp;
+  }
+  return edgeWindow(out);
+}
+
+// ORACLE — sine-tone choir. Stacked PURE sines in a bodiless quartal chord, one pair slightly detuned so
+// the whole thing beats slowly (0.5Hz), a faint high shimmer above, a slow tremolo. Continuous and
+// ethereal — whole-cycle freqs keep the seam clean. No trance-word, no voice: just the chord it speaks from.
+function choir() {
+  const out = new Float32Array(IN);
+  const partials = [
+    { f: 220.0, a: 0.05 }, // A3
+    { f: 220.5, a: 0.05 }, // detuned twin → 0.5Hz beat (1764 whole cycles)
+    { f: 293.75, a: 0.04 }, // ~D4 (2350 cycles)
+    { f: 330.0, a: 0.035 }, // E4
+    { f: 440.0, a: 0.02 }, // high shimmer
+  ];
+  for (let i = 0; i < IN; i++) {
+    const t = i / SR;
+    const vib = 1 + 0.004 * Math.sin(2 * Math.PI * 5.5 * t); // faint vibrato (44 cycles)
+    let s = 0;
+    for (const { f, a } of partials) s += a * Math.sin(2 * Math.PI * f * vib * t);
+    s *= 1 + 0.18 * Math.sin(2 * Math.PI * 0.375 * t); // slow swell (3 cycles)
+    out[i] = s;
+  }
+  return out;
+}
+
+// OCCUPANT — struck wire. A low plucked string that rings and dies: fundamental + decaying harmonics with
+// a long exponential tail, struck a few times across the loop and left to decay to silence before the
+// seam. Kinship struck once, the chair remembering a hand that already sat here.
+function struckWire() {
+  const out = new Float32Array(IN);
+  const rnd = lcg(0x217e3a);
+  const strikes = [0.2, 3.0, 5.6];
+  const f0 = 110; // A2
+  for (const st of strikes) {
+    const start = Math.floor(st * SR);
+    const len = Math.floor(2.0 * SR);
+    for (let j = 0; j < len && start + j < IN; j++) {
+      const tt = j / SR;
+      const env = Math.exp(-tt / 0.55); // long ringing decay
+      const body =
+        Math.sin(2 * Math.PI * f0 * tt) +
+        0.5 * Math.exp(-tt / 0.35) * Math.sin(2 * Math.PI * f0 * 2 * tt) + // harmonics decay faster
+        0.28 * Math.exp(-tt / 0.22) * Math.sin(2 * Math.PI * f0 * 3 * tt);
+      const pluck = j < 60 ? 0.4 * rnd() * (1 - j / 60) : 0; // a little attack noise at the strike
+      out[start + j] += 0.12 * env * body + 0.12 * pluck;
+    }
+  }
+  return edgeWindow(out);
+}
+
 writeFileSync(new URL('room-tone.wav', OUT), toWav(roomTone()));
 writeFileSync(new URL('pen-scratch.wav', OUT), toWav(penScratch()));
 writeFileSync(new URL('door.wav', OUT), toWav(doorBehindChair()));
+writeFileSync(new URL('instrument-bowed.wav', OUT), toWav(bowedMetal()));
+writeFileSync(new URL('instrument-musicbox.wav', OUT), toWav(musicBox()));
+writeFileSync(new URL('instrument-breath.wav', OUT), toWav(breath()));
+writeFileSync(new URL('instrument-choir.wav', OUT), toWav(choir()));
+writeFileSync(new URL('instrument-wire.wav', OUT), toWav(struckWire()));
 console.log(
-  'wrote assets/audio/room-tone.wav (8.0s, 60Hz bed + knocks), pen-scratch.wav (1.4s mask loop), and door.wav (2.0s one-shot)',
+  'wrote assets/audio/room-tone.wav (8.0s bed), pen-scratch.wav (1.4s mask), door.wav (2.0s one-shot), and ' +
+    'the 5 per-scenario instruments: instrument-{bowed,musicbox,breath,choir,wire}.wav (8.0s loops)',
 );

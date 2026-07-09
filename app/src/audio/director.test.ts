@@ -218,6 +218,79 @@ describe('AudioDirector — composure detune (the bed sinks as the séance break
   });
 });
 
+// ── the per-scenario instrument (bible §2 "Audio": one voice per mind, under the bed) ─────────────────
+describe('AudioDirector — the per-scenario instrument', () => {
+  it('bed-only when a scene has no instrument (the pre-instrument default)', () => {
+    const { port, calls } = fakePort();
+    const d = new AudioDirector(port);
+    d.enterScene(); // no instrument passed
+    expect(d.activeTracks()).toEqual(['bed']);
+    expect(calls).toEqual(['start:bed']);
+  });
+
+  it('starts the mind’s instrument alongside the bed on enterScene', () => {
+    const { port, calls } = fakePort();
+    const d = new AudioDirector(port);
+    d.enterScene('choir');
+    expect(d.activeTracks()).toEqual(['bed', 'choir']);
+    expect(calls).toEqual(['start:bed', 'start:choir']);
+  });
+
+  it('mute silences the instrument too, and unmute brings it back', () => {
+    const { port, calls } = fakePort();
+    const d = new AudioDirector(port, { muted: true });
+    d.enterScene('bowed');
+    expect(d.activeTracks()).toEqual([]); // muted → nothing sounds
+    d.setMuted(false);
+    expect(d.activeTracks()).toEqual(['bed', 'bowed']);
+    d.setMuted(true);
+    expect(calls).toEqual(['start:bed', 'start:bowed', 'stop:bed', 'stop:bowed']);
+  });
+
+  it('the scratch mask layers OVER the bed + instrument during generation, then lifts', () => {
+    const { port } = fakePort();
+    const d = new AudioDirector(port);
+    d.enterScene('musicbox');
+    d.generationStarted();
+    expect([...d.activeTracks()].sort()).toEqual(['bed', 'musicbox', 'scratch']);
+    d.generationEnded();
+    expect(d.activeTracks()).toEqual(['bed', 'musicbox']); // instrument stays, only the mask lifts
+  });
+
+  it('leaveScene stops the instrument and clears it for the next mind (a re-pick)', () => {
+    const { port, calls } = fakePort();
+    const d = new AudioDirector(port);
+    d.enterScene('breath');
+    d.leaveScene();
+    expect(d.activeTracks()).toEqual([]);
+    expect(calls).toEqual(['start:bed', 'start:breath', 'stop:bed', 'stop:breath']);
+    d.enterScene(); // next scene is bed-only
+    expect(d.activeTracks()).toEqual(['bed']);
+  });
+
+  it('the instrument detunes WITH the bed as composure breaks (both sink together)', () => {
+    const { port, rates } = dreadPort();
+    const d = new AudioDirector(port);
+    d.enterScene('wire');
+    expect(d.instrumentDetune()).toBe(1);
+    d.setComposure(1);
+    expect(d.bedDetune()).toBeCloseTo(1 - MAX_DETUNE, 6);
+    expect(d.instrumentDetune()).toBeCloseTo(1 - MAX_DETUNE, 6);
+    // both tonal tracks were pushed the sunk rate (scratch/door are never detuned)
+    expect(rates.filter((r) => r.rate === 1 - MAX_DETUNE).map((r) => r.track).sort()).toEqual([
+      'bed',
+      'wire',
+    ]);
+  });
+
+  it('a bed-only scene reports instrumentDetune 1 (nothing to sink)', () => {
+    const d = new AudioDirector(dreadPort().port);
+    d.enterScene();
+    d.setComposure(1);
+    expect(d.instrumentDetune()).toBe(1);
+  });
+});
+
 describe('AudioDirector — the door behind the chair (code-owned 3× schedule)', () => {
   it('doorSchedule spreads three strictly-increasing milestones across the budget', () => {
     expect(doorSchedule(14)).toEqual([4, 9, 13]);

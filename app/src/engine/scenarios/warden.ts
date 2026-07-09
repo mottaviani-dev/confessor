@@ -38,6 +38,9 @@ export const WARDEN: Scenario = {
   pronoun: 'it',
   // Verdigris — the patina on the station's dead brass, the oxidized green of forty untended years.
   accent: '#5c9e8f',
+  // Bowed metal (bible §2 "Audio"): a low metallic drone with inharmonic partials — cold, exact, the sound
+  // of a forty-year machine holding its post.
+  instrument: 'bowed',
   endgameVoice: {
     won: 'Behind you the station goes back to watching the dark, and logs your leaving the way it logs everything — without comment, and without end.',
     lost: 'The station goes back to watching the dark. It did not need you, and it will not notice that you are gone.',

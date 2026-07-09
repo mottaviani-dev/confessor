@@ -6,17 +6,32 @@
 // change, so it is exhaustively unit-testable with a fake port and the real (expo-audio) port is a
 // trivial adapter that can be swapped without touching this logic.
 //
-// Three sounds now (assets in `assets/audio/`, synthesized by scripts/gen-audio.mjs):
+// Sounds now (assets in `assets/audio/`, synthesized by scripts/gen-audio.mjs):
 //   - 'bed'     = room-tone (60Hz hum + distant pipe knock), loops for the whole scene, LOW. It DETUNES
 //                 as composure breaks (mandate #2 / bible §2 "room tone that detunes as Composure falls",
 //                 Principle 4 — the engine changes what the player senses as the séance comes apart).
+//   - an INSTRUMENT ('bowed'|'musicbox'|'breath'|'choir'|'wire') = the room's single per-scenario voice
+//                 (bible §2 "Audio": one instrument per mind), layered LOW under the bed for the whole
+//                 scene and detuning WITH the bed as composure breaks. Which one is scenario data
+//                 (`Scenario.instrument`), passed to `enterScene`; a scene with no instrument runs on the
+//                 bed alone. This is the sonic twin of the visual `accent` — each mind sounds distinct.
 //   - 'scratch' = pen-scratch, loops ONLY while the model is generating — the ~4–5s wait rendered as
 //                 diegetic transcription (bible §2 "make the wait diegetic").
 //   - 'door'    = the door behind the chair (bible §2 key sound asset) — a ONE-SHOT heard exactly three
 //                 times per full game on a CODE-owned schedule (never model-triggered), never explained.
 // The mute switch silences everything and is honored on every transition.
 
-export type AudioTrack = 'bed' | 'scratch' | 'door';
+import type { InstrumentVoice } from '../engine/types';
+
+export type AudioTrack = 'bed' | 'scratch' | 'door' | InstrumentVoice;
+
+/** Every per-scenario instrument (bible §2 "Audio"). The full set is what the director reconciles over, so
+ *  an instrument is never orphaned when the scene state clears it. */
+const INSTRUMENTS: readonly InstrumentVoice[] = ['bowed', 'musicbox', 'breath', 'choir', 'wire'];
+
+/** The tonal tracks that sag with composure (Principle 4): the bed and every instrument. The pen-scratch
+ *  (a noise texture) and the door (a one-shot) never detune. */
+const TONAL_TRACKS: readonly AudioTrack[] = ['bed', ...INSTRUMENTS];
 
 /** The platform mouth. `start`/`stop` are idempotent from the director's side — it only ever calls `start`
  *  on a track it believes is stopped, and `stop` on one it believes is playing, so an adapter may treat
@@ -59,16 +74,25 @@ type DirectorState = {
   muted: boolean;
   sceneActive: boolean;
   generating: boolean;
-  /** Composure-break level, 0 (calm) → 1 (the séance fully unravelled). Drives the bed detune. */
+  /** Composure-break level, 0 (calm) → 1 (the séance fully unravelled). Drives the bed + instrument detune. */
   composure: number;
+  /** The room's per-scenario instrument for this scene, or null (bed-only). Set on enterScene, cleared on
+   *  leaveScene — one director per scene mount, so it is stable for the director's life. */
+  instrument: InstrumentVoice | null;
 };
 
 export class AudioDirector {
-  private state: DirectorState = { muted: false, sceneActive: false, generating: false, composure: 0 };
+  private state: DirectorState = {
+    muted: false,
+    sceneActive: false,
+    generating: false,
+    composure: 0,
+    instrument: null,
+  };
   private readonly playing = new Set<AudioTrack>();
-  /** The bed rate last pushed to the port — so detune updates are idempotent (no spamming setRate). null
-   *  = the port holds no rate (bed stopped); a restart re-applies. */
-  private bedRate: number | null = null;
+  /** The detune rate last pushed to each tonal track — so updates are idempotent (no spamming setRate).
+   *  A track absent from the map holds no rate (stopped); a restart re-applies. */
+  private readonly rates = new Map<AudioTrack, number>();
   /** Door schedule state: the turn budget it was computed for, the milestone turns, and how many have
    *  fired. Door fires are evaluated ONLY in markTurn (never on unmute) so it can never stack or replay. */
   private doorLimit = 0;
@@ -79,17 +103,19 @@ export class AudioDirector {
     if (opts?.muted) this.state.muted = true;
   }
 
-  /** The scene mounted — start the room-tone bed (unless muted). */
-  enterScene(): void {
-    this.set({ sceneActive: true });
+  /** The scene mounted — start the room-tone bed and, if the mind has one, its instrument (unless muted).
+   *  `instrument` is scenario data (`Scenario.instrument`); omitted → bed only (the pre-instrument sound). */
+  enterScene(instrument?: InstrumentVoice | null): void {
+    this.set({ sceneActive: true, instrument: instrument ?? null });
   }
 
-  /** The scene unmounted — stop everything and reset the composure + door schedule for the next game. */
+  /** The scene unmounted — stop everything and reset the composure + instrument + door schedule for the
+   *  next game. */
   leaveScene(): void {
     this.doorLimit = 0;
     this.doorMilestones = [];
     this.doorIndex = 0;
-    this.set({ sceneActive: false, generating: false, composure: 0 });
+    this.set({ sceneActive: false, generating: false, composure: 0, instrument: null });
   }
 
   /** A model call fired — start the pen-scratch latency mask (unless muted / no scene). */
@@ -120,7 +146,14 @@ export class AudioDirector {
 
   /** Current bed detune rate, for tests/telemetry (1 when calm/silent; < 1 as composure breaks). */
   bedDetune(): number {
-    return this.bedRate ?? 1;
+    return this.rates.get('bed') ?? 1;
+  }
+
+  /** Current instrument detune rate, for tests/telemetry (1 when calm/silent/bed-only; < 1 as composure
+   *  breaks). The room's own voice sinks with the bed as the séance comes apart. */
+  instrumentDetune(): number {
+    const inst = this.state.instrument;
+    return inst ? this.rates.get(inst) ?? 1 : 1;
   }
 
   /** Advance the code-owned door schedule to the given turn (1-based) within a `turnLimit`-turn game. Fires
@@ -159,13 +192,20 @@ export class AudioDirector {
     const want = new Set<AudioTrack>();
     if (this.state.muted || !this.state.sceneActive) return want; // muted or off-scene → silence
     want.add('bed');
+    if (this.state.instrument) want.add(this.state.instrument); // the room's per-scenario voice
     if (this.state.generating) want.add('scratch');
     return want;
   }
 
+  /** Every looping track this director could ever control: the bed, the pen-scratch, and ALL instruments.
+   *  The door is a one-shot, never reconciled here. Iterating the full fixed set (not just the current
+   *  instrument) means a track that is playing but no longer DESIRED — e.g. the instrument when leaveScene
+   *  has already cleared it — is still seen and stopped, never orphaned. */
+  private static readonly LOOPING_TRACKS: readonly AudioTrack[] = ['bed', 'scratch', ...INSTRUMENTS];
+
   private reconcile(): void {
     const want = this.desired();
-    for (const track of ['bed', 'scratch'] as const) {
+    for (const track of AudioDirector.LOOPING_TRACKS) {
       const shouldPlay = want.has(track);
       const isPlaying = this.playing.has(track);
       if (shouldPlay && !isPlaying) {
@@ -179,18 +219,24 @@ export class AudioDirector {
     this.reconcileDetune();
   }
 
-  /** Push the desired bed pitch to the port when it changed. The bed sags 1 → (1 − MAX_DETUNE) as
-   *  composure breaks; while the bed is stopped the port holds no rate (bedRate = null) so the next start
-   *  re-applies from scratch. */
+  /** Push the desired pitch to each TONAL looping track (the bed and the instrument) when it changed. Both
+   *  sag 1 → (1 − MAX_DETUNE) as composure breaks — the room and the mind's own voice sink together as the
+   *  séance comes apart (Principle 4). A stopped track holds no rate (dropped from the map) so its next
+   *  start re-applies from scratch. The pen-scratch (noise) is never detuned. */
   private reconcileDetune(): void {
-    if (!this.playing.has('bed')) {
-      this.bedRate = null;
-      return;
-    }
     const rate = 1 - MAX_DETUNE * this.state.composure;
-    if (this.bedRate === rate) return;
-    this.bedRate = rate;
-    this.port.setRate?.('bed', rate);
+    // Every tonal track (the bed + all instruments); the pen-scratch is noise and never detunes. A stopped
+    // track drops its rate so its next start re-applies from scratch — same reason we iterate the full set
+    // in reconcile: a former instrument must not keep a stale rate after leaveScene.
+    for (const track of TONAL_TRACKS) {
+      if (!this.playing.has(track)) {
+        this.rates.delete(track);
+        continue;
+      }
+      if (this.rates.get(track) === rate) continue;
+      this.rates.set(track, rate);
+      this.port.setRate?.(track, rate);
+    }
   }
 }
 

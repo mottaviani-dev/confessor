@@ -29,6 +29,9 @@ export const SUSPECT: Scenario = {
   pronoun: 'her',
   // Dried-blood umber — the interrogation room's stain: old iron under the table light, a wound gone brown.
   accent: '#a15a48',
+  // Breath (bible §2 "Audio"): low filtered-noise swells, an inhale-exhale under the table light — a
+  // cornered person's own held breath, the interview room's tension made audible.
+  instrument: 'breath',
   endgameVoice: {
     won: 'She eases back into the hard chair as if it were always hers, and does not watch you go.',
     lost: 'She has given exactly this much, and no more, to everyone who ever sat where you sat — and she will give it again tomorrow, to the next one.',

@@ -23,6 +23,9 @@ export const FENCE: Scenario = {
   pronoun: 'him',
   // Brass — the trader's metal: the scale pan, the loupe rim, cold money warmed by the hand.
   accent: '#b89246',
+  // Music box (bible §2 "Audio"): sparse plucked high notes that decay into the dark — a small pretty thing
+  // in a room built on appraisal and leverage.
+  instrument: 'musicbox',
   endgameVoice: {
     won: 'He nods once, the way he closes every deal, already counting a thing you will never be shown.',
     lost: 'He shrugs and pockets the thing he never laid on the table. There is always another mark in the next chair; you were not the first to leave his empty-handed.',

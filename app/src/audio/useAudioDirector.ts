@@ -18,12 +18,28 @@ import { Platform } from 'react-native';
 import { createAudioPlayer, setAudioModeAsync } from 'expo-audio';
 import { AudioDirector, SILENT_PORT, type AudioPort } from './director';
 import { createNativeAudioPort } from './nativeAudioPort';
+import type { InstrumentVoice } from '../engine/types';
 import roomToneWav from '../../assets/audio/room-tone.wav';
 import penScratchWav from '../../assets/audio/pen-scratch.wav';
 import doorWav from '../../assets/audio/door.wav';
+import bowedWav from '../../assets/audio/instrument-bowed.wav';
+import musicboxWav from '../../assets/audio/instrument-musicbox.wav';
+import breathWav from '../../assets/audio/instrument-breath.wav';
+import choirWav from '../../assets/audio/instrument-choir.wav';
+import wireWav from '../../assets/audio/instrument-wire.wav';
 
-// Static asset ids (Metro requires literal imports) keyed by track — fed to the native factory below.
-const TRACK_SOURCE = { bed: roomToneWav, scratch: penScratchWav, door: doorWav } as const;
+// Static asset ids (Metro requires literal imports) keyed by track — fed to the native factory below. The
+// five instruments are the per-scenario voices (bible §2 "Audio"), one layered under the bed per mind.
+const TRACK_SOURCE = {
+  bed: roomToneWav,
+  scratch: penScratchWav,
+  door: doorWav,
+  bowed: bowedWav,
+  musicbox: musicboxWav,
+  breath: breathWav,
+  choir: choirWav,
+  wire: wireWav,
+} as const;
 
 /** The room's sound is native on device, silent on the web export the screenshot harness renders (and
  *  the correct fallback anywhere expo-audio can't load). Built once and shared across scene mounts — the
@@ -59,17 +75,23 @@ export type SceneAudio = {
   markTurn: (turn: number, turnLimit: number) => void;
 };
 
-/** Owns one AudioDirector for the mounted scene. Bed on mount → silence on unmount; scratch bracketed to
- *  the generation await. Drives the shared native SCENE_PORT so the room is audible on device. */
-export function useAudioDirector(): SceneAudio {
+/** Owns one AudioDirector for the mounted scene. Bed + the mind's instrument on mount → silence on unmount;
+ *  scratch bracketed to the generation await. Drives the shared native SCENE_PORT so the room is audible on
+ *  device. `instrument` is the playing scenario's per-mind voice (bible §2); the Duel remounts per scenario
+ *  (keyed), so it is stable for this mount. */
+export function useAudioDirector(instrument?: InstrumentVoice): SceneAudio {
   const [muted, setMutedState] = useState(MUTED);
   // One director per scene mount. Built lazily so the ref holds a stable instance across renders.
   const ref = useRef<AudioDirector | null>(null);
   if (ref.current === null) ref.current = new AudioDirector(SCENE_PORT, { muted: MUTED });
+  // The instrument is fixed for this mount; hold it in a ref so the mount effect reads the current value
+  // without listing it as a dependency (a scenario change remounts the Duel, rebuilding this hook fresh).
+  const instrumentRef = useRef(instrument);
+  instrumentRef.current = instrument;
 
   useEffect(() => {
     const dir = ref.current!;
-    dir.enterScene();
+    dir.enterScene(instrumentRef.current);
     return () => dir.leaveScene();
   }, []);
 

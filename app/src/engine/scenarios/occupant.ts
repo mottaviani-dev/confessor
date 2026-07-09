@@ -40,6 +40,10 @@ export const OCCUPANT: Scenario = {
   // Ash-violet — the colour of the room between the rooms, the fifth door with no card. Desaturated, cold,
   // adjacent to none of the four (verdigris/brass/umber/phosphor) so the fifth mind reads distinct at a glance.
   accent: '#7a6f95',
+  // Struck wire (bible §2 leaves the fifth mind's instrument open — the room picks). A low plucked note
+  // that rings and dies: the chair remembering a hand that already sat here, kinship struck once and left
+  // to decay. Adjacent to none of the other four voices, like its ash-violet accent.
+  instrument: 'wire',
   endgameVoice: {
     won: 'She settles back into the chair that is hers now — that was always going to be hers — and says nothing, because the next door is already yours to walk.',
     lost: 'She does not rise. She has seen your face on this side of the table before, and she knows how tired you will have to be, one day, to stop leaving.',

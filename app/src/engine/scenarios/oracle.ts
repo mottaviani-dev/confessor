@@ -34,6 +34,9 @@ export const ORACLE: Scenario = {
   pronoun: 'her',
   // Pale phosphor — the cold luminescence off the cave-stone, the ghost-green glow that lights no torch.
   accent: '#9ac7a6',
+  // Sine-tone choir (bible §2 "Audio"): stacked pure sines that beat slowly against each other — a bodiless
+  // chord off the cave-stone, the trance the seer speaks from.
+  instrument: 'choir',
   endgameVoice: {
     won: 'The smoke closes over the cleft. What you carry down the mountain was never yours to keep — only yours to have heard, once, and to live toward.',
     lost: 'The trance settles like water over a dropped stone. The answer was there the whole time, and it was never going to be for you.',

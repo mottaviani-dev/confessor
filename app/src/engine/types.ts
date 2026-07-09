@@ -5,6 +5,15 @@
 // lives in `resolveTurn` as deterministic code. That is what makes the game "non-deterministic but
 // controlled" — infinite variety in the *voice*, hard rules in the *engine*.
 
+/** The single instrument that voices a room under the room-tone bed (bible §2 "Audio": one per scenario).
+ *  This is SCENARIO DATA — which instrument this mind sounds like — so it lives in the engine type next to
+ *  the visual `accent`, not in the audio layer (the audio module imports it; the reverse would invert the
+ *  layering). Named by the instrument, decoupled from the scenario id so the same voice could be reused.
+ *  Bible §2 names four (bowed metal / music box / breath / sine-tone choir); the fifth mind (the Occupant,
+ *  a former seeker) has no bible-assigned instrument, so the room picks a low struck WIRE — a plucked note
+ *  that rings and dies, the chair remembering a hand that sat here (§5 lets each game place its own mark). */
+export type InstrumentVoice = 'bowed' | 'musicbox' | 'breath' | 'choir' | 'wire';
+
 /** A scenario = one room, one mind, one thing to extract. Authored by us (or generated later). */
 export interface Scenario {
   readonly id: string;
@@ -89,6 +98,12 @@ export interface Scenario {
    *  mood wash) stay on the composure/Grip ramp so state still beats accent under stress. Never sent to
    *  the model. Desaturated, near-monochrome-base values — an accent, not a UI stripe (§5). */
   readonly accent: string;
+  /** OPTIONAL — the room's single instrument, layered LOW under the room-tone bed for the whole scene
+   *  (bible §2 "Audio": one per scenario, the sonic twin of `accent`). Bowed metal (Warden), music box
+   *  (Fence), breath (Suspect), sine-tone choir (Oracle), struck wire (Occupant). The `AudioDirector`
+   *  plays it on `enterScene` and it detunes with the bed as composure breaks. Omitted → the room runs on
+   *  the bed alone (the pre-instrument sound). Device-audible; silent on the web screenshot export. */
+  readonly instrument?: InstrumentVoice;
   /** OPTIONAL scar block (achievement layer, 2026-07-07). Derived from the mind's earned badges
    *  (meta/badges.renderWound) and spread onto the scenario at play-time in App.tsx; `buildVoiceSystem`
    *  appends it AFTER `voiceStyle` so it hardens the VOICE's register against ways the mind has already
