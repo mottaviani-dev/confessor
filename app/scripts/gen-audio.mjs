@@ -276,6 +276,54 @@ function struckWire() {
   return edgeWindow(out);
 }
 
+// ── THE STUDIO SIGNATURE ──────────────────────────────────────────────────────────────────────────
+// Bible §5 shared identity: "one sound, ~1.5s — a low wooden settling followed by a single high, pure
+// tone, played at studio splash. Both games' signature sounds are children of it." A ONE-SHOT heard once
+// per launch on the first-run "remembering" screen (the studio splash) — the sonic twin of the aperture.
+// Two soft descending wood thuds (a heavy thing coming to rest on the chair) settle first, then a single
+// clean high sine swells over them and rings to silence. Pure tone = literally one sine, no harmonics
+// (§5). Deterministic (seeded LCG), edge-windowed so the one-shot ends without a click, like door.wav.
+function studioSignature() {
+  const dur = 1.5;
+  const N = Math.floor(SR * dur);
+  const out = new Float32Array(N);
+  const rnd = lcg(0x50a71a);
+  // The low wooden SETTLING — two soft thuds, the second lower + quieter so it reads as coming to rest.
+  const settles = [
+    { t: 0.0, f: 82, a: 0.16 },
+    { t: 0.26, f: 66, a: 0.11 },
+  ];
+  for (const { t: st, f, a } of settles) {
+    const start = Math.floor(st * SR);
+    const len = Math.floor(0.4 * SR);
+    for (let j = 0; j < len && start + j < N; j++) {
+      const tt = j / SR;
+      const e = Math.exp(-tt / 0.11); // wood-thud decay
+      const body =
+        Math.sin(2 * Math.PI * f * tt) +
+        0.4 * Math.sin(2 * Math.PI * f * 1.5 * tt) + // a wooden overtone for timber
+        0.3 * rnd() * Math.exp(-tt / 0.02); // a breath of dry knock-noise at the strike
+      out[start + j] += a * e * body;
+    }
+  }
+  // THE SINGLE HIGH PURE TONE — one clean sine (A5, no harmonics) swelling in over the settling and
+  // ringing to silence: the high pure note that closes every studio splash.
+  const tStart = 0.5;
+  const ts = Math.floor(tStart * SR);
+  const tf = 880; // A5 — high, pure
+  const dtone = dur - tStart;
+  for (let j = 0; ts + j < N; j++) {
+    const tt = j / SR;
+    const atk = Math.min(1, tt / 0.18); // soft swell in
+    const rel = Math.max(0, 1 - Math.max(0, tt - (dtone - 0.35)) / 0.35); // fade to zero by the end
+    out[ts + j] += 0.12 * atk * rel * Math.sin(2 * Math.PI * tf * tt);
+  }
+  // Window the last 40ms to zero for a click-free one-shot tail.
+  const edge = Math.floor(0.04 * SR);
+  for (let j = 0; j < edge; j++) out[N - 1 - j] *= j / edge;
+  return out;
+}
+
 writeFileSync(new URL('room-tone.wav', OUT), toWav(roomTone()));
 writeFileSync(new URL('pen-scratch.wav', OUT), toWav(penScratch()));
 writeFileSync(new URL('door.wav', OUT), toWav(doorBehindChair()));
@@ -284,7 +332,9 @@ writeFileSync(new URL('instrument-musicbox.wav', OUT), toWav(musicBox()));
 writeFileSync(new URL('instrument-breath.wav', OUT), toWav(breath()));
 writeFileSync(new URL('instrument-choir.wav', OUT), toWav(choir()));
 writeFileSync(new URL('instrument-wire.wav', OUT), toWav(struckWire()));
+writeFileSync(new URL('studio-signature.wav', OUT), toWav(studioSignature()));
 console.log(
-  'wrote assets/audio/room-tone.wav (8.0s bed), pen-scratch.wav (1.4s mask), door.wav (2.0s one-shot), and ' +
-    'the 5 per-scenario instruments: instrument-{bowed,musicbox,breath,choir,wire}.wav (8.0s loops)',
+  'wrote assets/audio/room-tone.wav (8.0s bed), pen-scratch.wav (1.4s mask), door.wav (2.0s one-shot), ' +
+    'studio-signature.wav (1.5s studio splash one-shot), and the 5 per-scenario instruments: ' +
+    'instrument-{bowed,musicbox,breath,choir,wire}.wav (8.0s loops)',
 );

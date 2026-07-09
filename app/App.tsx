@@ -39,6 +39,7 @@ import { roomArc, type RoomArcBeat } from './src/meta/roomArc';
 import { roomCapstone, type RoomCapstoneBeat } from './src/meta/roomCapstone';
 import { roomInterjection } from './src/meta/roomInterjection';
 import { useAudioDirector } from './src/audio/useAudioDirector';
+import { playStudioSignature } from './src/audio/useStudioSignature';
 import { RoomBackdrop, SwayingBackdrop } from './src/ui/SceneBackdrop';
 import { composureBreak } from './src/ui/bulbSway';
 import { roomStillLine } from './src/ui/roomStillness';
@@ -325,6 +326,11 @@ function Boot({ prep, scenario, onExit }: { prep: ProviderState; scenario: Scena
   // The first-launch download/verify IS the studio moment (§5): the mind is being remembered onto the
   // device (Principle 6). A plain re-load ('loading'/'failed') just shows the aperture + line, no wordmark.
   const remembering = prep.kind === 'preparing-model';
+  // Sound the studio signature once as the studio splash appears (§5: the ~1.5s wooden-settle + pure tone,
+  // the sonic twin of the aperture). Latched module-side, so this fires exactly once per launch.
+  useEffect(() => {
+    if (remembering) playStudioSignature();
+  }, [remembering]);
   return (
     <View style={styles.root}>
       <StatusBar style="light" />
