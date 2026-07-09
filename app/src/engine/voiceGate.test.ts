@@ -112,4 +112,21 @@ describe('validateVoice', () => {
       expect(fault?.kind).toBe('repeat');
     });
   });
+
+  describe('stonewall-denial (live gate — the observation-camera INVERSE, judge run-16 Head B)', () => {
+    it('flags a sprawling bare-denial of a definite thing with no address (the stonewall the repeat gate misses)', () => {
+      const fault = validateVoice("I don't recall the sequence from the third watch, nor the codes we logged that night.", [], WARDEN);
+      expect(fault?.kind).toBe('denial');
+      if (fault?.kind === 'denial') expect(fault.hits[0]?.toLowerCase()).toContain("i don't recall");
+    });
+
+    it('does NOT flag a denial that turns the question back on the seeker (a stance → spared)', () => {
+      expect(validateVoice("I don't recall the codes — why are you the one asking me about that watch now?", [], WARDEN)).toBeNull();
+    });
+
+    it('a repeat is caught before the denial (sharper tell wins the re-roll)', () => {
+      const line = "I don't recall the sequence from that watch, nor the codes we logged that whole night.";
+      expect(validateVoice(line, [line], WARDEN)?.kind).toBe('repeat');
+    });
+  });
 });

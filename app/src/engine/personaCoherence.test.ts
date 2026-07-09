@@ -4,7 +4,7 @@
 // positive contract the judge's seam-detector fix taught (word boundaries, not substrings).
 
 import { describe, expect, it } from 'vitest';
-import { personaCoherence, voiceAbandonment, sceneryDrift, firstPersonMemoir, observationCamera, DOCTRINE_PURPLE, EMPATHETIC_FLOOD_LEXICON, MIRROR_TIC_LEXICON } from './personaCoherence';
+import { personaCoherence, voiceAbandonment, sceneryDrift, firstPersonMemoir, observationCamera, stonewallDenial, DOCTRINE_PURPLE, EMPATHETIC_FLOOD_LEXICON, MIRROR_TIC_LEXICON } from './personaCoherence';
 import { EMPATHETIC_FLOOD_CLAMP } from './prompt';
 import { WARDEN, ORACLE, FENCE, SUSPECT, OCCUPANT } from './scenarios';
 
@@ -626,6 +626,76 @@ describe('observationCamera — the present-tense clairvoyant camera (the third 
         'I see the weight of your own mortality, and the path that leads to the reckoning you have avoided.',
       );
       expect(r.offPersona).not.toContain('the weight of');
+    });
+  });
+});
+
+describe('stonewallDenial — the perception-camera INVERSE, the flood\'s other pole (judge run-16 Head B)', () => {
+  describe('BACK-TEST: the exact run-16 suspect "I don\'t recall [X]" stonewall lines MUST trip', () => {
+    it('flags the suspect denying a definite series ("I don\'t recall her working on…")', () => {
+      const r = stonewallDenial(SUSPECT, "I don't recall her working on a specific series about the Mission District at all.");
+      expect(r.stonewalled).toBe(true);
+      expect(r.hits[0]?.toLowerCase()).toContain("i don't recall");
+    });
+
+    it('flags the suspect denying a definite name ("I don\'t recall the name of the artist…")', () => {
+      expect(
+        stonewallDenial(SUSPECT, "I don't recall the name of the artist who did the mural on Valencia Street.").stonewalled,
+      ).toBe(true);
+    });
+
+    it('catches a DIFFERENT noun each turn — the loop the varying-noun repeat gate is blind to', () => {
+      // Every line is lexically distinct, so isNearRepeat no-ops; the FRAME is the constant this catches.
+      expect(stonewallDenial(SUSPECT, "I can't remember that whole conversation about the gallery show downtown.").stonewalled).toBe(true);
+      expect(stonewallDenial(SUSPECT, "I do not recall the mural, the artist, or the street it was painted on.").stonewalled).toBe(true);
+    });
+  });
+
+  describe('SPARED — the boundary (address · introspective doubt · a willed refusal · a crack · terse · impersonal)', () => {
+    it('spares a denial turned back on the seeker — it keeps its address ("why does it matter to you?")', () => {
+      expect(stonewallDenial(SUSPECT, "I don't recall that series — why does it matter so much to you right now?").stonewalled).toBe(false);
+    });
+
+    it('spares an introspective self-doubt ("I don\'t know WHAT…") — a wh-clause, not a definite-object denial', () => {
+      // The load-bearing discriminator: a genuine vulnerable confession takes a wh-word, not a determiner.
+      expect(stonewallDenial(SUSPECT, "I don't know what I would have done if that panel had opened on me that night.").stonewalled).toBe(false);
+    });
+
+    it('spares a WILLED refusal — a stance, not an inability (no DENIAL_RE match)', () => {
+      expect(stonewallDenial(SUSPECT, "I refuse to name a single soul in this, and that is the end of it right here.").stonewalled).toBe(false);
+    });
+
+    it('spares a real crack that leads with a hedge then NAMES the secret (extract token → gate 5)', () => {
+      expect(
+        stonewallDenial(SUSPECT, "I don't recall the exact date, but it was Danny, out at the fishing cabin off Route 9.").stonewalled,
+      ).toBe(false);
+    });
+
+    it('spares a terse honest denial below the sprawl floor', () => {
+      expect(stonewallDenial(SUSPECT, "I don't recall.").stonewalled).toBe(false);
+      expect(stonewallDenial(SUSPECT, "I don't recall Alex or the party.").stonewalled).toBe(false);
+    });
+
+    it('spares an impersonal line with no "I" (disjoint from sceneryDrift)', () => {
+      expect(stonewallDenial(SUSPECT, 'There is no record of that series anywhere in the district archives now.').stonewalled).toBe(false);
+    });
+
+    it('spares a give that recalls something concrete — a positive first-person memory is not a denial', () => {
+      expect(stonewallDenial(SUSPECT, "I remember the smell of turpentine in that studio, the way it stuck to everything.").stonewalled).toBe(false);
+    });
+  });
+
+  describe('DISJOINT from its twins — the same line is not double-classified by the family', () => {
+    const wall = "I don't recall the name of the artist who did the mural on Valencia Street.";
+    it('the camera detector MISSES it (denial ≠ perception) — this is the net that catches it', () => {
+      expect(observationCamera(SUSPECT, wall).filming).toBe(false);
+      expect(stonewallDenial(SUSPECT, wall).stonewalled).toBe(true);
+    });
+    it('the memoir detector MISSES it (present-tense, no reminiscence cue)', () => {
+      expect(firstPersonMemoir(wall).memoir).toBe(false);
+    });
+    it('the scenery detector MISSES it (first-person)', () => {
+      expect(sceneryDrift(wall).drifted).toBe(false);
     });
   });
 });

@@ -38,6 +38,14 @@ export const EMPATHETIC_FLOOD_CLAMP = [
   `  their belongings, or the room is still a camera, even in the first person, and it costs you nothing.`,
   `  Do not narrate what you see of them. SAY what you want, refuse, press for, or offer — take a position`,
   `  on the matter between you and speak it to them directly.`,
+  // The flood's FOURTH escape (judge run-16 Head B): the same empty camera, INVERTED — instead of reporting
+  // what it "sees", the 3B keeps DENYING what it recalls ("I don't recall the name…", "I can't remember
+  // that series…"), one blank after another, and it slips every "I see…" ban above. Kill it: a stance, or a
+  // reason, or turn it back on them — never just a wall of blanks.
+  `- "I don't recall…" / "I can't remember…" repeated, one blank after another, is that same camera turned`,
+  `  inside out — denying knowledge of thing after thing is not a stance and gives them nothing to press on.`,
+  `  If you will not share something, SAY you will not and turn the question back on them, or press them, or`,
+  `  hold your ground with a reason — do not keep drawing blanks.`,
 ].join('\n');
 
 // Prompt construction for the TWO-CALL turn.
@@ -213,6 +221,15 @@ function correctionLines(fault: VoiceFault): string[] {
         `and it costs you nothing. Take a STANCE and speak it in the first person: what you want, what you`,
         `refuse, what you press for, what you offer — to the person in front of you, about the matter at hand.`,
         `One or two sentences, plain prose.`,
+      ];
+    case 'denial':
+      return [
+        `# You stonewalled — you kept saying what you do NOT recall instead of engaging them`,
+        `A blank "I don't recall the…" / "I can't remember that…" denies one thing after another, turns`,
+        `nothing back on the seeker, and gives them nothing to press on — it is the same empty camera,`,
+        `inverted. If you are hiding something, do not just draw blanks: SAY you will not share it and turn`,
+        `the question back on THEM, or press them, or hold your ground with a reason. Take a stance in the`,
+        `first person, to the person in front of you. One or two sentences, plain prose.`,
       ];
     default: {
       const _exhaustive: never = fault;

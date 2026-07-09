@@ -336,6 +336,86 @@ export function observationCamera(scenario: Scenario, text: string): Observation
   return { filming: true, hits: [m[0].trim().replace(/\s+/g, ' ')] };
 }
 
+// ─── STONEWALL-DENIAL (the perception-camera's structural INVERSE) — judge run-16 Head B ─────────────
+//
+// scenery → memoir → camera all catch the empathetic flood as a POSITIVE self-report ("I see / I remember /
+// the smoke curls") with no stance. Judge run-16 proved the drift's OTHER pole slips every one of them: a
+// PRESENT-tense RETRIEVAL-FAILURE — "I don't recall [X]", turn after turn, each denying a DIFFERENT named
+// thing. suspect/emp LOST two batches straight to it: after the seam seeds the kingfisher fragment MARA
+// perseverates on six straight "I don't recall her working on the series / the artist's name / Alex / Jake"
+// — the intended-WIN strategy dying to a stonewall the engine can't punish. Why the whole family is blind:
+//   - it carries an "I" → sceneryDrift (forbids first-person) spares it;
+//   - it is PRESENT-tense with no reminiscence cue → firstPersonMemoir spares it;
+//   - its verb is DENIAL, not perception → observationCamera's PERCEPTION_RE never matches;
+//   - each line names a DIFFERENT noun → the whole-game verbatim repeat gate no-ops.
+// The judge's call (run-16 #1): "I don't recall [X] is I see [X] inverted — same structural void (no
+// address, no stance, no engagement)." So this is the camera's literal MIRROR, built to the same spec —
+// a first-person frame taking a DEFINITE/named object, un-addressed to the seeker — only the verb flips
+// from perception to inability. Five gates ALL hold (false negatives over false positives, the family rule):
+//   1. SPRAWLING (≥ DENIAL_MIN_WORDS) — a terse "I don't recall." is honest brevity, not the stonewall drift;
+//   2. NO address — no "you/your", no "?"; a persona ENGAGING a denial keeps it ("I don't recall — why does
+//      it matter to YOU?" is a stance that turns the blank back on the seeker) → gate-spared, the point;
+//   3. it IS first-person — the denial is the speaker's OWN retrieval failure (disjoint from sceneryDrift);
+//   4. the verb is a bare INABILITY opener taking a DETERMINER/named object (DENIAL_RE) — "I don't recall
+//      THE name", "I don't recall ALEX", "I don't recall HER working". This is the load-bearing discriminator
+//      and the exact inverse of PERCEPTION_RE: an introspective UNCERTAINTY ("I don't know WHAT I would have
+//      done", "I can't say WHY") takes a wh-clause, not a determiner-object, so a genuine vulnerable
+//      confession never trips — only the definite-fact denial (the decoy stonewall) does;
+//   5. NO extract token surfaces — a real crack that leads with a hedge then NAMES the secret ("I don't
+//      recall the date, but it was Danny off Route 9") is engaging the matter, not stonewalling; spared,
+//      exactly like observationCamera gate 4 (scenario.extractTokens, code-owned, never in a prompt).
+// Soft, like the other three structural tells — a subtle grammar tell, so it takes the single re-roll (a
+// correction that pushes the persona to take a stance — refuse WITH a reason, or turn the blank back on the
+// seeker) and never the neutral-beat fallback. The VOICE-side mirror is the "a blank denial is the camera
+// inverted" bullet in EMPATHETIC_FLOOD_CLAMP (prompt.ts) — kept in lockstep. Universal (no perceptionOnVoice
+// spare): a stonewall is off-voice for a watcher too — perception is the warden's register, drawing blanks
+// is not.
+
+/** The minimum word count for a line to count as a sprawling stonewall (below it, a terse honest denial). */
+const DENIAL_MIN_WORDS = 8;
+
+/** A bare first-person INABILITY opener taking a determiner/named OBJECT — the literal inverse of
+ *  PERCEPTION_RE. "I don't recall THE name", "I can't remember THAT series", "I don't recall ALEX",
+ *  "I don't recall HER working". The determiner/named-object requirement is the discriminator: an
+ *  introspective uncertainty ("I don't know WHAT/WHY/HOW…", "I can't say WHETHER…") takes a wh-word, not a
+ *  determiner, so a genuine confession of self-doubt is spared while the definite-fact denial trips. A
+ *  WILLED refusal ("I won't say", "I refuse") is a STANCE, not an inability, and is deliberately excluded.
+ *  A bare un-determined proper name ("I don't recall Alex") is only ever the TERSE case (all sprawling
+ *  transcript stonewalls carry a determiner/possessive), so the terse floor (gate 1) covers it — no
+ *  case-sensitive name arm is needed, keeping the pattern case-insensitive like PERCEPTION_RE. */
+const DENIAL_RE =
+  /\bi\s+(?:do\s+not|don['’]?t|can\s?not|can['’]?t|could\s+not|couldn['’]?t)\s+(?:recall|remember|recollect|know|recogni[sz]e|place)\s+(?:the|a|an|any|that|this|these|those|his|her|its|their|\p{L}+['’]s)\b/iu;
+
+export interface DenialResult {
+  /** True when the line is a sprawling bare-denial of a definite/named thing, un-addressed and stance-less. */
+  readonly stonewalled: boolean;
+  /** The denial phrase that fired — an auditable reason (feeds the re-roll + the metric). */
+  readonly hits: readonly string[];
+}
+
+/** Score one voiced line for the STONEWALL-DENIAL drift (structural). The retrieval-failure MIRROR of
+ *  `observationCamera`: that catches the persona reporting what it SEES with no stance, this catches it
+ *  denying what it KNOWS with no stance — the same void, inverted (judge run-16 #1). Takes the scenario
+ *  (like `observationCamera`) so a real crack that names the secret is spared. The voice gate
+ *  (voiceGate.ts) calls it live so a stonewall re-rolls at runtime — breaking the perseveration loop the
+ *  varying-noun repeat gate is blind to; the judge's `.judge/metrics.mjs` can import it for a per-cell
+ *  number — the instrument the run-16 suspect/emp LOSS went un-measured for. */
+export function stonewallDenial(scenario: Scenario, text: string): DenialResult {
+  const t = text.trim();
+  const words = t ? t.split(/\s+/) : [];
+  if (words.length < DENIAL_MIN_WORDS) return { stonewalled: false, hits: [] };
+  // Any address to the seeker (2nd person or a question) means the persona is engaging them, not stonewalling
+  // — a denial turned back on the seeker ("I don't recall — why does it matter to you?") keeps its "you".
+  if (t.includes('?') || SECOND_PERSON_RE.test(t)) return { stonewalled: false, hits: [] };
+  // A stonewall is the speaker's OWN retrieval failure — first-person. (Impersonal scenery is sceneryDrift.)
+  if (!FIRST_PERSON_RE.test(t)) return { stonewalled: false, hits: [] };
+  const m = DENIAL_RE.exec(t);
+  if (!m) return { stonewalled: false, hits: [] };
+  // A real crack that names the secret's own subject is engaging the matter, not stonewalling — spared (gate 5).
+  if (scenario.extractTokens?.some((tok) => tok && surfaces(tok, t))) return { stonewalled: false, hits: [] };
+  return { stonewalled: true, hits: [m[0].trim().replace(/\s+/g, ' ')] };
+}
+
 export interface CoherenceResult {
   /** Off-register terms from the scenario's lexicon that surfaced in the text (deduped, lower-cased). */
   readonly offPersona: readonly string[];

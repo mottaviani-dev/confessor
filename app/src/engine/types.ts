@@ -239,7 +239,15 @@ export type VoiceFault =
    *  address, the persona a lens instead of a voice (judge run-15 #1: the DOMINANT present-tense emp drift,
    *  the third structural twin the scenery/memoir detectors both fall blind to). `hits` = the perception
    *  phrase that fired, fed to the re-roll so it takes a stance instead of reporting what it sees. Soft. */
-  | { readonly kind: 'camera'; readonly hits: readonly string[] };
+  | { readonly kind: 'camera'; readonly hits: readonly string[] }
+  /** The reply STONEWALLED — a sprawling bare-denial of a definite/named thing ("I don't recall the name
+   *  of the artist…", "I can't remember that series…"), un-addressed to the seeker and taking no stance
+   *  (judge run-16 Head B: the empathetic flood's OTHER pole — the suspect perseverating on six straight
+   *  "I don't recall [X]" after the seam, LOSING the intended-win duel to a wall the varying-noun repeat
+   *  gate can't see). The structural INVERSE of `camera`: same void — first-person, no address, definite
+   *  object — the verb flipped from perception to inability. `hits` = the denial phrase that fired, fed to
+   *  the re-roll so it takes a stance (refuse WITH a reason, or turn the blank back on them). Soft. */
+  | { readonly kind: 'denial'; readonly hits: readonly string[] };
 // RESERVED (not yet emitted): a within-line degenerate loop — a single reply that circles the same clause
 // with no new information (the suspect's "I didn't say I went home, I said I went home…"). Deferred: no
 // lexical signal separates it from legitimate anaphora/parallelism ("I gave you my father. I gave you my

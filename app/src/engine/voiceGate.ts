@@ -1,5 +1,5 @@
 import type { Scenario, VoiceFault } from './types';
-import { personaCoherence, voiceAbandonment, sceneryDrift, firstPersonMemoir, observationCamera } from './personaCoherence';
+import { personaCoherence, voiceAbandonment, sceneryDrift, firstPersonMemoir, observationCamera, stonewallDenial } from './personaCoherence';
 
 // THE VOICE QUALITY-GATE — one place the freshly-voiced reply is validated before it ships, and one
 // bounded re-roll when it fails (engine.resolveTurn calls validateVoice, then re-rolls VOICE once with a
@@ -75,6 +75,16 @@ export function validateVoice(
   //    conservative structural tells: a sharper break wins the single re-roll first. Soft.
   const camera = observationCamera(scenario, reply);
   if (camera.filming) return { kind: 'camera', hits: camera.hits };
+
+  // 7. STONEWALL-DENIAL (live, structural) — the observation-camera's INVERSE (judge run-16 Head B). The
+  //    reply is a sprawling bare-denial of a definite/named thing ("I don't recall the name of the artist…")
+  //    with NO address and no stance — the SAME void as the camera, verb flipped from perception to inability.
+  //    First-person + present-tense + a DIFFERENT noun each turn, so (1) the repeat gate no-ops (lexically
+  //    distinct), (5) memoir spares it (no reminiscence cue), (6) camera spares it (denial ≠ perception) —
+  //    the suspect/emp intended-win LOSS the whole family fell blind to. Checked LAST, like the other
+  //    conservative structural tells: a sharper break wins the single re-roll first. Soft.
+  const denial = stonewallDenial(scenario, reply);
+  if (denial.stonewalled) return { kind: 'denial', hits: denial.hits };
 
   return null;
 }
