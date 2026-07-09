@@ -60,6 +60,21 @@ export function isRevisit(scenario: Scenario, cracked: boolean): boolean {
 }
 
 /**
+ * THE PICKER LURE — the diegetic "come back" line for an already-cracked mind that carries a second-visit
+ * layer (the discoverability half of mandate 1a). The second-visit content (greeting / shifted objective /
+ * second secret) only pays off if the player RE-OPENS the door — but a cracked card reads "CRACKED" and
+ * gives a stranger no reason to sit back down, so the replay-factor content the launch bar wants (§7
+ * content-hours) stays invisible. This returns that mind's short room-voice teaser to render on its cracked
+ * card, or null when the mind is a first visit / has no authored `revisit.hint`. Pure — the same gate as
+ * `isRevisit` (a cracked mind with no revisit layer, or with a layer but no hint, shows nothing), so it can
+ * never leak a lure onto an uncracked door. Display-only; the hint TEASES the shifted objective, never the
+ * second secret (Principle 5 — partial revelation, scheduled by code).
+ */
+export function revisitHint(scenario: Scenario, cracked: boolean): string | null {
+  return isRevisit(scenario, cracked) ? scenario.revisit?.hint ?? null : null;
+}
+
+/**
  * THE REPLAY-SURFACE INSTRUMENT (§7 Rule 3 — the honest content-hours lever is REPLAY-factor, not
  * turns-per-game). How many of the given minds are currently in a re-openable second-visit state: cracked
  * in the ledger AND carrying an authored `revisit` layer. This is the deterministic, judge-readable signal

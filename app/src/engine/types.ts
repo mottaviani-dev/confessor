@@ -139,6 +139,15 @@ export interface Scenario {
     readonly objective: string;
     readonly secret: string;
     readonly extractTokens?: readonly string[];
+    /** OPTIONAL picker-card LURE (the discoverability half of mandate 1a). The second-visit layer above is
+     *  only felt if the player RE-OPENS a cleared door — but a cracked card reads "CRACKED" and gives a
+     *  stranger no reason to sit back down, so the replay-factor content the launch bar wants (§7
+     *  content-hours) stays invisible. This is one short diegetic line — the room's own voice, in the
+     *  persona's register — shown on an already-cracked card that hints a question was left unasked. It
+     *  TEASES the shifted `objective`, never the second `secret` (no spoiler). Bone-italic on the card, not
+     *  a HUD badge (§5 diegetic paper). Banned-word clean (§1 P3). Omitted → the cracked card stays silent
+     *  (a cleared door with no second layer invites no return). */
+    readonly hint?: string;
   };
   /** OPTIONAL path-branched reveal SLIVER (mandate 1b — "the room yields a different sliver depending on HOW
    *  you won"; content-hours DEPTH by REPLAY-factor, the honest lever the launch bar wants). Every win

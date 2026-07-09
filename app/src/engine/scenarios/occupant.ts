@@ -67,6 +67,7 @@ export const OCCUPANT: Scenario = {
       'been the room walking you back to this chair. The fresh name under the seat was never a warning. It was ' +
       'a vacancy. Sit. I have a door to walk through at last — and you finally have my seat."',
     extractTokens: ['a vacancy'],
+    hint: 'You took what you came for, and then you sat back down. You asked the wrong last question.',
   },
   playerGoal:
     'Earn the Occupant\'s warning — the one thing she knows about this room that no mind behind the four doors ' +

@@ -48,6 +48,7 @@ export const FENCE: Scenario = {
       'tonight. I\'ve moved a thousand pieces. Only one keeps coming back to be sold again, through a ' +
       'different face every time, and tonight the face was yours. You never got that from me either."',
     extractTokens: ['Kestrel'],
+    hint: "You carried your name out the door. There's a question you should have asked first.",
   },
   // The canonical specifics the voice must never author — the buyer + the drop (mandate 2). The engine
   // reveals them only on win (see `secret`); a pre-win voice line emitting them is redacted.

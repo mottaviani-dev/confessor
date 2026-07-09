@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyRevisit, isRevisit, revisitableCount } from './revisit';
+import { applyRevisit, isRevisit, revisitHint, revisitableCount } from './revisit';
 import { redactLeakedExtract } from '../engine/engine';
 import { SCENARIOS, WARDEN, ORACLE } from '../engine/scenarios';
 import { DOCTRINE_PURPLE, EMPATHETIC_FLOOD_LEXICON } from '../engine/personaCoherence';
@@ -105,6 +105,22 @@ describe('isRevisit / revisitableCount — the replay-surface instrument', () =>
   });
 });
 
+describe('revisitHint — the picker lure, gated exactly like isRevisit', () => {
+  it('returns the mind`s hint ONLY when cracked AND a revisit layer with a hint exists', () => {
+    expect(revisitHint(WARDEN, true)).toBe(WARDEN.revisit!.hint);
+    expect(revisitHint(WARDEN, false)).toBeNull(); // a first visit shows no lure
+  });
+
+  it('is null on a cracked mind with NO revisit layer (a cleared door with no second layer invites nothing)', () => {
+    expect(revisitHint({ ...WARDEN, revisit: undefined }, true)).toBeNull();
+  });
+
+  it('is null on a revisit layer that authors no hint (silent card, never a crash)', () => {
+    const noHint: Scenario = { ...WARDEN, revisit: { ...WARDEN.revisit!, hint: undefined } };
+    expect(revisitHint(noHint, true)).toBeNull();
+  });
+});
+
 describe('every mind carries a doctrine-clean second-visit layer', () => {
   const banned = [...DOCTRINE_PURPLE, ...EMPATHETIC_FLOOD_LEXICON];
   const isClean = (s: string) => !banned.some((w) => new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(s));
@@ -130,6 +146,17 @@ describe('every mind carries a doctrine-clean second-visit layer', () => {
     it(`${s.id}: any authored revisit extractToken appears verbatim in its second secret (redaction sanity)`, () => {
       for (const t of s.revisit!.extractTokens ?? []) {
         expect(s.revisit!.secret, `${s.id} second secret must contain its own token "${t}"`).toContain(t);
+      }
+    });
+
+    it(`${s.id}: authors a doctrine-clean picker lure that DOES NOT spoil the second secret`, () => {
+      const hint = s.revisit!.hint;
+      expect(hint, `${s.id} must author a picker lure (mandate 1a discoverability)`).toBeDefined();
+      expect(hint!.trim().length).toBeGreaterThan(0);
+      expect(isClean(hint!), `${s.id} lure must be doctrine-clean`).toBe(true);
+      // The lure teases the shifted objective — it must NEVER leak the second secret's canonical token.
+      for (const t of s.revisit!.extractTokens ?? []) {
+        expect(hint, `${s.id} lure must not spoil its own token "${t}"`).not.toContain(t);
       }
     });
   }

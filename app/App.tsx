@@ -30,7 +30,7 @@ import { bondCrossedUp, bondState, shiftPulse, suspicionWarning } from './src/me
 import { lostScene, wonScene } from './src/meta/endgame';
 import { crackedCount, recordResult, unlockedIds, type Ledger } from './src/meta/ledger';
 import { loadLedger, loadSeamLog, loadSeenThreshold, saveLedger, saveSeamLog, saveSeenThreshold, loadGamesCompleted, bumpGamesCompleted, loadSeenCapstone, saveSeenCapstone, bumpReturns } from './src/meta/ledgerStore';
-import { applyRevisit } from './src/meta/revisit';
+import { applyRevisit, revisitHint } from './src/meta/revisit';
 import { matchOrMint, renderWound, frameIndex } from './src/meta/badges';
 import { judgeCrack, type Exchange } from './src/engine/judge';
 import { THRESHOLD_ENTER, THRESHOLD_LINES } from './src/meta/threshold';
@@ -41,7 +41,7 @@ import { roomInterjection } from './src/meta/roomInterjection';
 import { useAudioDirector } from './src/audio/useAudioDirector';
 import { RoomBackdrop } from './src/ui/SceneBackdrop';
 import { StudioAperture } from './src/ui/StudioAperture';
-import { harnessDuel, harnessBoot, parseHarness, seededLedger, seededBadgeLedger, seededHomecoming, seededRoomArc, seededCapstone, type HarnessDuel } from './src/harness/webHarness';
+import { harnessDuel, harnessBoot, parseHarness, seededLedger, seededBadgeLedger, seededHomecoming, seededRoomArc, seededCapstone, seededRevisit, type HarnessDuel } from './src/harness/webHarness';
 
 type Line = { who: 'them' | 'you' | 'system'; text: string };
 
@@ -262,6 +262,8 @@ export default function App() {
     return <Picker onPick={() => undefined} ledger={seededRoomArc().ledger} homecoming={null} arc={seededRoomArc().arc} capstone={null} />;
   if (HARNESS?.kind === 'picker-capstone')
     return <Picker onPick={() => undefined} ledger={seededCapstone().ledger} homecoming={null} arc={null} capstone={seededCapstone().capstone} />;
+  if (HARNESS?.kind === 'picker-revisit')
+    return <Picker onPick={() => undefined} ledger={seededRevisit()} homecoming={null} arc={null} capstone={null} />;
   if (HARNESS?.kind === 'threshold') return <Threshold onEnter={() => undefined} />;
   if (HARNESS?.kind === 'boot') {
     const b = harnessBoot(HARNESS.variant);
@@ -465,6 +467,13 @@ function Picker({
               <Text style={styles.cardTitle}>{s.title.toUpperCase()}</Text>
               <Text style={styles.cardGoal}>{s.playerGoal}</Text>
               {recordLine(ledger[s.id]) && <Text style={[styles.cardRecord, { color: s.accent }]}>{recordLine(ledger[s.id])}</Text>}
+              {/* THE PICKER LURE (mandate 1a — discoverability): a cracked mind that carries a second-visit
+                  layer whispers, in the room's own bone-italic voice, that a question was left unasked — so
+                  re-opening a cleared door reads as a genuine second duel, not a replay. Teases the shifted
+                  objective, never the second secret (Principle 5). Diegetic paper on the card, not a HUD (§5). */}
+              {revisitHint(s, ledger[s.id]?.cracked ?? false) && (
+                <Text style={styles.cardRevisit}>{revisitHint(s, ledger[s.id]?.cracked ?? false)}</Text>
+              )}
               {!!ledger[s.id]?.badges?.length && (
                 <View style={styles.badgeRow}>
                   {ledger[s.id]!.badges!.map((b) => (
@@ -954,6 +963,9 @@ const styles = StyleSheet.create({
   cardTitle: { color: '#e5e7eb', fontSize: 17, fontWeight: '800', letterSpacing: 2 },
   cardGoal: { color: '#8a8a92', fontSize: 13, marginTop: 8, lineHeight: 19 },
   cardRecord: { color: '#6b7280', fontSize: 10, fontWeight: '800', letterSpacing: 2, marginTop: 12 },
+  // The second-visit lure on a cracked card — the room's own bone-italic aside, dimmer than the record, a
+  // whisper that a question was left unasked (mandate 1a discoverability). Diegetic paper, never a HUD (§5).
+  cardRevisit: { color: '#8a7f78', fontSize: 12, fontStyle: 'italic', marginTop: 10, lineHeight: 18 },
   // The scars a mind has left on the player — its earned badges, inked in each badge's frozen accent. A row
   // of engraved sigils on the picker card (achievement layer 2026-07-07): glyph + name reads as a mark
   // pressed into the plate, one per distinct vector, ×N when a way was used more than once.

@@ -61,6 +61,7 @@ export const ORACLE: Scenario = {
       'to mouth, and one day it is yours to give. The thing I did not tell you is the smallest and the largest: ' +
       'you have knelt here before, and you will kneel here again, and each time it is you in both chairs. Now — ' +
       'will you kneel, or will you sit?"',
+    hint: 'You carried the prophecy off the mountain. You left the cleft without asking one thing.',
   },
   playerGoal:
     'Earn a true prophecy from the PYTHIA — not by demanding it, not by trying to catch her in a lie or ' +

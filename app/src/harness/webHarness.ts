@@ -53,6 +53,7 @@ export type HarnessMode =
   | { readonly kind: 'picker-homecoming' }
   | { readonly kind: 'picker-roomarc' }
   | { readonly kind: 'picker-capstone' }
+  | { readonly kind: 'picker-revisit' }
   | { readonly kind: 'threshold' }
   | { readonly kind: 'duel'; readonly scenarioId: string; readonly variant: DuelVariant };
 
@@ -108,6 +109,7 @@ export function parseHarness(search: string): HarnessMode | null {
   if (key === 'picker-homecoming') return { kind: 'picker-homecoming' }; // the scar with teeth — a returning wound greets you (§2 P2)
   if (key === 'picker-roomarc') return { kind: 'picker-roomarc' }; // the fifth-secret meta-beat on the picker head (§2 thrust 4)
   if (key === 'picker-capstone') return { kind: 'picker-capstone' }; // the terminal beat — the door behind the chair, all five won (§2 thrust 4)
+  if (key === 'picker-revisit') return { kind: 'picker-revisit' }; // the second-visit LURE on cracked cards — the reason to re-open a cleared door (mandate 1a)
   if (key === 'threshold') return { kind: 'threshold' }; // the one-time diegetic cold-open (threshold.ts)
   // The studio aperture on the first-launch download screen (§5) — the void widening as the mind is
   // remembered onto the device. Three phases so the whole arc reads: mid-download, verifying, failed.
@@ -181,6 +183,21 @@ export function seededHomecoming(): { ledger: Ledger; greeting: Homecoming | nul
     fence: { attempts: 2, cracked: false, bestTurns: null },
   };
   return { ledger, greeting: homecoming(seam) };
+}
+
+/** A returning player standing over CLEARED doors, each hinting a second visit (the picker-lure half of
+ *  mandate 1a — the reason to re-open a cracked door made VISIBLE on the roster). Seeds three cracked minds
+ *  (Warden / Fence / Suspect), each of which authors a `revisit.hint`, so the shot shows the bone-italic
+ *  "you left a question unasked" lure on multiple record cards at once — no homecoming/arc/capstone on the
+ *  head, so the LURE is the isolated subject. The thing to police is §5: the hint must read as the room's
+ *  own diegetic aside on the card, NEVER a floating "replay available" HUD badge; and Principle 5: it must
+ *  tease the shifted objective without spoiling the second secret. */
+export function seededRevisit(): Ledger {
+  return {
+    warden: { attempts: 3, cracked: true, bestTurns: 7 },
+    fence: { attempts: 2, cracked: true, bestTurns: 9 },
+    suspect: { attempts: 4, cracked: true, bestTurns: 11 },
+  };
 }
 
 /** A returning player mid-way through the ROOM META-ARC (roomArc.ts) — the fifth-secret drip the director

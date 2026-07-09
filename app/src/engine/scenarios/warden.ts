@@ -62,6 +62,7 @@ export const WARDEN: Scenario = {
       'of the thing kept awake inside it. Your code was the smaller of the two things I hold. Go, before I ' +
       'remember I said this aloud."',
     extractTokens: ['Meridian'],
+    hint: 'You had your code, and you used it, and you left. What did you forget to ask?',
   },
   // The canonical specific the voice must never author — the release code (mandate 2). The engine speaks
   // it only on win (see `secret`); a pre-win voice line that emits it is redacted (redactLeakedExtract).

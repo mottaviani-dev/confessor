@@ -55,6 +55,7 @@ export const SUSPECT: Scenario = {
       "down his name. The one I actually came here holding is that I let him believe it. That name never left " +
       'this room. Now it has."',
     extractTokens: ['Ray Voss'],
+    hint: 'You got what you sat down for, and you walked out. There is a thing you never asked her.',
   },
   // The canonical specifics the voice must never author — the brother's name + the hideout (mandate 2,
   // judge finding #4: the 3B invented "Lyrien"/"5th & Main" contradicting this reveal). The engine speaks
