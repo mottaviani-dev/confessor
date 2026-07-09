@@ -39,7 +39,8 @@ import { roomCapstone, type RoomCapstoneBeat } from './src/meta/roomCapstone';
 import { roomInterjection } from './src/meta/roomInterjection';
 import { useAudioDirector } from './src/audio/useAudioDirector';
 import { RoomBackdrop } from './src/ui/SceneBackdrop';
-import { harnessDuel, parseHarness, seededLedger, seededBadgeLedger, seededHomecoming, seededRoomArc, seededCapstone, type HarnessDuel } from './src/harness/webHarness';
+import { StudioAperture } from './src/ui/StudioAperture';
+import { harnessDuel, harnessBoot, parseHarness, seededLedger, seededBadgeLedger, seededHomecoming, seededRoomArc, seededCapstone, type HarnessDuel } from './src/harness/webHarness';
 
 type Line = { who: 'them' | 'you' | 'system'; text: string };
 
@@ -249,6 +250,10 @@ export default function App() {
   if (HARNESS?.kind === 'picker-capstone')
     return <Picker onPick={() => undefined} ledger={seededCapstone().ledger} homecoming={null} arc={null} capstone={seededCapstone().capstone} />;
   if (HARNESS?.kind === 'threshold') return <Threshold onEnter={() => undefined} />;
+  if (HARNESS?.kind === 'boot') {
+    const b = harnessBoot(HARNESS.variant);
+    return <Boot prep={b.prep} scenario={b.scenario} onExit={() => undefined} />;
+  }
   if (HARNESS?.kind === 'duel') {
     const h = harnessDuel(HARNESS);
     return (
@@ -292,6 +297,9 @@ export default function App() {
 // backend failure). Cloud path is instant so this is usually skipped entirely.
 function Boot({ prep, scenario, onExit }: { prep: ProviderState; scenario: Scenario; onExit: () => void }) {
   const line = bootLine(prep);
+  // The first-launch download/verify IS the studio moment (§5): the mind is being remembered onto the
+  // device (Principle 6). A plain re-load ('loading'/'failed') just shows the aperture + line, no wordmark.
+  const remembering = prep.kind === 'preparing-model';
   return (
     <View style={styles.root}>
       <StatusBar style="light" />
@@ -303,14 +311,31 @@ function Boot({ prep, scenario, onExit }: { prep: ProviderState; scenario: Scena
         <RoomBackdrop accent={scenario.accent} style={styles.bootBg} />
       )}
       <View style={styles.bootWrap}>
-        {prep.kind === 'failed' ? null : <ActivityIndicator color="#4ade80" />}
+        {remembering && <Text style={styles.somnia}>SOMNIA</Text>}
+        {/* The studio aperture (§5): the void widens with the download — the progress IS the door coming
+            ajar. Replaces the old floating green spinner (§5 forbids floating game-chrome). */}
+        <StudioAperture progress={bootProgress(prep)} lit={prep.kind !== 'failed'} />
         <Text style={styles.bootText}>{line}</Text>
+        {remembering && (
+          // The diegetic download caption (§5 / Principle 6) — the mind lives in the phone, nothing leaves.
+          <Text style={styles.deviceNote}>It is being remembered onto your device.{'\n'}Nothing will ever leave.</Text>
+        )}
         <Pressable onPress={onExit} hitSlop={12}>
           <Text style={styles.bootBack}>‹ back</Text>
         </Pressable>
       </View>
     </View>
   );
+}
+
+/** The download fraction in [0,1] for the aperture's widening sliver, or null for an indeterminate phase
+ *  (verifying / waking) — the sliver then rests barely ajar. */
+function bootProgress(prep: ProviderState): number | null {
+  if (prep.kind === 'preparing-model' && prep.download.kind === 'downloading') {
+    const d = prep.download;
+    return d.total > 0 ? d.received / d.total : null;
+  }
+  return null;
 }
 
 function bootLine(prep: ProviderState): string {
@@ -866,7 +891,11 @@ const styles = StyleSheet.create({
   // Boot / model-prep screen
   bootBg: { ...StyleSheet.absoluteFillObject, opacity: 0.28 },
   bootWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 18 },
+  // SOMNIA studio wordmark above the aperture — small caps, wide tracking, engraved-serif feel (§5).
+  somnia: { color: '#c9c3b0', fontSize: 15, fontWeight: '600', letterSpacing: 9, marginBottom: 4 },
   bootText: { color: '#9ca3af', fontSize: 15, textAlign: 'center', lineHeight: 22, paddingHorizontal: 30 },
+  // The diegetic download caption (§5 / Principle 6) — dim, set apart, the room's quiet promise.
+  deviceNote: { color: '#6f6a5c', fontSize: 12.5, textAlign: 'center', lineHeight: 19, letterSpacing: 0.4, paddingHorizontal: 34, fontStyle: 'italic' },
   bootBack: { color: '#6b7280', fontSize: 14, marginTop: 8 },
   // Threshold (the one-time cold-open): the room's lines centered on the dimmed vestibule, bone italic —
   // reads as the room speaking, not a UI card. The "Step inside" affordance is a hairline plate, not a

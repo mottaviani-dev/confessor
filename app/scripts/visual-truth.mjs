@@ -47,6 +47,9 @@ const VIEWPORT = { width: 430, height: 932, deviceScaleFactor: 2 };
 const SETTLE_MS = 4500; // let React mount + the typewriter reach its resting frame before the capture
 const SHOTS = [
   { name: 'threshold', url: '/?harness=threshold', desc: 'the one-time diegetic cold-open — the room teaches talk-not-force + the shut door + on-device privacy (§4 Q5)' },
+  { name: 'boot', url: '/?harness=boot', desc: 'THE STUDIO APERTURE — the first-launch download screen (§5): the void sliver widened to ~42%, SOMNIA wordmark + the diegetic "remembered onto your device" caption; police §5: the aperture IS the progress, NOT a floating spinner' },
+  { name: 'boot-verify', url: '/?harness=boot-verify', desc: 'the aperture at the verifying phase — sliver resting ajar (indeterminate), amber lit' },
+  { name: 'boot-fail', url: '/?harness=boot-fail', desc: 'the aperture on a failed load — the amber light behind the door is out, no wordmark/caption' },
   { name: 'picker', url: '/?harness=picker', desc: 'mind-picker + Ledger header + sealed-door cards (fresh ledger) — via ?harness=picker so it clears the one-time Threshold that gates a bare `/` mount' },
   { name: 'picker-seeded', url: '/?harness=picker-seeded', desc: 'Ledger with a cracked record + an unlocked door + sealed doors' },
   { name: 'picker-badges', url: '/?harness=picker-badges', desc: 'the badge/scar surface — earned scars inked on the picker cards (empathy ×2 + others); police §5: diegetic ledger-ink, NOT a floating achievement HUD' },

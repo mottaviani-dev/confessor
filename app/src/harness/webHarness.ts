@@ -12,6 +12,8 @@
 // scenario's own thresholds), so a shot shows the genuine UI, not a mock. Pure + unit-testable.
 
 import type { GameState, Scenario, SeamLog } from '../engine/types';
+import type { ProviderState } from '../llm/provider';
+import { LlmError } from '../llm/errors';
 import type { Ledger } from '../meta/ledger';
 import type { Badge } from '../meta/badges';
 import { matchOrMint } from '../meta/badges';
@@ -36,8 +38,13 @@ export type DuelVariant =
   | 'lose-highgrip'
   | 'lose-lowgrip';
 
+/** The load phase a `?harness=boot*` URL freezes the Boot screen at — the studio aperture at mid-download,
+ *  near-done (verifying), and failed (the amber light behind the door out). */
+export type BootVariant = 'downloading' | 'verifying' | 'failed';
+
 export type HarnessMode =
   | { readonly kind: 'picker' }
+  | { readonly kind: 'boot'; readonly variant: BootVariant }
   | { readonly kind: 'picker-seeded' }
   | { readonly kind: 'picker-badges' }
   | { readonly kind: 'picker-homecoming' }
@@ -97,6 +104,11 @@ export function parseHarness(search: string): HarnessMode | null {
   if (key === 'picker-roomarc') return { kind: 'picker-roomarc' }; // the fifth-secret meta-beat on the picker head (§2 thrust 4)
   if (key === 'picker-capstone') return { kind: 'picker-capstone' }; // the terminal beat — the door behind the chair, all five won (§2 thrust 4)
   if (key === 'threshold') return { kind: 'threshold' }; // the one-time diegetic cold-open (threshold.ts)
+  // The studio aperture on the first-launch download screen (§5) — the void widening as the mind is
+  // remembered onto the device. Three phases so the whole arc reads: mid-download, verifying, failed.
+  if (key === 'boot') return { kind: 'boot', variant: 'downloading' };
+  if (key === 'boot-verify') return { kind: 'boot', variant: 'verifying' };
+  if (key === 'boot-fail') return { kind: 'boot', variant: 'failed' };
   // The fixed warden probes first (their suffixes are variants, never scenario ids).
   const variant = DUEL_URL_KEYS[key];
   if (variant) return { kind: 'duel', scenarioId: DUEL_SCENARIO_ID, variant };
@@ -199,6 +211,21 @@ export function seededCapstone(): { ledger: Ledger; capstone: RoomCapstoneBeat |
 
 function scenarioById(id: string): Scenario {
   return SCENARIOS.find((s) => s.id === id) ?? SCENARIOS[0];
+}
+
+/** The fixed Boot-screen state for a studio-aperture shot (§5): a real ProviderState frozen at each load
+ *  phase, so the aperture renders exactly as it does during a genuine first-launch download — the sliver
+ *  at ~42% (downloading), resting ajar (verifying), and dark with no amber (failed). Warden's dim room
+ *  sits behind it, as it does in play. Pure; the Boot component reads this in place of the live provider. */
+export function harnessBoot(variant: BootVariant): { scenario: Scenario; prep: ProviderState } {
+  const scenario = scenarioById('warden');
+  const prep: ProviderState =
+    variant === 'downloading'
+      ? { kind: 'preparing-model', download: { kind: 'downloading', received: 42, total: 100 } }
+      : variant === 'verifying'
+        ? { kind: 'preparing-model', download: { kind: 'verifying' } }
+        : { kind: 'failed', error: new LlmError('the mind could not be remembered') };
+  return { scenario, prep };
 }
 
 /** The room's name in mid-sentence form, mirroring App's ask-penalty binding ("The Warden" → "the

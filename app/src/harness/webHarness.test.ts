@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { harnessDuel, parseHarness, seededLedger, seededBadgeLedger } from './webHarness';
+import { harnessDuel, harnessBoot, parseHarness, seededLedger, seededBadgeLedger } from './webHarness';
 import { roomInterjection, interjectionTurn } from '../meta/roomInterjection';
 import { badgeSchema } from '../meta/badges';
 import { grip, corruptLine, corruptionBudget } from '../engine/grip';
@@ -34,11 +34,35 @@ describe('parseHarness', () => {
     expect(parseHarness('?x=1&harness=duel')).toEqual({ kind: 'duel', scenarioId: 'warden', variant: 'mid' });
   });
 
+  it('maps the studio-aperture boot phases (§5)', () => {
+    expect(parseHarness('?harness=boot')).toEqual({ kind: 'boot', variant: 'downloading' });
+    expect(parseHarness('?harness=boot-verify')).toEqual({ kind: 'boot', variant: 'verifying' });
+    expect(parseHarness('?harness=boot-fail')).toEqual({ kind: 'boot', variant: 'failed' });
+  });
+
   it('maps duel-<scenarioId> to a neutral mid-game on that room, but only for a real scenario', () => {
     for (const id of ['fence', 'suspect', 'oracle']) {
       expect(parseHarness(`?harness=duel-${id}`)).toEqual({ kind: 'duel', scenarioId: id, variant: 'mid' });
     }
     expect(parseHarness('?harness=duel-nobody')).toBeNull();
+  });
+});
+
+describe('harnessBoot — the studio-aperture download shot (§5)', () => {
+  it('freezes a real ProviderState at each load phase', () => {
+    const dl = harnessBoot('downloading').prep;
+    expect(dl.kind).toBe('preparing-model');
+    if (dl.kind === 'preparing-model') {
+      expect(dl.download.kind).toBe('downloading');
+      if (dl.download.kind === 'downloading') expect(dl.download.received / dl.download.total).toBeGreaterThan(0);
+    }
+    const ver = harnessBoot('verifying').prep;
+    expect(ver.kind === 'preparing-model' && ver.download.kind === 'verifying').toBe(true);
+    expect(harnessBoot('failed').prep.kind).toBe('failed');
+  });
+
+  it('poses a real scenario behind the aperture', () => {
+    expect(SCENARIOS.some((s) => s.id === harnessBoot('downloading').scenario.id)).toBe(true);
   });
 });
 
