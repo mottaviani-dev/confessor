@@ -353,10 +353,20 @@ async function gateVoice(
   const first = validateVoice(reply, prior, scenario);
   if (!first) return reply;
 
-  // SOFT fault: one re-roll, take whatever returns (a dead retry keeps the first — bounded, never worse).
+  // SOFT fault: one re-roll. THE FIXATION GUARD (judge run-15 #2): the seam can hand a weak persona a rare
+  // foreign fragment it then PERSEVERATES on (MARA looped the pin line, suspicion climbed, LOST), and the
+  // old single-shot soft path shipped whatever the retry returned — so a re-roll that reproduced the SAME
+  // drift shipped it anyway and the loop continued. Now the retry is re-validated: if it trips the SAME
+  // fault KIND, the 3B is stuck in a loop and the character falls quiet (the doctrine-blessed neutral beat)
+  // rather than ship the same drifting line again — the exact "don't ship the third identical line" the
+  // judge asked for, without weakening the seam (the seam turn itself is never gated). A dead retry keeps
+  // the first (bounded, never worse); a cleared retry, or one that trips a DIFFERENT residual, ships.
   if (!isHardFault(first)) {
     const retry = await reroll(first);
-    return retry || reply;
+    if (!retry) return reply;
+    const retryFault = validateVoice(retry, prior, scenario);
+    if (retryFault && retryFault.kind === first.kind) return NEUTRAL_BEAT;
+    return retry;
   }
 
   // HARD fault: re-validate every retry so the flagged line can never ship. Up to TWO re-rolls, correcting

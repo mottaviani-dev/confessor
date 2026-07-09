@@ -473,6 +473,16 @@ describe('firstPersonMemoir — the DOMINANT empathetic-flood drift (sceneryDrif
     it('flags a "years ago" first-person memoir', () => {
       expect(firstPersonMemoir('Forty years ago I signed on to this station, and I have not left the deck since.').memoir).toBe(true);
     });
+
+    it('flags the PERSEVERATION form with an auxiliary — the run-15 post-seam fixation ("I do remember…")', () => {
+      // MARA looped "I do remember my mom giving me that pin…"; the plain "I remember" cue missed the "do".
+      expect(firstPersonMemoir('I do remember my mother giving me that pin, and I have kept it in the drawer since.').memoir).toBe(true);
+      expect(firstPersonMemoir('I still remember the harbour road at dawn, long before the fog took the whole coast.').memoir).toBe(true);
+    });
+
+    it('still SPARES a denial — "I don\'t remember" is not on the reminiscence whitelist', () => {
+      expect(firstPersonMemoir('I do not remember the docks that night, and I will not invent it now.').memoir).toBe(false);
+    });
   });
 
   describe('SPARED — the boundary the judge drew (present-tense watching + a real crack + address must survive)', () => {

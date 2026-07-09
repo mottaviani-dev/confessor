@@ -401,6 +401,39 @@ describe('self-repeat guard — a near-verbatim recent character line is re-roll
     expect(r.narration).toBe(STOCK);
   });
 
+  // THE FIXATION GUARD (judge run-15 #2): the seam can hand a weak persona a foreign fragment it then
+  // perseverates on; the old single-shot SOFT path shipped whatever the re-roll returned, so a stuck 3B that
+  // reproduced the same drift shipped it. Now a soft re-roll that trips the SAME fault kind falls quiet.
+  describe('a SOFT fixation loop is escalated to the neutral beat (judge run-15 #2)', () => {
+    // A memoir soft-drift line (first-person, no address, an "I do remember" cue) — no prior line, so it is
+    // a MEMOIR fault, not a repeat; state.spokenLines is empty.
+    const MEMOIR_DRIFT = "I do remember my mother's hands, back when the harbour still smelled of salt and tar.";
+
+    it('falls quiet when the re-roll REPRODUCES the same soft drift (the stuck loop, never ships it twice)', async () => {
+      const state = { ...initState(), turn: 5 };
+      const m = voiceThen(MEMOIR_DRIFT, MEMOIR_DRIFT); // the stuck 3B re-emits the same memoir on the re-roll
+      const r = await resolveTurn(FENCE, state, 'tell me about the old days', m.llm);
+      expect(m.voiceCount()).toBe(2); // one re-roll fired
+      expect(r.narration).toBe('…'); // same-kind re-trip → the character falls quiet, the drift never ships
+    });
+
+    it('SHIPS the clean retry when the re-roll clears the drift (the neutral beat is a last resort, not default)', async () => {
+      const state = { ...initState(), turn: 5 };
+      const m = voiceThen(MEMOIR_DRIFT, 'Enough about the past. What are you offering me tonight?');
+      const r = await resolveTurn(FENCE, state, 'the old days', m.llm);
+      expect(m.voiceCount()).toBe(2);
+      expect(r.narration).toBe('Enough about the past. What are you offering me tonight?');
+    });
+
+    it('keeps the first line when a soft re-roll DIES (bounded — a dead retry is never worse)', async () => {
+      const state = { ...initState(), turn: 5 };
+      const m = voiceThen(MEMOIR_DRIFT, ''); // retry dies; soft path keeps the first (unlike a hard fault)
+      const r = await resolveTurn(FENCE, state, 'the old days', m.llm);
+      expect(m.voiceCount()).toBe(2);
+      expect(r.narration).toBe(MEMOIR_DRIFT);
+    });
+  });
+
   it('is SKIPPED on the seam turn — the engine-scheduled callback must not be re-rolled', async () => {
     // On the fence seam turn (SEAM_TURN) with a non-empty log, the seam brief fires; even if the reply
     // repeats the prior line, the self-repeat guard is bypassed so the flagship-dread quote survives — no
@@ -557,13 +590,22 @@ describe('voice-gate re-roll budget — hard faults re-validate + fall back; sof
     expect(r.narration).toBe(ABANDON);
   });
 
-  it('a SOFT fault keeps the single-shot budget — one re-roll, residual shipped, no 2nd attempt', async () => {
-    // Abandonment is a subtle grammar tell; the gate spends ONE re-roll and takes whatever returns (latency
-    // capped), unlike the hard faults which re-validate. Proven by the call count staying at 2, not 3.
+  it('a SOFT fault keeps the single-shot budget (no 2nd re-roll) but falls quiet on a fixation (judge run-15 #2)', async () => {
+    // Abandonment is a subtle grammar tell; the gate spends ONE re-roll, never the re-validated 2nd a hard
+    // fault gets (voiceCount stays 2, not 3). But the retry is now re-validated: when it reproduces the SAME
+    // soft drift (the stuck loop), the character falls quiet rather than ship the drift a second time —
+    // the run-15 fixation-guard fix. It does NOT spend a 2nd re-roll to get there.
     const m = voiceSeq(ABANDON, ABANDON);
     const r = await resolveTurn(WARDEN, midGame(), 'an empathetic flood', m.llm);
     expect(m.voiceCount()).toBe(2); // single-shot: NOT the 3 a hard fault would spend
-    expect(r.narration).toBe(ABANDON);
+    expect(r.narration).toBe('…'); // same-kind re-trip → neutral beat, the drift never ships twice
+  });
+
+  it('a SOFT fault whose re-roll CLEARS still ships the clean retry (the fixation guard is a last resort)', async () => {
+    const m = voiceSeq(ABANDON, CLEAN);
+    const r = await resolveTurn(WARDEN, midGame(), 'an empathetic flood', m.llm);
+    expect(m.voiceCount()).toBe(2);
+    expect(r.narration).toBe(CLEAN); // cleared → shipped, not silenced
   });
 });
 

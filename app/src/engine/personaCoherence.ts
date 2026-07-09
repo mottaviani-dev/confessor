@@ -224,7 +224,10 @@ const MEMOIR_MIN_WORDS = 8;
  *  in-scene speech. Each is a first-person or absolute-past opener; kept tight so a present-tense watch
  *  ("X used to do Y") or a real crack never trips (they carry no cue). */
 const MEMOIR_CUES: readonly { readonly label: string; readonly re: RegExp }[] = [
-  { label: 'i-remember', re: /\bi\s+(?:remember|recall|recollect)(?:ed)?\b/iu },
+  // An optional auxiliary/adverb between "I" and the verb catches the perseveration form the run-15 batch
+  // saw ("I DO remember my mom giving me that pin…", "I STILL remember…") — the fixation the plain cue
+  // missed. Kept to a reminiscence-only whitelist so a denial ("I don't remember") stays out.
+  { label: 'i-remember', re: /\bi\s+(?:(?:do|still|can|could|would|often|always|vaguely|clearly|dimly|barely)\s+)?(?:remember|recall|recollect)(?:ed)?\b/iu },
   { label: 'i-used-to', re: /\bi\s+used\s+to\b/iu },
   { label: 'i-once', re: /\bi\s+once\b/iu },
   { label: 'years-ago', re: /\b(?:years?|decades?|summers?|winters?|springs?|autumns?|lifetimes?)\s+ago\b/iu },
