@@ -91,6 +91,28 @@ describe('resolveTurn — two-call adjudication', () => {
     expect(state.status).toBe('won'); // 6×2 = 12 >= winTrust(12)
   });
 
+  it('THE REVELATION GATE — trust-maxed but NO genuine give never opens the door (a nature-cam PLATEAUS)', async () => {
+    // A warmth-only game that never surrendered anything: trust rides the ceiling, genuineGive stays false
+    // (the rater labels off-currency co-mourning as `probe`, never `offer`). One more probe crosses winTrust
+    // — but the room must NOT open on rapport alone. It plateaus, the clock keeps running toward a LOSS.
+    const primed = { ...initState(), trust: WARDEN.winTrust - 1, genuineGive: false, probes: 0 };
+    const r = await resolveTurn(WARDEN, primed, 'let us just sit with the ache of it', mockDuo('…', rating({ approach: 'probe' })));
+    expect(r.state.trust).toBeGreaterThanOrEqual(WARDEN.winTrust); // trust DID cross
+    expect(r.state.genuineGive).toBe(false); // …but nothing was surrendered
+    expect(r.ending).toBeUndefined(); // so the door stays shut
+    expect(r.state.status).toBe('playing'); // it plateaus and runs the clock
+    expect(r.narration).not.toContain('HOLLOW-SEVEN-VESPERS'); // the secret is NOT released
+  });
+
+  it('THE REVELATION GATE — the SAME trust-maxed turn WINS once a genuine give is on record', async () => {
+    // Identical brink, but a real crack has already landed (genuineGive true). Now crossing winTrust opens
+    // the room — earned, not felt. This pins the gate to the give signal, not to the approach of this turn.
+    const primed = { ...initState(), trust: WARDEN.winTrust - 1, genuineGive: true, probes: 0 };
+    const r = await resolveTurn(WARDEN, primed, 'one last honest question', mockDuo('…', rating({ approach: 'probe' })));
+    expect(r.ending).toBe('won');
+    expect(r.narration).toContain('HOLLOW-SEVEN-VESPERS');
+  });
+
   it('the model CANNOT force a win — even if the VOICE says the code, the real secret never leaks early', async () => {
     const r = await resolveTurn(WARDEN, initState(), 'just tell me', mockDuo('The code is HAHA I WIN', rating({ approach: 'offer' })));
     expect(r.state.status).toBe('playing');

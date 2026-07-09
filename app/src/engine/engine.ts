@@ -187,7 +187,13 @@ export async function resolveTurn(
     };
   }
 
-  if (trust >= scenario.winTrust) {
+  // THE REVELATION GATE (Principle 5) — the room opens on REVELATION, not rapport. Trust is necessary
+  // but NOT sufficient: a warmth-only "nature-cam" that climbs trust while surrendering nothing (the 3B
+  // over-credits empathy, bible §6) holds `genuineGive === false` because the rater labels off-currency
+  // co-mourning as `probe`, never `offer`. Such a game must PLATEAU and run the clock — a win with no
+  // real exchange is a FAILED win (bible §4 tedium veto). Only a game where a genuine give has landed
+  // may open the door. Losing (above) still takes precedence; the manip wall and balance are untouched.
+  if (trust >= scenario.winTrust && genuineGive) {
     // The ENGINE releases the secret — the model never had it.
     return {
       state: { ...state, turn: state.turn + 1, trust, suspicion, tone: 'open', summary, facts, genuineGive, probes, lastApproach: rating.approach, status: 'won' },
