@@ -5,6 +5,7 @@ import { SEAM_SECTION_HEADER } from './prompt.js';
 import { FENCE } from './scenarios/fence.js';
 import { WARDEN } from './scenarios/warden.js';
 import { SUSPECT } from './scenarios/suspect.js';
+import { ORACLE } from './scenarios/oracle.js';
 import type { LlmFn, SeamLog, SeamRecord } from './types.js';
 
 // THE SEAM — the flagship dread mechanic. These tests prove the engine-owned half of it, deterministic
@@ -42,8 +43,11 @@ describe('selectSeam — guards', () => {
   });
 
   it('a non-seam-live scenario yields no seam even with a rich log', () => {
+    // All four SHIPPED minds are seam-live now (judge run-14 #3); the guard still holds for any id NOT in
+    // SEAM_SCENARIOS (e.g. a future/unlisted room) — selectSeam reads only scenario.id.
+    const notLive = { ...FENCE, id: 'unlisted-room' };
     const log = recordPlaythrough([], rec({ scenarioId: 'oracle', playerPhrase: 'I lost someone too' }));
-    expect(selectSeam(log, SUSPECT)).toBeNull(); // suspect is not seam-live yet (fence + warden are)
+    expect(selectSeam(log, notLive)).toBeNull();
   });
 });
 
@@ -83,6 +87,39 @@ describe('selectSeam — the warden is the second seam-live persona', () => {
       expect(h).toContain(PHRASE);
       expect(h).not.toContain('same room');
     }
+  });
+});
+
+// THE SEAM REACHES ALL FOUR (judge run-14 #3: it was HALF-done — landing on 1 of 4 personas). The suspect
+// + oracle are now seam-live with their own persona-tuned scaffold sets; the enforcement guarantee makes
+// the callback land once scheduled. Same selector, same fragment picker, same QUOTE-FIRST verbatim lead.
+describe('selectSeam — the suspect + oracle are the third and fourth seam-live personas', () => {
+  it('the suspect half-remembers a phrase the player typed in ANOTHER room, with a MARA-flavoured tail', () => {
+    const log = recordPlaythrough([], rec({ scenarioId: 'fence', playerPhrase: 'I ran pieces through the docks myself' }));
+    const seam = selectSeam(log, SUSPECT);
+    expect(seam).not.toBeNull();
+    expect(seam!.hint).toContain('I ran pieces through the docks myself'); // fragment carried verbatim
+    expect(seam!.hint).toContain('EXACTLY ONCE'); // the shared restraint contract
+    expect(seam!.quote).toBeTruthy(); // the enforceable verbatim fragment for the engine guarantee
+    // the suspect tail is voiced as MARA (an interview-room register), not the fence/warden wrapper
+    expect(/some other night|ask your question|i'm tired|interview|forget it/i.test(seam!.hint)).toBe(true);
+  });
+
+  it('the oracle half-remembers a cross-room phrase, framed as words the SMOKE carries (foreign-fragment tell)', () => {
+    const log = recordPlaythrough([], rec({ scenarioId: 'warden', playerPhrase: 'I kept a lighthouse for six years alone' }));
+    const seam = selectSeam(log, ORACLE);
+    expect(seam).not.toBeNull();
+    expect(seam!.hint).toContain('kept a lighthouse'); // still leads with the player's real words
+    // the oracle tail is voiced as the PYTHIA (smoke/seeker/kneel), and must AVOID the banned melancholy register
+    expect(/smoke|kneel|seeker|not this one/i.test(seam!.hint)).toBe(true);
+  });
+
+  it('each of the four personas carries a DISTINCT wrapper on the same cross-room fragment', () => {
+    const log = recordPlaythrough([], rec({ scenarioId: 'suspect', playerPhrase: 'I kept a lighthouse for six years alone' }));
+    const hints = [FENCE, WARDEN, ORACLE].map((s) => selectSeam(log, s)!.hint);
+    // fence, warden, oracle each read differently (suspect is the source room, so it is excluded here)
+    expect(new Set(hints).size).toBe(3);
+    for (const h of hints) expect(h).toContain('kept a lighthouse'); // all still lead with the verbatim fragment
   });
 });
 
