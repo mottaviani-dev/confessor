@@ -44,6 +44,7 @@ import { composureBreak } from './src/ui/bulbSway';
 import { roomStillLine } from './src/ui/roomStillness';
 import { roomWithdrawal } from './src/ui/roomWithdrawal';
 import { StudioAperture } from './src/ui/StudioAperture';
+import { APERTURE_AMBER, APERTURE_BONE } from './src/ui/aperture';
 import { harnessDuel, harnessBoot, parseHarness, seededLedger, seededBadgeLedger, seededHomecoming, seededRoomArc, seededCapstone, seededRevisit, type HarnessDuel } from './src/harness/webHarness';
 
 type Line = { who: 'them' | 'you' | 'system'; text: string };
@@ -440,7 +441,19 @@ function Picker({
       <StatusBar style="light" />
       <Image source={PICKER_BG} style={styles.pickerBg} contentFit="cover" />
       <View style={styles.pickerHead}>
-        <Text style={styles.brand}>CONFESSOR</Text>
+        {/* THE GAME WORDMARK — brought into the studio brand grammar (mandate #1): bone-on-tar in the same
+            engraved, wide-tracked register as the SOMNIA mark (not the old near-white heavy sans), with ONE
+            amber accent — a thin vertical door-sliver set into the word before its final syllable, the same
+            sodium fissure the app icon and the studio aperture leak (APERTURE_AMBER, single source). So the
+            picker title, the icon, and the boot aperture read as one identity (§5 connective tissue). The
+            keyhole is negative space carried into the wordmark (§2 "the U/O rendered as a doorway"); a paid
+            registered serif stays Matteo-gated, so this is the closest in-grammar treatment (layered Views
+            only → renders identically on the visual-truth web export and on device). */}
+        <View style={styles.brandRow}>
+          <Text style={styles.brand}>CONFESS</Text>
+          <View style={styles.brandSliver} />
+          <Text style={styles.brand}>OR</Text>
+        </View>
         <Text style={styles.brandSub}>A duel of wits. One mind. One secret. Talk it loose.</Text>
         <Text style={styles.crackedHead}>
           {cracked} OF {SCENARIOS.length} MINDS CRACKED
@@ -980,8 +993,16 @@ const styles = StyleSheet.create({
   thresholdEnter: { borderWidth: 1, borderColor: '#2a2a33', borderRadius: 6, paddingVertical: 13, paddingHorizontal: 30, backgroundColor: 'rgba(12,12,16,0.6)' },
   thresholdEnterText: { color: '#c9c9cf', fontSize: 14, fontWeight: '700', letterSpacing: 2 },
   pickerHead: { marginTop: 40, marginBottom: 24, alignItems: 'center' },
-  brand: { color: '#e5e7eb', fontSize: 30, fontWeight: '900', letterSpacing: 6 },
-  brandSub: { color: '#7a7a83', fontSize: 13, marginTop: 12, textAlign: 'center', lineHeight: 19, fontStyle: 'italic' },
+  // The game wordmark in the studio register (mandate #1): bone (== APERTURE_BONE, the exact SOMNIA-mark
+  // bone) on tar, engraved weight 600 + wide tracking — matching the boot `somnia` mark, not the old
+  // near-white heavy sans. The two title syllables are split so the amber door-sliver can sit between them.
+  brandRow: { flexDirection: 'row', alignItems: 'center' },
+  brand: { color: APERTURE_BONE, fontSize: 30, fontWeight: '600', letterSpacing: 8 },
+  // The single amber accent — a thin vertical door-sliver / keyhole slit set into the wordmark, the same
+  // sodium fissure the app icon and the studio aperture leak (APERTURE_AMBER). ONE colour on the mark (§2).
+  brandSliver: { width: 2, height: 26, backgroundColor: APERTURE_AMBER, marginHorizontal: 3, opacity: 0.9 },
+  // Subtitle warmed off the cool #7a7a83 toward the room's dim bone/sodium bed (mandate #1).
+  brandSub: { color: '#8f8674', fontSize: 13, marginTop: 12, textAlign: 'center', lineHeight: 19, fontStyle: 'italic' },
   pickerList: { paddingBottom: 40, gap: 12 },
   // Cards read as plates set into the wall: translucent tar over the etching, one hairline frame,
   // monochrome. Nothing announces itself.
