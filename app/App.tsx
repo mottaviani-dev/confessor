@@ -42,6 +42,7 @@ import { useAudioDirector } from './src/audio/useAudioDirector';
 import { RoomBackdrop, SwayingBackdrop } from './src/ui/SceneBackdrop';
 import { composureBreak } from './src/ui/bulbSway';
 import { roomStillLine } from './src/ui/roomStillness';
+import { roomWithdrawal } from './src/ui/roomWithdrawal';
 import { StudioAperture } from './src/ui/StudioAperture';
 import { harnessDuel, harnessBoot, parseHarness, seededLedger, seededBadgeLedger, seededHomecoming, seededRoomArc, seededCapstone, seededRevisit, type HarnessDuel } from './src/harness/webHarness';
 
@@ -635,6 +636,10 @@ function Duel({
       // comes apart — THEIR composure cracking (trust) OR YOUR grip slipping (suspicion), whichever is
       // further gone — and the code-owned door schedule advances with the turn.
       audio.setComposure(composureBreak(scenario, r.state));
+      // THE ROOM WITHDRAWS ITS SENSES (mandate #2) — on a sustained filler streak the room pulls the mind's
+      // instrument to the bare bed (the sonic twin of the bulb stilling below), off the SAME engine filler
+      // counter the refusal ladder reads. Reverses instantly on the next positive beat (fillerStreak → 0).
+      audio.setWithdrawal(roomWithdrawal(r.state.fillerStreak ?? 0));
       audio.markTurn(r.state.turn, scenario.turnLimit);
       // On a WIN the engine appends the real secret to the narration (reply + "\n\n" + secret). The reveal
       // is not stage text — it is the win ceremony, rendered Grip-banded below (clean vs the room "keeps a
@@ -694,6 +699,10 @@ function Duel({
   // screenshot to its max deflection (a still can't show the animation) — the mandate's broken-vs-rest shot.
   const composure = composureBreak(scenario, state);
   const swayFrozen = harness?.freezeSway ?? false;
+  // THE ROOM WITHDRAWS ITS MOTION (mandate #2) — the bulb-sway DAMPENS toward inert as the filler streak
+  // deepens (the visual twin of the instrument thinning above), off the SAME engine counter. A seeker who
+  // spends nothing has the room's one motion pulled away; the next positive beat re-engages it (streak → 0).
+  const withdrawal = roomWithdrawal(state.fillerStreak ?? 0);
   // INTERFACE CORRUPTION — the room edits you (mandate 1 · bible §2 Grip). As Grip falls (you have been
   // pressing the mind's guard up), your own just-submitted line renders back a shade COLDER than you
   // typed it. DISPLAY-LAYER ONLY (bible §6): `lastYou` is the raw text the engine already rated; this
@@ -727,7 +736,7 @@ function Duel({
       {/* The room — the scene's etched master, dimmed so the duel text owns the light. Rooms without a
           painted master (the fifth door, the Prior Occupant) get the procedural accent chiaroscuro so they
           read as their OWN chamber, never a fallback to the picker (mandate #3). */}
-      <SwayingBackdrop composure={composure} frozen={swayFrozen}>
+      <SwayingBackdrop composure={composure} withdrawal={withdrawal} frozen={swayFrozen}>
         {SCENE_BG[scenario.id] ? (
           <Image source={SCENE_BG[scenario.id]} style={styles.sceneBg} contentFit="cover" />
         ) : (

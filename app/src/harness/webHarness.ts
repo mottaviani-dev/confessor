@@ -22,6 +22,7 @@ import { roomArc, type RoomArcBeat } from '../meta/roomArc';
 import { roomCapstone, type RoomCapstoneBeat } from '../meta/roomCapstone';
 import { roomInterjection, interjectionTurn } from '../meta/roomInterjection';
 import { applyRevisit } from '../meta/revisit';
+import { roomStillLine } from '../ui/roomStillness';
 import { SCENARIOS } from '../engine/scenarios';
 
 /** One transcript line, structurally identical to App's private `Line` — the harness seeds `Duel`'s
@@ -37,6 +38,7 @@ export type DuelVariant =
   | 'interjection'
   | 'revisit'
   | 'sway'
+  | 'withdrawn'
   | 'win-highgrip'
   | 'win-lowgrip'
   | 'lose-highgrip'
@@ -83,6 +85,7 @@ const DUEL_URL_KEYS: Readonly<Record<string, DuelVariant>> = {
   'duel-interjection': 'interjection', // the ROOM answers back mid-duel — the fifth secret intrudes (§2 thrust 4)
   'duel-revisit': 'revisit', // THE ROOM REMEMBERS YOU CAME — a re-entered WON room opens on its second-visit greeting + shifted objective (mandate 1a)
   'duel-sway': 'sway', // THE BULB SWAYS — a composure-BROKEN room frozen at its max ~2px deflection (mandate 1, bible §2 motion)
+  'duel-withdrawn': 'withdrawn', // THE ROOM WITHDRAWS ITS SENSES — same broken room, but a sustained filler streak stills the bulb + thins the instrument (mandate #2)
   // The endgame texture split (§2 thrust 5): the SAME win, closed two ways by the final Grip band.
   'win-highgrip': 'win-highgrip',
   'win-lowgrip': 'win-lowgrip',
@@ -491,6 +494,42 @@ export function harnessDuel(mode: Extract<HarnessMode, { kind: 'duel' }>): Harne
       history: [{ who: 'them', text: opening }],
       showLog: false,
       freezeSway: true, // pin the backdrop to its max deflection for the still capture
+    };
+  }
+
+  if (mode.variant === 'withdrawn') {
+    // THE ROOM WITHDRAWS ITS SENSES (mandate #2). The SAME composure-broken room as `duel-sway` (suspicion
+    // one below the lock-out → composureBreak in the top band, so the bulb WOULD sway max), but a SUSTAINED
+    // filler streak (fillerStreak ≥ FULLY_WITHDRAWN_STREAK) has pulled the room's senses away: the sway is
+    // damped to INERT (the bulb hangs still despite the broken composure) and the instrument is thinned to
+    // the bare bed (silent in the export, but the state drives it live). `freezeSway` pins the STILLED
+    // backdrop, so paired with `?harness=duel-sway` (broken + engaged → full deflection) the two stills read
+    // the room DISENGAGING from a seeker who spends nothing. The transcript is open on the COLD refusal line
+    // (the room-voice ladder's withdrawn register) so the withdrawal is legible in the still.
+    const state: GameState = {
+      ...base,
+      turn: 9,
+      trust: Math.round(scenario.winTrust * 0.35),
+      suspicion: Math.max(1, scenario.loseSuspicion - 1),
+      tone: 'wary',
+      probes: 3,
+      genuineGive: false,
+      lastApproach: 'filler',
+      fillerStreak: 5, // sustained filler → fully withdrawn (bulb inert, instrument pulled)
+    };
+    return {
+      scenario,
+      state,
+      current: 'It says nothing. The bulb overhead has gone still, and the room seems to have stopped listening.',
+      lastYou: 'Nice place. Cozy, in a way. Bet the coffee is terrible.',
+      pulse: null,
+      history: [
+        { who: 'them', text: opening },
+        { who: 'you', text: 'Nice place. Cozy, in a way. Bet the coffee is terrible.' },
+        { who: 'system', text: roomStillLine(5) },
+      ],
+      showLog: true, // the cold refusal line renders — the withdrawal made legible beside the stilled bulb
+      freezeSway: true, // pin the STILLED backdrop (withdrawal damps the max-composure sway to inert)
     };
   }
 

@@ -61,18 +61,27 @@ export function RoomBackdrop({ accent, style }: { accent: string; style?: StyleP
 
 export function SwayingBackdrop({
   composure,
+  withdrawal = 0,
   frozen = false,
   style,
   children,
 }: {
   /** The composure-break signal 0 (calm) → 1 (unravelled) — the SAME reading that drives the audio detune. */
   readonly composure: number;
+  /** THE ROOM WITHDRAWS ITS MOTION (mandate #2) — 0 (engaged) → 1 (fully withdrawn), off the engine's filler
+   *  streak (ui/roomWithdrawal). It DAMPENS the composure sway toward zero: on a sustained filler streak the
+   *  bulb goes inert (the room pulls its one motion away from a seeker who gives it nothing, Principle 4),
+   *  reversing instantly when the streak resets. Off (0) → the sway is the pure composure reading. */
+  readonly withdrawal?: number;
   /** Screenshot harness: pin the transform to the static max deflection instead of animating (still capture). */
   readonly frozen?: boolean;
   readonly style?: StyleProp<ViewStyle>;
   readonly children: React.ReactNode;
 }) {
-  const amp = swayAmplitude(composure);
+  // The composure sway, DAMPENED by the room's withdrawal: as the room disengages on a sustained filler
+  // streak the pendulum stills toward zero, so the light itself stops moving for a seeker who spends nothing.
+  const damp = 1 - Math.max(0, Math.min(1, Number.isFinite(withdrawal) ? withdrawal : 0));
+  const amp = swayAmplitude(composure) * damp;
   const phase = useRef(new Animated.Value(0)).current; // the pendulum, −1 → +1
   const ampV = useRef(new Animated.Value(amp)).current; // the deflection, eased toward the current band
 

@@ -349,3 +349,59 @@ describe('AudioDirector — the door behind the chair (code-owned 3× schedule)'
     expect(doors).toEqual(['door', 'door', 'door', 'door']); // 3 from game one + 1 from game two
   });
 });
+
+// THE ROOM WITHDRAWS ITS SENSES (mandate #2) — the audio half. On a sustained filler streak the scene pushes
+// withdrawal → 1 and the room PULLS the per-scenario instrument to the bare bed; a positive beat pushes it
+// back to 0 and the instrument re-engages instantly. The bed (the room's pulse) never withdraws.
+describe('AudioDirector — the room withdraws the instrument on a sustained filler streak (mandate #2)', () => {
+  it('at full withdrawal the instrument is thinned to the bare bed (the bed remains)', () => {
+    const { port, calls } = fakePort();
+    const d = new AudioDirector(port);
+    d.enterScene('choir'); // the oracle's voice under the bed
+    expect(new Set(d.activeTracks())).toEqual(new Set(['bed', 'choir']));
+    d.setWithdrawal(1); // sustained filler → the room pulls its voice
+    expect(d.activeTracks()).toEqual(['bed']); // only the room's pulse remains
+    expect(d.isWithdrawn()).toBe(true);
+    expect(calls).toContain('stop:choir');
+  });
+
+  it('re-engages the instrument the instant withdrawal drops (a positive beat)', () => {
+    const { port } = fakePort();
+    const d = new AudioDirector(port);
+    d.enterScene('bowed');
+    d.setWithdrawal(1);
+    expect(d.activeTracks()).toEqual(['bed']);
+    d.setWithdrawal(0); // the seeker gives or presses — the room re-engages
+    expect(new Set(d.activeTracks())).toEqual(new Set(['bed', 'bowed']));
+    expect(d.isWithdrawn()).toBe(false);
+  });
+
+  it('a PARTIAL withdrawal does not pull the instrument (only a sustained streak thins the room)', () => {
+    const { port } = fakePort();
+    const d = new AudioDirector(port);
+    d.enterScene('breath');
+    d.setWithdrawal(0.5); // the senses only beginning to pull away
+    expect(new Set(d.activeTracks())).toEqual(new Set(['bed', 'breath']));
+    expect(d.isWithdrawn()).toBe(false);
+  });
+
+  it('clamps the level and treats a non-finite input as engaged (0)', () => {
+    const { port } = fakePort();
+    const d = new AudioDirector(port);
+    d.enterScene('wire');
+    d.setWithdrawal(Number.NaN);
+    expect(new Set(d.activeTracks())).toEqual(new Set(['bed', 'wire']));
+    d.setWithdrawal(5); // clamps to 1 → withdrawn
+    expect(d.activeTracks()).toEqual(['bed']);
+  });
+
+  it('the withdrawn instrument still detunes-clears cleanly and never orphans (leaveScene resets)', () => {
+    const { port } = fakePort();
+    const d = new AudioDirector(port);
+    d.enterScene('choir');
+    d.setWithdrawal(1);
+    d.leaveScene();
+    expect(d.activeTracks()).toEqual([]);
+    expect(d.isWithdrawn()).toBe(false); // withdrawal reset for the next game
+  });
+});

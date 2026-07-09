@@ -76,6 +76,12 @@ type DirectorState = {
   generating: boolean;
   /** Composure-break level, 0 (calm) → 1 (the séance fully unravelled). Drives the bed + instrument detune. */
   composure: number;
+  /** THE ROOM WITHDRAWS ITS SENSES (mandate #2), 0 (engaged) → 1 (fully withdrawn) — the audio half of the
+   *  filler-streak withdrawal (the visual half stills the bulb, ui/roomWithdrawal). At FULL withdrawal the
+   *  room PULLS its own voice: the per-scenario instrument thins to the bare bed (dropped from `desired`).
+   *  Reverses instantly when the streak resets (the scene pushes 0 on the next positive beat). The bed
+   *  itself never withdraws — the room's pulse remains, only the mind's instrument is taken away. */
+  withdrawal: number;
   /** The room's per-scenario instrument for this scene, or null (bed-only). Set on enterScene, cleared on
    *  leaveScene — one director per scene mount, so it is stable for the director's life. */
   instrument: InstrumentVoice | null;
@@ -87,6 +93,7 @@ export class AudioDirector {
     sceneActive: false,
     generating: false,
     composure: 0,
+    withdrawal: 0,
     instrument: null,
   };
   private readonly playing = new Set<AudioTrack>();
@@ -109,13 +116,13 @@ export class AudioDirector {
     this.set({ sceneActive: true, instrument: instrument ?? null });
   }
 
-  /** The scene unmounted — stop everything and reset the composure + instrument + door schedule for the
-   *  next game. */
+  /** The scene unmounted — stop everything and reset the composure + withdrawal + instrument + door schedule
+   *  for the next game. */
   leaveScene(): void {
     this.doorLimit = 0;
     this.doorMilestones = [];
     this.doorIndex = 0;
-    this.set({ sceneActive: false, generating: false, composure: 0, instrument: null });
+    this.set({ sceneActive: false, generating: false, composure: 0, withdrawal: 0, instrument: null });
   }
 
   /** A model call fired — start the pen-scratch latency mask (unless muted / no scene). */
@@ -142,6 +149,17 @@ export class AudioDirector {
   setComposure(level: number): void {
     const composure = Math.max(0, Math.min(1, Number.isFinite(level) ? level : 0));
     this.set({ composure });
+  }
+
+  /** THE ROOM WITHDRAWS ITS SENSES (mandate #2) — set the withdrawal level (0 engaged → 1 fully withdrawn),
+   *  the audio twin of the bulb stilling. At FULL withdrawal the per-scenario instrument is PULLED and the
+   *  room thins to the bare bed (the mind's voice taken away from a seeker who spends nothing); the bed
+   *  itself never withdraws. Clamped; reverses instantly when the scene pushes it back to 0 on a positive
+   *  beat. The scene computes it from the engine's filler streak (ui/roomWithdrawal) — one source of truth,
+   *  the same counter the room-voice refusal ladder reads. Display/presentation-only: never on the score. */
+  setWithdrawal(level: number): void {
+    const withdrawal = Math.max(0, Math.min(1, Number.isFinite(level) ? level : 0));
+    this.set({ withdrawal });
   }
 
   /** Current bed detune rate, for tests/telemetry (1 when calm/silent; < 1 as composure breaks). */
@@ -187,12 +205,22 @@ export class AudioDirector {
     this.reconcile();
   }
 
+  /** True when the room is FULLY withdrawn — the cutoff at which the per-scenario instrument is pulled (the
+   *  audio half of mandate #2). Exposed for tests/telemetry; a strict `>= 1` so only a sustained filler
+   *  streak thins the room, and it re-engages the instant the level drops back. */
+  isWithdrawn(): boolean {
+    return this.state.withdrawal >= 1;
+  }
+
   /** The single source of truth: given the state, what SHOULD be sounding — then diff against what is. */
   private desired(): Set<AudioTrack> {
     const want = new Set<AudioTrack>();
     if (this.state.muted || !this.state.sceneActive) return want; // muted or off-scene → silence
     want.add('bed');
-    if (this.state.instrument) want.add(this.state.instrument); // the room's per-scenario voice
+    // THE ROOM WITHDRAWS ITS VOICE (mandate #2): the bed is the room's pulse and always plays, but on a
+    // sustained filler streak the room PULLS the mind's own instrument — it thins to the bare bed, the sonic
+    // twin of the bulb going inert. Reverses the instant withdrawal drops (a positive beat re-engages it).
+    if (this.state.instrument && !this.isWithdrawn()) want.add(this.state.instrument);
     if (this.state.generating) want.add('scratch');
     return want;
   }

@@ -70,6 +70,10 @@ export type SceneAudio = {
   /** Update the composure-break level (0 calm → 1 unravelled) — the room-tone bed detunes as it rises
    *  (mandate #2). The scene computes it from the engine's meters. */
   setComposure: (level: number) => void;
+  /** Update the room's withdrawal level (0 engaged → 1 fully withdrawn) — on a sustained filler streak the
+   *  room pulls the mind's instrument to the bare bed (mandate #2, the sonic twin of the bulb stilling). The
+   *  scene computes it from the engine's filler streak (ui/roomWithdrawal); reverses on the next positive beat. */
+  setWithdrawal: (level: number) => void;
   /** Advance the code-owned door schedule to this turn — the door behind the chair fires on milestones,
    *  three times per full game (mandate #2). */
   markTurn: (turn: number, turnLimit: number) => void;
@@ -105,6 +109,7 @@ export function useAudioDirector(instrument?: InstrumentVoice): SceneAudio {
     onGenerationStart: () => ref.current!.generationStarted(),
     onGenerationEnd: () => ref.current!.generationEnded(),
     setComposure: (level: number) => ref.current!.setComposure(level),
+    setWithdrawal: (level: number) => ref.current!.setWithdrawal(level),
     markTurn: (turn: number, turnLimit: number) => ref.current!.markTurn(turn, turnLimit),
   };
 }
