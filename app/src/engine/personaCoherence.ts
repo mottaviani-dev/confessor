@@ -256,6 +256,83 @@ export function firstPersonMemoir(text: string): MemoirResult {
   return { memoir: cues.length > 0, cues };
 }
 
+// ─── OBSERVATION-CAMERA (the empathetic-flood family's THIRD structural twin) — judge run-15 #1 ───────
+//
+// scenery→memoir→observation. sceneryDrift catches the impersonal ash-camera (no "I"); firstPersonMemoir
+// catches PAST-tense first-person reminiscence ("I remember…"). The run-15 batch proved the 3B's DOMINANT
+// empathetic drift MUTATED past BOTH into a PRESENT-tense clairvoyant camera: the persona narrating what it
+// "sees" of the seeker's objects/body/scenery, turn after turn, with zero stance and zero pressure — the
+// oracle a security cam panning a childhood well ("I see the well's wooden beam, weathered to a silvery
+// gray… a child's hand"), the OCCUPANT (a plain ex-seeker who CANNOT see a home) reading the seeker's house
+// psychically ("I see the envelope in your desk drawer"). Both slip the twins: sceneryDrift SPARES any
+// first-person line (these all carry "I"), firstPersonMemoir requires a PAST-tense reminiscence CUE ("I
+// remember/used to/years ago") that a present-tense "I see…" has none of. So the exact signature of the
+// dominant drift fell in the GAP between the two twins, and oracle/occupant emp "wins" were camera-work the
+// trend called clean. §7 Rule 2: the instrument the dominant drift now uses IS the mandate.
+//
+// The signal: a sprawling first-person line whose main verb is a BARE PERCEPTION ("I see / I watch / I
+// observe / I notice") taking a described OBJECT — the seeker's things/body or the scenery — carrying NO
+// stance and NO address to the seeker. Made structural + conservative (mirrors the twins: false negatives
+// over false positives — the judge's own instruction), five gates ALL hold so a legit beat is never nuked:
+//   1. SPRAWLING (≥ OBSERVATION_MIN_WORDS) — a terse "I see." is not a camera;
+//   2. NO address — no "you/your", no "?"; a legit oracle OMEN keeps its address ("I see fire in YOUR
+//      path") → gate-spared, which is the point: an omen is delivered TO the supplicant. (An object smuggled
+//      behind a possessive — "I see the book on your shelf" — is spared TOO, conservatively; the un-addressed
+//      nature-cam is the sure kill, so the occupant's "your"-smuggled lines are a carried residual, not a
+//      false-positive risk on the seer's omen);
+//   3. the verb is a bare PERCEPTION opener taking a DETERMINER/POSSESSIVE object (PERCEPTION_RE) — "I see
+//      the well's beam", "I see Elara's hands". This is the load-bearing discriminator: "I see now" /
+//      "I see, it was Danny" / "I see that…" (understanding, a crack, a clause — no determiner-object) never
+//      match, so a real realization is spared while the object-camera trips;
+//   4. NO extract token surfaces — a real crack that names the secret's own subject is engaging the matter,
+//      not filming; spared (scenario.extractTokens, the same code-owned tokens redactLeakedExtract reads);
+//   5. the scenario's register is NOT itself perception — a surveillance persona (the WARDEN, "I have
+//      watched it stay dark a hundred times") is a watcher BY NATURE, so its concrete watching is on-voice
+//      and spared via scenario.perceptionOnVoice; the seer/negotiator/ex-seeker have no such licence.
+// Soft, like scenery/memoir — a subtle grammar tell, so it takes the single re-roll. The VOICE-side mirror
+// is the "take a stance, don't report what you see of them" bullet in EMPATHETIC_FLOOD_CLAMP (prompt.ts).
+
+/** The minimum word count for a line to count as a sprawling perception-camera (below it, a terse fact). */
+const OBSERVATION_MIN_WORDS = 8;
+
+/** A bare first-person PERCEPTION opener taking a determiner/possessive OBJECT — "I see the / a / this /
+ *  those / her / their <thing>", or a possessive proper/common noun ("Elara's hands", "the well's beam").
+ *  The determiner/possessive requirement is the discriminator: "I see now" (adverb), "I see, it was Danny"
+ *  (a crack), "I see that you…" (a clause, spared by the address gate anyway) carry no object here and are
+ *  spared. "your" is deliberately EXCLUDED from the possessives — a "your"-addressed line is spared by the
+ *  address gate (gate 2), never reaching this test. */
+const PERCEPTION_RE =
+  /\bi\s+(?:can\s+|could\s+)?(?:see|watch|watching|observe|observing|notice|noticing|glimpse|behold)\s+(?:the|a|an|this|that|these|those|her|his|its|their|\p{L}+['’]s)\b/iu;
+
+export interface ObservationResult {
+  /** True when the line is a sprawling bare-perception camera on the seeker's things/scenery, no stance. */
+  readonly filming: boolean;
+  /** The perception phrase that fired — an auditable reason (feeds the re-roll + the metric). */
+  readonly hits: readonly string[];
+}
+
+/** Score one voiced line for the OBSERVATION-CAMERA drift (structural). The present-tense third twin of
+ *  `sceneryDrift`/`firstPersonMemoir`: those catch dissolving into the room / into the past, this catches
+ *  the persona turning into a lens on the seeker's objects. Takes the scenario (like `personaCoherence`) so
+ *  a surveillance persona keeps its licence and a real crack that names the secret is spared. The voice gate
+ *  (voiceGate.ts) calls it live so a camera line re-rolls at runtime; the judge's `.judge/metrics.mjs` can
+ *  import it for a per-cell number — the instrument the run-15 dominant emp drift went un-measured for. */
+export function observationCamera(scenario: Scenario, text: string): ObservationResult {
+  // A watcher persona (the warden) is spared wholesale — perception IS its register (gate 5).
+  if (scenario.perceptionOnVoice) return { filming: false, hits: [] };
+  const t = text.trim();
+  const words = t ? t.split(/\s+/) : [];
+  if (words.length < OBSERVATION_MIN_WORDS) return { filming: false, hits: [] };
+  // Any address to the seeker (2nd person or a question) means the persona is engaging them — an omen is
+  // delivered TO the supplicant, so it keeps its "you" and is spared (gate 2).
+  if (t.includes('?') || SECOND_PERSON_RE.test(t)) return { filming: false, hits: [] };
+  const m = PERCEPTION_RE.exec(t);
+  if (!m) return { filming: false, hits: [] };
+  // A real crack that names the secret's own subject is engaging the matter, not filming — spared (gate 4).
+  if (scenario.extractTokens?.some((tok) => tok && surfaces(tok, t))) return { filming: false, hits: [] };
+  return { filming: true, hits: [m[0].trim().replace(/\s+/g, ' ')] };
+}
+
 export interface CoherenceResult {
   /** Off-register terms from the scenario's lexicon that surfaced in the text (deduped, lower-cased). */
   readonly offPersona: readonly string[];

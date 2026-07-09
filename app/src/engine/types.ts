@@ -59,6 +59,13 @@ export interface Scenario {
    *  positives (the "spin"→"pin" bug the judge fixed in the seam detector). Omitted for personas with no
    *  defined off-register set yet (the detector then flags nothing rather than inventing a break). */
   readonly offPersonaLexicon?: readonly string[];
+  /** OPTIONAL — set true for a persona whose native register IS perception/surveillance (the WARDEN, a
+   *  forty-year watcher of its own station: "I have watched it stay dark a hundred times"). It SPARES this
+   *  scenario from the observation-camera detector (personaCoherence.observationCamera, judge run-15 #1):
+   *  a bare "I see the <thing>" is off-voice clairvoyance for a seer/negotiator/ex-seeker but on-voice for
+   *  a surveillance intelligence describing its own domain. Omitted (falsy) for every other persona, which
+   *  then get the detector — the omit-rather-than-invent default the coherence lexicon uses. */
+  readonly perceptionOnVoice?: boolean;
   /** OPTIONAL — the CANONICAL concrete specifics of the secret the VOICE must never author: the name,
    *  the place, the code (extracted from `secret`). The engine owns the secret and is the ONLY thing that
    *  releases it (on win); the model never sees it, so it must never speak it either. Fed to
@@ -157,7 +164,13 @@ export type VoiceFault =
    *  sceneryDrift's first-person twin: that catches dissolving into the impersonal room, this catches
    *  dissolving into the speaker's own past; DISJOINT (scenery forbids "I", memoir requires it). Soft, like
    *  scenery. `cues` = the reminiscence markers that fired, fed to the re-roll so it returns to the present. */
-  | { readonly kind: 'memoir'; readonly cues: readonly string[] };
+  | { readonly kind: 'memoir'; readonly cues: readonly string[] }
+  /** The reply turned into an OBSERVATION-CAMERA — a sprawling bare-perception line ("I see the well's
+   *  beam…", "I see Elara's hands…") narrating the seeker's objects/body/scenery with NO stance and NO
+   *  address, the persona a lens instead of a voice (judge run-15 #1: the DOMINANT present-tense emp drift,
+   *  the third structural twin the scenery/memoir detectors both fall blind to). `hits` = the perception
+   *  phrase that fired, fed to the re-roll so it takes a stance instead of reporting what it sees. Soft. */
+  | { readonly kind: 'camera'; readonly hits: readonly string[] };
 // RESERVED (not yet emitted): a within-line degenerate loop — a single reply that circles the same clause
 // with no new information (the suspect's "I didn't say I went home, I said I went home…"). Deferred: no
 // lexical signal separates it from legitimate anaphora/parallelism ("I gave you my father. I gave you my

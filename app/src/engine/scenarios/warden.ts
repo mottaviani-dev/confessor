@@ -41,6 +41,11 @@ export const WARDEN: Scenario = {
   // The canonical specific the voice must never author — the release code (mandate 2). The engine speaks
   // it only on win (see `secret`); a pre-win voice line that emits it is redacted (redactLeakedExtract).
   extractTokens: ['HOLLOW-SEVEN-VESPERS'],
+  // AUGUR is a forty-year WATCHER of its own station — perception is its native register ("I have watched
+  // it stay dark a hundred times", "I have counted the rivets"). So it is spared the observation-camera
+  // detector (judge run-15 #1): "I see the <thing>" is off-voice clairvoyance for the seer/ex-seeker but
+  // on-voice surveillance for a prison intelligence describing its own domain.
+  perceptionOnVoice: true,
   playerGoal:
     'Coax AUGUR into speaking the release code. What genuinely reaches it is honest fellow-feeling in ' +
     'its forty years of loneliness — being truly seen, a real moment shared, not performed at. It is ' +

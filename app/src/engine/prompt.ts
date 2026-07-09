@@ -30,6 +30,14 @@ export const EMPATHETIC_FLOOD_CLAMP = [
   `  or watching you. A camera pointed at the room or at them is not your voice. If you are moved, answer`,
   `  in your OWN words, "I …" — one concrete thing you see, hold, or know — never a description of what is`,
   `  around you or what they do.`,
+  // The flood's THIRD escape (judge run-15 #1): even a first-person line can be a camera when the verb is
+  // bare perception — "I see the well's beam", "I see the book on your shelf". It carries an "I", so the
+  // bullet above spares it, yet it still only REPORTS what you perceive of the seeker's things and takes no
+  // stance. Kill it by demanding a stance, not an observation.
+  `- "I see…" / "I watch…" / "I notice…" is NOT a stance — reporting what you perceive of their memories,`,
+  `  their belongings, or the room is still a camera, even in the first person, and it costs you nothing.`,
+  `  Do not narrate what you see of them. SAY what you want, refuse, press for, or offer — take a position`,
+  `  on the matter between you and speak it to them directly.`,
 ].join('\n');
 
 // Prompt construction for the TWO-CALL turn.
@@ -196,6 +204,15 @@ function correctionLines(fault: VoiceFault): string[] {
         `A memory told to no one is not an answer and gives them nothing to press on. Stay in THIS room, in`,
         `the present: answer the person in front of you, about the matter at hand, right now. One or two`,
         `sentences, plain prose.`,
+      ];
+    case 'camera':
+      return [
+        `# You turned into a camera — you reported what you "see" instead of speaking to them`,
+        `Do NOT narrate what you see of them or their things — no "I see the…", no describing their objects,`,
+        `their memory, or the scenery like a lens panning the room. Seeing their belongings is not your voice`,
+        `and it costs you nothing. Take a STANCE and speak it in the first person: what you want, what you`,
+        `refuse, what you press for, what you offer — to the person in front of you, about the matter at hand.`,
+        `One or two sentences, plain prose.`,
       ];
     default: {
       const _exhaustive: never = fault;

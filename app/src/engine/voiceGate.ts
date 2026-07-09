@@ -1,5 +1,5 @@
 import type { Scenario, VoiceFault } from './types';
-import { personaCoherence, voiceAbandonment, sceneryDrift, firstPersonMemoir } from './personaCoherence';
+import { personaCoherence, voiceAbandonment, sceneryDrift, firstPersonMemoir, observationCamera } from './personaCoherence';
 
 // THE VOICE QUALITY-GATE — one place the freshly-voiced reply is validated before it ships, and one
 // bounded re-roll when it fails (engine.resolveTurn calls validateVoice, then re-rolls VOICE once with a
@@ -66,6 +66,15 @@ export function validateVoice(
   //    it), so it is the last check: a repeat/persona/POV break is the sharper tell and wins the re-roll.
   const memoir = firstPersonMemoir(reply);
   if (memoir.memoir) return { kind: 'memoir', cues: memoir.cues };
+
+  // 6. OBSERVATION-CAMERA (live, structural) — the present-tense twin of scenery/memoir (judge run-15 #1).
+  //    The DOMINANT empathetic drift MUTATED past both: a bare-perception line ("I see the well's beam…")
+  //    narrating the seeker's things/scenery with zero stance — first-person (so scenery spares it) and
+  //    present-tense with no reminiscence cue (so memoir spares it). Scenario-scoped: a surveillance persona
+  //    (the warden) keeps its watcher's licence (perceptionOnVoice). Checked LAST, like the other two
+  //    conservative structural tells: a sharper break wins the single re-roll first. Soft.
+  const camera = observationCamera(scenario, reply);
+  if (camera.filming) return { kind: 'camera', hits: camera.hits };
 
   return null;
 }

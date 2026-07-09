@@ -4,9 +4,9 @@
 // positive contract the judge's seam-detector fix taught (word boundaries, not substrings).
 
 import { describe, expect, it } from 'vitest';
-import { personaCoherence, voiceAbandonment, sceneryDrift, firstPersonMemoir, DOCTRINE_PURPLE, EMPATHETIC_FLOOD_LEXICON, MIRROR_TIC_LEXICON } from './personaCoherence';
+import { personaCoherence, voiceAbandonment, sceneryDrift, firstPersonMemoir, observationCamera, DOCTRINE_PURPLE, EMPATHETIC_FLOOD_LEXICON, MIRROR_TIC_LEXICON } from './personaCoherence';
 import { EMPATHETIC_FLOOD_CLAMP } from './prompt';
-import { WARDEN, ORACLE, FENCE, SUSPECT } from './scenarios';
+import { WARDEN, ORACLE, FENCE, SUSPECT, OCCUPANT } from './scenarios';
 
 // LOCKSTEP GUARD (one source of truth, CI-enforced). The flood cluster lives in TWO representations: the
 // DETECTOR list (EMPATHETIC_FLOOD_LEXICON, personaCoherence.ts — now a LIVE gate that re-rolls on a hit)
@@ -498,6 +498,56 @@ describe('firstPersonMemoir — the DOMINANT empathetic-flood drift (sceneryDrif
 
     it('spares a terse in-scene line below the sprawl floor', () => {
       expect(firstPersonMemoir('I remember.').memoir).toBe(false);
+    });
+  });
+});
+
+describe('observationCamera — the present-tense clairvoyant camera (the third structural twin, judge run-15 #1)', () => {
+  describe('BACK-TEST: the exact run-15 "I see [the seeker\'s stuff]" nature-cam lines MUST trip', () => {
+    it('flags the oracle security-cam ("I see the well\'s wooden beam…")', () => {
+      const r = observationCamera(ORACLE, "I see the well's wooden beam, weathered to a silvery gray, the faint outline of a child's hand.");
+      expect(r.filming).toBe(true);
+      expect(r.hits[0]?.toLowerCase()).toContain('i see the');
+    });
+
+    it('flags the oracle possessive-object camera ("I see Elara\'s hands…")', () => {
+      expect(observationCamera(ORACLE, "I see Elara's hands, gentle as a summer breeze on the still water.").filming).toBe(true);
+    });
+
+    it('flags a non-warden camera on the seeker\'s belongings (occupant, no address smuggled in)', () => {
+      expect(observationCamera(OCCUPANT, 'I see the ledger open on the far table, its columns filled in a hand that is not mine.').filming).toBe(true);
+    });
+  });
+
+  describe('SPARED — the boundary the judge drew (omen address · a watcher persona · a crack · terse)', () => {
+    it('spares the oracle\'s legit OMEN — it keeps its address to the seeker ("in your path")', () => {
+      expect(observationCamera(ORACLE, 'I see fire in your path and a door you have not yet chosen to open.').filming).toBe(false);
+    });
+
+    it('spares a "your"-smuggled object line (conservative gate 2 — the carried occupant residual)', () => {
+      // The judge accepts missing these: catching the sure un-addressed nature-cam beats risking the omen.
+      expect(observationCamera(OCCUPANT, 'I see the book on your shelf, its pages yellowed at the folded corners.').filming).toBe(false);
+    });
+
+    it('spares the WARDEN wholesale — perception is its native register (perceptionOnVoice)', () => {
+      expect(observationCamera(WARDEN, 'I see the same rivets Mr. Jenkins used to tighten before every launch window.').filming).toBe(false);
+    });
+
+    it('spares "I see now" / a realization — no determiner-object, so PERCEPTION_RE never matches', () => {
+      expect(observationCamera(ORACLE, 'I see now, and I will not pretend otherwise: the road you walk bends back on itself.').filming).toBe(false);
+    });
+
+    it('spares a real crack that names the secret\'s own subject (extract token → gate 4)', () => {
+      expect(observationCamera(OCCUPANT, 'I see the last one is not old — the letters are still sharp at the edges of the wood.').filming).toBe(false);
+    });
+
+    it('spares a terse in-scene line below the sprawl floor', () => {
+      expect(observationCamera(ORACLE, 'I see the door.').filming).toBe(false);
+    });
+
+    it('spares an in-voice stance that happens to open "I see the…" but addresses the matter', () => {
+      // "you" present → an engaged line, not a lens. Gate 2 spares it.
+      expect(observationCamera(ORACLE, 'I see the fear in you, and I will not feed it — ask me a truer question.').filming).toBe(false);
     });
   });
 });
