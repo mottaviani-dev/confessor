@@ -1,6 +1,7 @@
-import React from 'react';
-import { View, StyleSheet, useWindowDimensions, type StyleProp, type ViewStyle } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { Animated, Easing, View, StyleSheet, useWindowDimensions, type StyleProp, type ViewStyle } from 'react-native';
 import { proceduralRoom } from './roomBackdrop';
+import { swayAmplitude } from './bulbSway';
 
 // THE PROCEDURAL ROOM (director mandate #3) — the View-composed half of roomBackdrop.ts. Renders a
 // scenario-accent chiaroscuro (tar floor + a dim full-frame accent veil + a single hanging bulb of
@@ -37,6 +38,72 @@ export function RoomBackdrop({ accent, style }: { accent: string; style?: StyleP
         );
       })}
     </View>
+  );
+}
+
+// ─── THE BULB SWAY (bible §2 "the bulb sways ~2px when Composure breaks"; director mandate 1) ─────────
+//
+// The room's ONE motion, and the sensory TWIN of the audio detune. `SwayingBackdrop` wraps the scene's
+// backdrop (the painted master OR the procedural room — one impl for all five chambers) in an Animated
+// translate so the WHOLE room — the bulb, its cast halos, the lit-plaster pool, the shadow it throws —
+// drifts together as one light source flinching, never a floating icon. Driven off `composure` ONLY (the
+// composureBreak signal App also feeds the audio detune — one source of truth, never Grip/chrome, §5).
+//
+// The AMPLITUDE is composure-driven + reproducible (swayAmplitude, stepped bands ≤ MAX_SWAY_PX); the
+// PHASE is a slow pendulum on a clock (a drift, not a jitter — §3 restraint). translateX = phase × amp:
+//   - phase oscillates −1 → +1 → −1 forever on an ease-in-out sine, ~2.2s each way (a hanging bulb's
+//     unhurried swing), so its onset/period carry no randomness (§1 no jump scares, deterministic);
+//   - amp animates toward the current band over ~0.7s, so a composure step widens the swing smoothly.
+// FROZEN (the visual-truth screenshot harness): a still capture can't show an animation, so `frozen` pins
+// the transform to the STATIC max deflection (phase +1 × amp) — the "max deflection vs rest frame" shot
+// the mandate asks for (?harness=duel-sway broken vs ?harness=duel composed-and-still). useNativeDriver is
+// false so the translate renders identically on the web export the harness shoots and on device.
+
+export function SwayingBackdrop({
+  composure,
+  frozen = false,
+  style,
+  children,
+}: {
+  /** The composure-break signal 0 (calm) → 1 (unravelled) — the SAME reading that drives the audio detune. */
+  readonly composure: number;
+  /** Screenshot harness: pin the transform to the static max deflection instead of animating (still capture). */
+  readonly frozen?: boolean;
+  readonly style?: StyleProp<ViewStyle>;
+  readonly children: React.ReactNode;
+}) {
+  const amp = swayAmplitude(composure);
+  const phase = useRef(new Animated.Value(0)).current; // the pendulum, −1 → +1
+  const ampV = useRef(new Animated.Value(amp)).current; // the deflection, eased toward the current band
+
+  // The slow pendulum — a continuous −1→+1→−1 drift. Runs for the component's life (never on the frozen
+  // screenshot path). Deterministic: fixed period, no random onset.
+  useEffect(() => {
+    if (frozen) return;
+    const swing = Animated.loop(
+      Animated.sequence([
+        Animated.timing(phase, { toValue: 1, duration: 2200, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
+        Animated.timing(phase, { toValue: -1, duration: 2200, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
+      ]),
+    );
+    swing.start();
+    return () => swing.stop();
+  }, [frozen, phase]);
+
+  // Ease the amplitude toward the composure band, so a step (still → drift → widen → break) glides in
+  // rather than snapping — the descent felt, not flickered.
+  useEffect(() => {
+    if (frozen) return;
+    const a = Animated.timing(ampV, { toValue: amp, duration: 700, easing: Easing.out(Easing.quad), useNativeDriver: false });
+    a.start();
+    return () => a.stop();
+  }, [amp, frozen, ampV]);
+
+  const translateX = frozen ? amp : Animated.multiply(phase, ampV);
+  return (
+    <Animated.View style={[styles.fill, { transform: [{ translateX }] }, style]} pointerEvents="none">
+      {children}
+    </Animated.View>
   );
 }
 

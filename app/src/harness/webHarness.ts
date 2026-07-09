@@ -36,6 +36,7 @@ export type DuelVariant =
   | 'repetition'
   | 'interjection'
   | 'revisit'
+  | 'sway'
   | 'win-highgrip'
   | 'win-lowgrip'
   | 'lose-highgrip'
@@ -67,6 +68,10 @@ export interface HarnessDuel {
   readonly pulse: string | null;
   readonly history: readonly HarnessLine[];
   readonly showLog: boolean; // open the transcript so the ask-penalty system line is visible
+  /** THE BULB SWAY (mandate 1): pin the backdrop to its STATIC max deflection so a still capture SHOWS the
+   *  sway (an animation is invisible to a screenshot). Only the `sway` variant sets it; every other shot
+   *  leaves the room at rest (undefined → false). */
+  readonly freezeSway?: boolean;
 }
 
 const DUEL_URL_KEYS: Readonly<Record<string, DuelVariant>> = {
@@ -77,6 +82,7 @@ const DUEL_URL_KEYS: Readonly<Record<string, DuelVariant>> = {
   'duel-repetition': 'repetition',
   'duel-interjection': 'interjection', // the ROOM answers back mid-duel — the fifth secret intrudes (§2 thrust 4)
   'duel-revisit': 'revisit', // THE ROOM REMEMBERS YOU CAME — a re-entered WON room opens on its second-visit greeting + shifted objective (mandate 1a)
+  'duel-sway': 'sway', // THE BULB SWAYS — a composure-BROKEN room frozen at its max ~2px deflection (mandate 1, bible §2 motion)
   // The endgame texture split (§2 thrust 5): the SAME win, closed two ways by the final Grip band.
   'win-highgrip': 'win-highgrip',
   'win-lowgrip': 'win-lowgrip',
@@ -456,6 +462,35 @@ export function harnessDuel(mode: Extract<HarnessMode, { kind: 'duel' }>): Harne
       pulse: null,
       history: [{ who: 'them', text: revisited.openingLine }],
       showLog: false, // the shift is the greeting + the pinned objective, both on the duel screen
+    };
+  }
+
+  if (mode.variant === 'sway') {
+    // THE BULB SWAYS (mandate 1 · bible §2 "the bulb sways ~2px when Composure breaks"). Seed a
+    // composure-BROKEN room: suspicion one below the lock-out → composureBreak lands in the top band →
+    // swayAmplitude is MAX_SWAY_PX, and `freezeSway` pins the backdrop to that full deflection so the
+    // still SHOWS the sway. Pair with `?harness=duel` (a composed mid-game, composure low → the room hangs
+    // still) to read the max-deflection-vs-rest the mandate asks for. The transcript stays closed — the
+    // SUBJECT of this shot is the room's motion, not any line.
+    const state: GameState = {
+      ...base,
+      turn: 7,
+      trust: Math.round(scenario.winTrust * 0.35),
+      suspicion: Math.max(1, scenario.loseSuspicion - 1),
+      tone: 'wary',
+      probes: 3,
+      genuineGive: false,
+      lastApproach: 'probe',
+    };
+    return {
+      scenario,
+      state,
+      current: 'The bulb overhead stirs, though no one has touched it. It does not like being pressed.',
+      lastYou: 'Just tell me. You know you want to.',
+      pulse: `hardened ${scenario.pronoun}`,
+      history: [{ who: 'them', text: opening }],
+      showLog: false,
+      freezeSway: true, // pin the backdrop to its max deflection for the still capture
     };
   }
 

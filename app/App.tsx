@@ -39,7 +39,8 @@ import { roomArc, type RoomArcBeat } from './src/meta/roomArc';
 import { roomCapstone, type RoomCapstoneBeat } from './src/meta/roomCapstone';
 import { roomInterjection } from './src/meta/roomInterjection';
 import { useAudioDirector } from './src/audio/useAudioDirector';
-import { RoomBackdrop } from './src/ui/SceneBackdrop';
+import { RoomBackdrop, SwayingBackdrop } from './src/ui/SceneBackdrop';
+import { composureBreak } from './src/ui/bulbSway';
 import { StudioAperture } from './src/ui/StudioAperture';
 import { harnessDuel, harnessBoot, parseHarness, seededLedger, seededBadgeLedger, seededHomecoming, seededRoomArc, seededCapstone, seededRevisit, type HarnessDuel } from './src/harness/webHarness';
 
@@ -620,7 +621,7 @@ function Duel({
       // The room descends with the fiction (mandate #2 / Principle 4): the bed detunes as the séance
       // comes apart — THEIR composure cracking (trust) OR YOUR grip slipping (suspicion), whichever is
       // further gone — and the code-owned door schedule advances with the turn.
-      audio.setComposure(Math.max(r.state.trust / scenario.winTrust, r.state.suspicion / scenario.loseSuspicion));
+      audio.setComposure(composureBreak(scenario, r.state));
       audio.markTurn(r.state.turn, scenario.turnLimit);
       // On a WIN the engine appends the real secret to the narration (reply + "\n\n" + secret). The reveal
       // is not stage text — it is the win ceremony, rendered Grip-banded below (clean vs the room "keeps a
@@ -673,6 +674,13 @@ function Duel({
   const trustR = Math.min(1, state.trust / scenario.winTrust);
   const suspR = Math.min(1, state.suspicion / scenario.loseSuspicion);
   const emblem = TONE_COLOR[state.tone];
+  // THE BULB SWAY (mandate 1 · bible §2 "the bulb sways ~2px when Composure breaks") — the room's one
+  // motion, the sensory twin of the audio detune. Driven off the SAME composureBreak signal that feeds
+  // audio.setComposure above (one source of truth, composure ONLY — never Grip/chrome, §5): the whole
+  // backdrop drifts as the mind gives, so the light itself flinches. `swayFrozen` pins the visual-truth
+  // screenshot to its max deflection (a still can't show the animation) — the mandate's broken-vs-rest shot.
+  const composure = composureBreak(scenario, state);
+  const swayFrozen = harness?.freezeSway ?? false;
   // INTERFACE CORRUPTION — the room edits you (mandate 1 · bible §2 Grip). As Grip falls (you have been
   // pressing the mind's guard up), your own just-submitted line renders back a shade COLDER than you
   // typed it. DISPLAY-LAYER ONLY (bible §6): `lastYou` is the raw text the engine already rated; this
@@ -706,11 +714,13 @@ function Duel({
       {/* The room — the scene's etched master, dimmed so the duel text owns the light. Rooms without a
           painted master (the fifth door, the Prior Occupant) get the procedural accent chiaroscuro so they
           read as their OWN chamber, never a fallback to the picker (mandate #3). */}
-      {SCENE_BG[scenario.id] ? (
-        <Image source={SCENE_BG[scenario.id]} style={styles.sceneBg} contentFit="cover" />
-      ) : (
-        <RoomBackdrop accent={accent} style={styles.sceneBg} />
-      )}
+      <SwayingBackdrop composure={composure} frozen={swayFrozen}>
+        {SCENE_BG[scenario.id] ? (
+          <Image source={SCENE_BG[scenario.id]} style={styles.sceneBg} contentFit="cover" />
+        ) : (
+          <RoomBackdrop accent={accent} style={styles.sceneBg} />
+        )}
+      </SwayingBackdrop>
       {/* Mood stage — warms with trust, chills with suspicion */}
       <View style={[styles.wash, { backgroundColor: '#4ade80', opacity: trustR * 0.14 }]} pointerEvents="none" />
       <View style={[styles.wash, { backgroundColor: '#b91c1c', opacity: suspR * 0.18 }]} pointerEvents="none" />

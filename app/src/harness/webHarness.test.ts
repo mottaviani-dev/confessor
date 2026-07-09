@@ -7,6 +7,7 @@ import { endgameBand, lostScene, wonScene } from '../meta/endgame';
 import { crackedCount, unlockedIds } from '../meta/ledger';
 import { SCENARIOS, WARDEN } from '../engine/scenarios';
 import { applyRevisit } from '../meta/revisit';
+import { composureBreak, swayAmplitude, MAX_SWAY_PX } from '../ui/bulbSway';
 
 describe('parseHarness', () => {
   it('returns null with no ?harness=', () => {
@@ -30,6 +31,7 @@ describe('parseHarness', () => {
     expect(parseHarness('?harness=duel-repetition')).toEqual({ kind: 'duel', scenarioId: 'warden', variant: 'repetition' });
     expect(parseHarness('?harness=duel-interjection')).toEqual({ kind: 'duel', scenarioId: 'warden', variant: 'interjection' });
     expect(parseHarness('?harness=duel-revisit')).toEqual({ kind: 'duel', scenarioId: 'warden', variant: 'revisit' });
+    expect(parseHarness('?harness=duel-sway')).toEqual({ kind: 'duel', scenarioId: 'warden', variant: 'sway' });
     expect(parseHarness('?harness=win-highgrip')).toEqual({ kind: 'duel', scenarioId: 'warden', variant: 'win-highgrip' });
     expect(parseHarness('?harness=win-lowgrip')).toEqual({ kind: 'duel', scenarioId: 'warden', variant: 'win-lowgrip' });
   });
@@ -186,8 +188,23 @@ describe('harnessDuel — injected states are internally valid', () => {
     expect(grip(h.scenario, h.state)).toBeGreaterThan(0.25);
   });
 
+  it('sway: a composure-BROKEN room, frozen at max deflection for the still (mandate 1, bible §2 motion)', () => {
+    const h = harnessDuel({ kind: 'duel', scenarioId: 'warden', variant: 'sway' });
+    expect(h.state.status).toBe('playing');
+    expect(h.freezeSway).toBe(true); // pinned for the still capture
+    // Composure sits in the TOP band → the bulb is at its full ~2px deflection (swayAmplitude = MAX).
+    const c = composureBreak(h.scenario, h.state);
+    expect(c).toBeGreaterThanOrEqual(0.85);
+    expect(swayAmplitude(c)).toBe(MAX_SWAY_PX);
+    // Contrast: a composed fresh opening (the `revisit` shot: turn 0, trust 0, suspicion 0) hangs dead
+    // still — composure below the first band → 0 deflection. Only `sway` freezes; the rest animate live.
+    const rest = harnessDuel({ kind: 'duel', scenarioId: 'warden', variant: 'revisit' });
+    expect(swayAmplitude(composureBreak(rest.scenario, rest.state))).toBe(0);
+    expect(rest.freezeSway ?? false).toBe(false);
+  });
+
   it('the MID-GAME variants keep status playing and stay within the scenario thresholds', () => {
-    for (const variant of ['mid', 'lowgrip', 'record', 'askpenalty', 'repetition', 'interjection'] as const) {
+    for (const variant of ['mid', 'lowgrip', 'record', 'askpenalty', 'repetition', 'interjection', 'sway'] as const) {
       const h = harnessDuel({ kind: 'duel', scenarioId: 'warden', variant });
       expect(h.state.status).toBe('playing');
       expect(h.state.trust).toBeGreaterThanOrEqual(0);
