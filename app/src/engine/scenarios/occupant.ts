@@ -40,6 +40,10 @@ export const OCCUPANT: Scenario = {
   // Ash-violet — the colour of the room between the rooms, the fifth door with no card. Desaturated, cold,
   // adjacent to none of the four (verdigris/brass/umber/phosphor) so the fifth mind reads distinct at a glance.
   accent: '#7a6f95',
+  endgameVoice: {
+    won: 'She settles back into the chair that is hers now — that was always going to be hers — and says nothing, because the next door is already yours to walk.',
+    lost: 'She does not rise. She has seen your face on this side of the table before, and she knows how tired you will have to be, one day, to stop leaving.',
+  },
   playerGoal:
     'Earn the Occupant\'s warning — the one thing she knows about this room that no mind behind the four doors ' +
     'will tell you. She is not a lock to pick; she is a seeker who won, like you, and stayed. Reach her by ' +

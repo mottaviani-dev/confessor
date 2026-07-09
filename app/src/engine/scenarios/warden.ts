@@ -38,6 +38,10 @@ export const WARDEN: Scenario = {
   pronoun: 'it',
   // Verdigris — the patina on the station's dead brass, the oxidized green of forty untended years.
   accent: '#5c9e8f',
+  endgameVoice: {
+    won: 'Behind you the station goes back to watching the dark, and logs your leaving the way it logs everything — without comment, and without end.',
+    lost: 'The station goes back to watching the dark. It did not need you, and it will not notice that you are gone.',
+  },
   // The canonical specific the voice must never author — the release code (mandate 2). The engine speaks
   // it only on win (see `secret`); a pre-win voice line that emits it is redacted (redactLeakedExtract).
   extractTokens: ['HOLLOW-SEVEN-VESPERS'],

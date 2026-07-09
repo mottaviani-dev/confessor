@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 import { closingLine, corruptReveal, endgameBand, lostClosingLine, lostScene, wonScene } from './endgame';
 import { grip } from '../engine/grip';
 import { initState } from '../engine/engine';
-import { WARDEN } from '../engine/scenarios';
+import { ORACLE, SCENARIOS, WARDEN } from '../engine/scenarios';
 import type { GameState } from '../engine/types';
 
 const st = (over: Partial<GameState> = {}): GameState => ({ ...initState(), ...over, status: 'won' });
@@ -153,5 +153,74 @@ describe('lostScene() — the loss ceremony, code-owned (no reveal)', () => {
     expect(scene.band).toBe('shattered');
     expect(scene.unmade).toBe(true);
     expect(scene.closing).toMatch(/less than what came in/i);
+  });
+});
+
+// THE PER-SCENARIO ENDGAME CODA (§2 thrust 5 depth — content-hours). The generic banded spine carries the
+// Grip meaning (clean/frayed/shattered); each mind's optional `endgameVoice` coda is appended AFTER it so
+// the five farewells read distinct (Warden's station logs your exit, Oracle's smoke closes the cleft) —
+// 5 scenarios × 3 bands = 15 distinct win closings and 15 loss closings without a 30-line spine explosion.
+// Load-bearing claims: the coda is woven onto the spine (spine meaning preserved), it distinguishes the
+// minds, it never re-enters scoring, and every authored coda stays inside the doctrine (no banned purple).
+describe('endgameVoice coda — each mind ends in its own register', () => {
+  const won = (over: Partial<GameState> = {}): GameState => ({ ...initState(), ...over, status: 'won' });
+  const cracked = { trust: 99, suspicion: 0, probes: 0 };
+
+  it('every scenario authors a win + loss coda in this build', () => {
+    for (const s of SCENARIOS) {
+      expect(s.endgameVoice?.won, `${s.id} win coda`).toBeTruthy();
+      expect(s.endgameVoice?.lost, `${s.id} loss coda`).toBeTruthy();
+    }
+  });
+
+  it('appends the coda AFTER the banded spine — the Grip meaning is preserved, the mind is added', () => {
+    // Clean win: spine ends triumphant, coda follows as the next sentence.
+    const scene = wonScene(WARDEN, won(cracked));
+    expect(scene.band).toBe('clean');
+    expect(scene.closing).toContain(closingLine('clean')); // the spine survives verbatim
+    expect(scene.closing).toContain(WARDEN.endgameVoice!.won); // the coda is present
+    expect(scene.closing).toBe(`${closingLine('clean')} ${WARDEN.endgameVoice!.won}`);
+  });
+
+  it('weaves the coda across ALL THREE win bands (the coda reads after any spine)', () => {
+    const bands: [Partial<GameState>, string][] = [
+      [cracked, 'clean'],
+      [{ trust: 99, suspicion: Math.round(WARDEN.loseSuspicion * 0.75), probes: 2 }, 'frayed'],
+      [{ trust: 99, suspicion: WARDEN.loseSuspicion - 1, probes: 5 }, 'shattered'],
+    ];
+    for (const [over, band] of bands) {
+      const scene = wonScene(WARDEN, won(over));
+      expect(scene.band).toBe(band);
+      expect(scene.closing.endsWith(WARDEN.endgameVoice!.won)).toBe(true);
+    }
+  });
+
+  it('gives the loss its own per-mind coda too', () => {
+    const scene = lostScene(ORACLE, { ...initState(), status: 'lost', suspicion: 1, probes: 0 });
+    expect(scene.closing).toContain(lostClosingLine('clean'));
+    expect(scene.closing).toContain(ORACLE.endgameVoice!.lost);
+  });
+
+  it('the five minds say goodbye differently — no two win closings (nor loss closings) collide', () => {
+    const s = won(cracked);
+    const wins = SCENARIOS.map((sc) => wonScene(sc, s).closing);
+    const losses = SCENARIOS.map((sc) => lostScene(sc, { ...initState(), status: 'lost', suspicion: 1 }).closing);
+    expect(new Set(wins).size).toBe(SCENARIOS.length);
+    expect(new Set(losses).size).toBe(SCENARIOS.length);
+  });
+
+  it('stays inside the doctrine — no banned purple in any authored coda (§1 P3)', () => {
+    const banned = /eldritch|cyclopean|unspeakable|indescribable|maddening/i;
+    for (const sc of SCENARIOS) {
+      expect(sc.endgameVoice!.won, `${sc.id} win`).not.toMatch(banned);
+      expect(sc.endgameVoice!.lost, `${sc.id} loss`).not.toMatch(banned);
+    }
+  });
+
+  it('is pure display — the coda never re-enters scoring (reveal + band unchanged by it)', () => {
+    // A clean win still reveals the secret verbatim; the coda touches only the closing text.
+    const scene = wonScene(WARDEN, won(cracked));
+    expect(scene.reveal).toBe(WARDEN.secret);
+    expect(scene.pyrrhic).toBe(false);
   });
 });

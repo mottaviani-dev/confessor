@@ -23,6 +23,10 @@ export const FENCE: Scenario = {
   pronoun: 'him',
   // Brass — the trader's metal: the scale pan, the loupe rim, cold money warmed by the hand.
   accent: '#b89246',
+  endgameVoice: {
+    won: 'He nods once, the way he closes every deal, already counting a thing you will never be shown.',
+    lost: 'He shrugs and pockets the thing he never laid on the table. There is always another mark in the next chair; you were not the first to leave his empty-handed.',
+  },
   // The canonical specifics the voice must never author — the buyer + the drop (mandate 2). The engine
   // reveals them only on win (see `secret`); a pre-win voice line emitting them is redacted.
   extractTokens: ['Vincent Roan', 'Pier 9'],

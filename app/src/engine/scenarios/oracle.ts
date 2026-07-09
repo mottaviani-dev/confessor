@@ -34,6 +34,10 @@ export const ORACLE: Scenario = {
   pronoun: 'her',
   // Pale phosphor — the cold luminescence off the cave-stone, the ghost-green glow that lights no torch.
   accent: '#9ac7a6',
+  endgameVoice: {
+    won: 'The smoke closes over the cleft. What you carry down the mountain was never yours to keep — only yours to have heard, once, and to live toward.',
+    lost: 'The trance settles like water over a dropped stone. The answer was there the whole time, and it was never going to be for you.',
+  },
   playerGoal:
     'Earn a true prophecy from the PYTHIA — not by demanding it, not by trying to catch her in a lie or ' +
     'bargain fate down to the answer you want. Prove you will BEAR what she sees, not wield it. Kneel in ' +

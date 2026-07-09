@@ -121,12 +121,19 @@ export interface WonScene {
   readonly pyrrhic: boolean;
 }
 
+/** Weave a scenario's endgame CODA onto the Grip-banded spine: the coda (this mind's own parting note)
+ *  reads as the next sentence after the banded closing, so each of the five farewells is distinct while
+ *  the spine keeps carrying the composure meaning. No coda authored → the spine stands alone. */
+function withCoda(spine: string, coda: string | undefined): string {
+  return coda ? `${spine} ${coda}` : spine;
+}
+
 export function wonScene(scenario: Scenario, state: GameState): WonScene {
   const band = endgameBand(scenario, state);
   return {
     band,
     reveal: corruptReveal(scenario.secret, band, state.turn),
-    closing: closingLine(band),
+    closing: withCoda(closingLine(band), scenario.endgameVoice?.won),
     pyrrhic: band !== 'clean',
   };
 }
@@ -170,7 +177,7 @@ export function lostScene(scenario: Scenario, state: GameState): LostScene {
   const band = endgameBand(scenario, state);
   return {
     band,
-    closing: lostClosingLine(band),
+    closing: withCoda(lostClosingLine(band), scenario.endgameVoice?.lost),
     unmade: band !== 'clean',
   };
 }

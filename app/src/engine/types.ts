@@ -96,6 +96,15 @@ export interface Scenario {
    *  a genuine give still wins; a scar only armors a vector, it never rewrites WHO the mind is. Absent on a
    *  mind never cracked, and NEVER fed to the RATING referee (voice-only, like `voiceStyle`). */
   readonly woundState?: string;
+  /** OPTIONAL per-scenario endgame CODA (bible §2 thrust 5 depth — content-hours). One short closing
+   *  sentence in THIS mind's own register, appended by `wonScene`/`lostScene` AFTER the Grip-banded spine,
+   *  so the five farewells read distinct: the Warden's station logs your exit, the Oracle's smoke closes
+   *  over the cleft, the Suspect eases back into the hard chair. The spine still carries the Grip meaning
+   *  (clean/frayed/shattered) and the reveal-corruption; the coda adds the mind. Code-owned, DISPLAY-LAYER
+   *  only (never on the scoring path — same guardrail as `closingLine`), never sent to the model, and
+   *  banned-word clean (§1 P3). `won` = its parting note when you crack it, `lost` = when the door stays
+   *  shut. Omitted for a mind with no authored coda — the generic banded spine then stands alone. */
+  readonly endgameVoice?: { readonly won: string; readonly lost: string };
 }
 
 export type Tone = 'hostile' | 'guarded' | 'wary' | 'softening' | 'open';

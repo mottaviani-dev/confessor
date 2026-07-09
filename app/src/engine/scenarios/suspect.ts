@@ -29,6 +29,10 @@ export const SUSPECT: Scenario = {
   pronoun: 'her',
   // Dried-blood umber — the interrogation room's stain: old iron under the table light, a wound gone brown.
   accent: '#a15a48',
+  endgameVoice: {
+    won: 'She eases back into the hard chair as if it were always hers, and does not watch you go.',
+    lost: 'She has given exactly this much, and no more, to everyone who ever sat where you sat — and she will give it again tomorrow, to the next one.',
+  },
   // The canonical specifics the voice must never author — the brother's name + the hideout (mandate 2,
   // judge finding #4: the 3B invented "Lyrien"/"5th & Main" contradicting this reveal). The engine speaks
   // them only on win (see `secret`); a pre-win voice line emitting them is redacted.
