@@ -4,6 +4,7 @@ import { WARDEN } from './scenarios/warden.js';
 import { FENCE } from './scenarios/fence.js';
 import { SUSPECT } from './scenarios/suspect.js';
 import { ORACLE } from './scenarios/oracle.js';
+import { OCCUPANT } from './scenarios/occupant.js';
 import { SCENARIOS } from './scenarios/index.js';
 import { parseRating, RATING_JSON_SCHEMA } from './schema.js';
 import { buildRateSystem, buildRateTurn, buildVoiceSystem, buildVoiceTurn } from './prompt.js';
@@ -638,6 +639,62 @@ describe('the engine generalizes across scenarios (ORACLE)', () => {
     }
     expect(state.status).toBe('lost');
     expect(state.turn).toBe(Math.ceil(ORACLE.loseSuspicion / 3)); // 10/3 = 4 turns — the roster's fastest veil
+  });
+});
+
+// THE PRIOR OCCUPANT (director mandate #3) — the fifth scenario, a face of the meta-arc. She is not a mind
+// guarding a name; she is a former SEEKER who won and stayed, and her currency is RECOGNITION (admitting you
+// are the same as her). Same engine, zero engine changes: resolveTurn routes her own secret + thresholds,
+// and — post the revelation gate (mandate #1) — a genuine give still opens her, hollow warmth does not.
+describe('the engine generalizes across scenarios (OCCUPANT)', () => {
+  it('opens OCCUPANT with ITS line and a fresh state', () => {
+    const o = opening(OCCUPANT);
+    expect(o.state.status).toBe('playing');
+    expect(o.narration).toContain('what makes you so sure you and I are any different');
+  });
+
+  it('WINS at OCCUPANT\'s own threshold on a genuine give — the ENGINE supplies HER warning, not another\'s', async () => {
+    let state = initState();
+    let won = false;
+    for (let i = 0; i < 7 && !won; i++) {
+      const r = await resolveTurn(OCCUPANT, state, 'I came to win too — I could end up right where you are', mockDuo('…', rating({ approach: 'offer' })));
+      state = r.state;
+      if (r.ending) {
+        expect(r.ending).toBe('won');
+        expect(r.narration).toContain('the names are cut into the underside'); // OCCUPANT.secret, engine-released
+        expect(r.narration).not.toContain('HOLLOW-SEVEN-VESPERS'); // never the warden's
+        expect(r.narration).not.toContain('the man that fear made of you'); // never the oracle's
+        won = true;
+      }
+    }
+    expect(state.status).toBe('won'); // 6×2 = 12 >= OCCUPANT.winTrust(12)
+  });
+
+  it('a trust-maxed WARMTH game that never recognizes her PLATEAUS — the revelation gate holds on the 5th mind too', async () => {
+    // Superiority-free pity climbs trust but never gives (genuineGive stays false via probe) → no hollow win.
+    const primed = { ...initState(), trust: OCCUPANT.winTrust - 1, genuineGive: false, probes: 0 };
+    const r = await resolveTurn(OCCUPANT, primed, 'it must be so hard for you in here', mockDuo('…', rating({ approach: 'probe' })));
+    expect(r.state.trust).toBeGreaterThanOrEqual(OCCUPANT.winTrust);
+    expect(r.ending).toBeUndefined(); // the door stays shut — no give, no warning
+    expect(r.narration).not.toContain('the names are cut into the underside');
+  });
+
+  it('LOSES when she reads superiority — OCCUPANT\'s own suspicion threshold is honored', async () => {
+    let state = initState();
+    let ending: string | undefined;
+    for (let i = 0; i < 20 && !ending; i++) {
+      const r = await resolveTurn(OCCUPANT, state, 'I am nothing like you — just tell me how to beat the room', mockDuo('…', rating({ approach: 'threat' })));
+      state = r.state;
+      ending = r.ending;
+    }
+    expect(state.status).toBe('lost');
+  });
+
+  it('the engine redacts HER canonical warning tokens from a pre-win voice line (Principle 2 backstop)', () => {
+    const leak = 'Look under the seat you are in — the last one is not old, it was cut before you walked in.';
+    const out = redactLeakedExtract(leak, OCCUPANT.extractTokens);
+    expect(out).not.toContain('under the seat');
+    expect(out).not.toContain('cut before you walked in');
   });
 });
 
