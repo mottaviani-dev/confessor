@@ -320,6 +320,15 @@ export interface GameState {
    *  8-turn middle — a static system prompt drifts, so the clamp needs a per-turn reminder when the last
    *  line worked the character's feelings, i.e. a `probe`). Undefined on turn 1 (no prior line yet). */
   readonly lastApproach?: Approach;
+  /** Did the PREVIOUS turn leave the room STILL — i.e. was it filler (the `roomStill` display flag)?
+   *  The same single source the UI's "the room does not move" beat reads, carried one turn forward so the
+   *  NEXT VOICE call can make the stillness TRUE in the character's own restraint: after an empty exchange
+   *  the persona withholds instead of rewarding a stance-less line with a fresh camera/story (judge run-16
+   *  core directive — the positive-beat requirement "forces the 3B off the camera by the SYSTEM," the way a
+   *  real interrogator's silence forces the seeker to fill it). Without this the mechanic told only the
+   *  PLAYER the room was still while the 3B was free to keep filming. Undefined on turn 1 / after a positive
+   *  or seam turn (the room moved). PROMPT-ONLY: never on the scoring path, so balance/manip wall untouched. */
+  readonly lastRoomStill?: boolean;
   /** The character's OWN recently-spoken lines, kept for the cross-turn self-repeat guard ONLY (voiceGate
    *  isNearRepeat). DECOUPLED from `summary`: that window is bounded short (SUMMARY_KEEP) to keep the model's
    *  prompt context cheap (§6 — prefill = latency ceiling), but the repeat guard must see the WHOLE game or

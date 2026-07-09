@@ -49,6 +49,24 @@ describe('per-turn anti-mirror hold re-asserts first person on a probe turn', ()
   });
 });
 
+describe('the room stays still — the character withholds after a filler turn (judge run-16 core directive)', () => {
+  it('injects the withholding hint when the last turn left the room still', () => {
+    const turn = buildVoiceTurn(WARDEN, { ...initState(), lastRoomStill: true }, 'The light in here is soft.');
+    expect(turn.toLowerCase()).toContain('stay still');
+    expect(turn.toLowerCase()).toContain('give them less');
+  });
+
+  it('stays silent (room moved) when the last turn was NOT still', () => {
+    const turn = buildVoiceTurn(WARDEN, { ...initState(), lastRoomStill: false }, 'It was me who left the door.');
+    expect(turn.toLowerCase()).not.toContain('their last words moved nothing');
+  });
+
+  it('is silent on turn 1 (no prior turn — lastRoomStill undefined)', () => {
+    const turn = buildVoiceTurn(WARDEN, initState(), 'Who are you?');
+    expect(turn.toLowerCase()).not.toContain('their last words moved nothing');
+  });
+});
+
 describe('the clamp is injected into every persona system prompt', () => {
   it('buildVoiceSystem contains the flood clamp', () => {
     expect(buildVoiceSystem(WARDEN)).toContain(EMPATHETIC_FLOOD_CLAMP);

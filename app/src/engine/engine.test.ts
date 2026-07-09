@@ -1595,6 +1595,25 @@ describe('the positive-beat requirement — the room does not move for filler (j
     expect(r.state.positiveBeatCount).toBe(0); // never ticked on an unlabelled turn
   });
 
+  it('carries the stillness forward — state.lastRoomStill matches roomStill so the NEXT voice call withholds', async () => {
+    // A filler turn leaves the room still AND stamps state.lastRoomStill, the single source the next
+    // buildVoiceTurn reads to make the character actually withhold (not just tell the player the room froze).
+    const filler = await resolveTurn(WARDEN, initState(), 'nice weather in here', mockDuo('Hm.', rating({ approach: 'filler' })));
+    expect(filler.roomStill).toBe(true);
+    expect(filler.state.lastRoomStill).toBe(true);
+    // A give re-opens the room — the flag clears, so the withholding hint is silent next turn.
+    const give = await resolveTurn(WARDEN, filler.state, 'I lost my brother to the cold', mockDuo('…', rating({ approach: 'offer' })));
+    expect(give.roomStill).toBeFalsy();
+    expect(give.state.lastRoomStill).toBe(false);
+  });
+
+  it('the seam turn carries NO stillness forward either (spared — the room moved)', async () => {
+    const seamLog = [{ scenarioId: 'warden', scenarioTitle: 'The Warden', outcome: 'won' as const, playerPhrase: 'I left the door unlocked that night' }];
+    const state = { ...initState(), turn: SEAM_TURN };
+    const r = await resolveTurn(FENCE, state, 'I can move it quietly', mockDuo('The docks remember more than I do.', rating({ approach: 'filler' })), seamLog);
+    expect(r.state.lastRoomStill).toBe(false);
+  });
+
   it('positiveBeatCount accumulates only the give/pressure turns across a game (the RATE numerator)', async () => {
     let state = initState();
     // offer, filler, probe, filler, filler → 2 positive beats out of 5 played turns.

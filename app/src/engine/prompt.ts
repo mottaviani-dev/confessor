@@ -153,6 +153,23 @@ export function buildVoiceTurn(
           ``,
         ]
       : []),
+    // THE ROOM DOES NOT MOVE — the positive-beat requirement made TRUE in your voice (judge run-16 core
+    // directive). When the LAST line asked for nothing and gave nothing (filler → the engine set the room
+    // still), do NOT reward the empty turn with a fresh story, a warm reflection, or a picture of the room —
+    // that fills the seeker's silence FOR them and is exactly the camera/scenery drift the whole family
+    // chased by its surface words. Withhold instead: give them LESS, and let the quiet press them to
+    // actually offer or ask. The system's silence off the camera, freshest in context. Silent once the
+    // seeker gives or presses again (lastRoomStill clears), so the room re-opens the moment they engage.
+    ...(state.lastRoomStill
+      ? [
+          `# Their last words moved nothing — stay still`,
+          `That line asked for nothing and offered nothing; it slid off you. Do NOT answer it with a story, a`,
+          `warm reflection, or a description of the room or the light — that only fills their silence for them.`,
+          `Give them LESS than a moment ago: one short, closed line, and let the quiet sit until THEY give`,
+          `something real or truly press. Make them fill it.`,
+          ``,
+        ]
+      : []),
     `# They just said:`,
     `"${playerLine.trim()}"`,
     ``,

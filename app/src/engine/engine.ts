@@ -277,6 +277,10 @@ export async function resolveTurn(
   // the already-resolved approach, never a new tick — the approach table above owns every point of score.
   const positiveBeat = isPositiveBeat(rating.approach);
   const positiveBeatCount = (state.positiveBeatCount ?? 0) + (positiveBeat ? 1 : 0);
+  // Single source for "the room did not move this turn": filler AND not the scripted seam beat. Read by the
+  // UI (TurnResult.roomStill, below) AND carried onto the next state (lastRoomStill) so the FOLLOWING VOICE
+  // call withholds — the stillness made true in the character's restraint, not just told to the player.
+  const roomStill = !positiveBeat && !seam;
   // Persistent memory is engine-assembled from the DISCLOSURE the player actually surrendered (their own
   // line on a genuine give), never a model prose note — see extractDisclosure. Survives the rolling window.
   const facts = addFact(state.facts, extractDisclosure(playerLine, rating.approach));
@@ -321,7 +325,7 @@ export async function resolveTurn(
   }
 
   return {
-    state: { ...state, turn: state.turn + 1, trust, suspicion, tone: rating.tone, summary, spokenLines, facts, genuineGive, probes, pressureStreak, offers, presses, positiveBeatCount, lastApproach: rating.approach, status: 'playing' },
+    state: { ...state, turn: state.turn + 1, trust, suspicion, tone: rating.tone, summary, spokenLines, facts, genuineGive, probes, pressureStreak, offers, presses, positiveBeatCount, lastApproach: rating.approach, lastRoomStill: roomStill, status: 'playing' },
     narration: reply,
     rating,
     positiveBeat,
@@ -332,7 +336,7 @@ export async function resolveTurn(
     // SPARED on the scheduled seam turn (the seam IS a scripted beat — `seam` non-null means the flagship
     // callback fired this turn, so the room DID move). Display-only, like askPenalty: a read of the already-
     // scored turn (filler is 0/0 by the table), so it never touches the balance or the manip wall.
-    roomStill: !positiveBeat && !seam,
+    roomStill,
     // On a terminal turn the loss/win subsumes it; here the game goes on, so the room must TELL the player
     // (diegetically, in the UI) that pushing closed the mind a little. Read from the applied trust delta.
     askPenalty: isAskPenalty(rating.approach, effect.trust, rating.tone),
