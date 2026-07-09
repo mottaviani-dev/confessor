@@ -10,6 +10,7 @@ const SEAM_KEY = 'confessor.seam.v1';
 const THRESHOLD_KEY = 'confessor.threshold.v1';
 const ROOMARC_KEY = 'confessor.roomarc.v1';
 const CAPSTONE_KEY = 'confessor.capstone.v1';
+const RETURNS_KEY = 'confessor.returns.v1';
 
 export async function loadLedger(): Promise<Ledger> {
   try {
@@ -119,5 +120,34 @@ export async function saveSeenCapstone(): Promise<void> {
     await AsyncStorage.setItem(CAPSTONE_KEY, '1');
   } catch {
     // best-effort: a failed save may re-show the capstone next launch, never blocks play
+  }
+}
+
+// THE RETURNS COUNTER — the replay-factor instrument (mandate 1a; §7 Rule 3): how many times the player has
+// RE-ENTERED a cleared room to fight it for the second sliver. The honest content-hours lever is replay, not
+// turns-per-game (the run-14 drag, now banned), so this is the raw signal for "does the second-visit layer
+// actually pull the player back through a cleared door". A separate key from gamesCompleted (which counts
+// ALL terminal duels): a return is specifically a re-open of a WON mind. Bumped once when a revisit duel is
+// entered (App). A missing/garbled value reads as 0; a failed read/write costs one instrument tick, never
+// gameplay — the counter is telemetry, off the play path entirely.
+export async function loadReturns(): Promise<number> {
+  try {
+    const raw = await AsyncStorage.getItem(RETURNS_KEY);
+    const n = raw === null ? 0 : Number.parseInt(raw, 10);
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  } catch {
+    return 0;
+  }
+}
+
+/** Increment the returns counter and return the new total (best-effort). A failed read/write yields 0 and
+ *  costs one instrument tick, never gameplay — the count is telemetry, not a gate on anything. */
+export async function bumpReturns(): Promise<number> {
+  try {
+    const next = (await loadReturns()) + 1;
+    await AsyncStorage.setItem(RETURNS_KEY, String(next));
+    return next;
+  } catch {
+    return 0;
   }
 }

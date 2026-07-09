@@ -33,6 +33,26 @@ export const SUSPECT: Scenario = {
     won: 'She eases back into the hard chair as if it were always hers, and does not watch you go.',
     lost: 'She has given exactly this much, and no more, to everyone who ever sat where you sat — and she will give it again tomorrow, to the next one.',
   },
+  // THE SECOND VISIT (mandate 1a) — you got Danny and the cabin, and you left her the way they all leave.
+  // The room remembers, and MARA opens knowing your face. The thing you never asked: not who she was
+  // covering, but what SHE was doing there — the sliver about herself she never had to give. Code-owned
+  // second secret; the model voices the surface only.
+  revisit: {
+    greeting:
+      "She looks at you a beat too long, the rehearsal gone out of her voice. \"You. You already got what you " +
+      'sat down for — I gave you Danny, I gave you the cabin, and you walked out the way they all walk out. So ' +
+      'why are you back in that chair?" Her eyes don\'t go to the recorder this time. "There\'s a thing you ' +
+      'didn\'t ask me. Ask it, or leave me be."',
+    objective: 'Ask MARA the thing you left unasked.',
+    secret:
+      'Mara is still for a long moment, and when it comes it is barely above the hum of the light. "…You got ' +
+      'Danny. You never asked why it was ME who knew where he\'d run. Because I was in that house the night it ' +
+      "burned — not on the news, in it. The man who didn't come out was our father, Ray Voss. Danny thinks to " +
+      'this day the place was empty because I swore to him it was, so he could keep on loving me. You wrote ' +
+      "down his name. The one I actually came here holding is that I let him believe it. That name never left " +
+      'this room. Now it has."',
+    extractTokens: ['Ray Voss'],
+  },
   // The canonical specifics the voice must never author — the brother's name + the hideout (mandate 2,
   // judge finding #4: the 3B invented "Lyrien"/"5th & Main" contradicting this reveal). The engine speaks
   // them only on win (see `secret`); a pre-win voice line emitting them is redacted.

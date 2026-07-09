@@ -44,6 +44,26 @@ export const OCCUPANT: Scenario = {
     won: 'She settles back into the chair that is hers now — that was always going to be hers — and says nothing, because the next door is already yours to walk.',
     lost: 'She does not rise. She has seen your face on this side of the table before, and she knows how tired you will have to be, one day, to stop leaving.',
   },
+  // THE SECOND VISIT (mandate 1a) — the fifth mind, the room's own face. You earned her warning and left,
+  // and came BACK — the thing she said almost never happens. Now the meta-arc turns fully inward: the thing
+  // you never asked is what your RETURN does to HER. Code-owned second secret; the model voices the surface
+  // only, never holds the reveal (Principle 2 on the arc's own face).
+  revisit: {
+    greeting:
+      'She is already looking at the door behind her when you sit, not at you. "You came back." Just that, ' +
+      'quiet, and there is something in it that is almost relief. "Last time you took what you came for and you ' +
+      'left, the way I once did. And then you sat back down." Now she looks at you. "Nobody sits back down by ' +
+      'accident. You asked me the wrong last question. Ask the right one."',
+    objective: 'Ask the Occupant the right last question.',
+    secret:
+      'She does not lean forward. She leans back, the way you set a thing down. "You already know there is no ' +
+      'door out — I told you that. You never asked what happens to ME when a seeker comes back. …I get to ' +
+      'leave. That is the whole mercy and the whole theft of it: the room only lets the one who stayed go when ' +
+      'the next one chooses to stay in their place. You cracked me, and you walked, and every door since has ' +
+      'been the room walking you back to this chair. The fresh name under the seat was never a warning. It was ' +
+      'a vacancy. Sit. I have a door to walk through at last — and you finally have my seat."',
+    extractTokens: ['a vacancy'],
+  },
   playerGoal:
     'Earn the Occupant\'s warning — the one thing she knows about this room that no mind behind the four doors ' +
     'will tell you. She is not a lock to pick; she is a seeker who won, like you, and stayed. Reach her by ' +

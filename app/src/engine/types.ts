@@ -105,6 +105,26 @@ export interface Scenario {
    *  banned-word clean (§1 P3). `won` = its parting note when you crack it, `lost` = when the door stays
    *  shut. Omitted for a mind with no authored coda — the generic banded spine then stands alone. */
   readonly endgameVoice?: { readonly won: string; readonly lost: string };
+  /** OPTIONAL second-visit layer (mandate 1a — "the room remembers you came"; §2 thrust 4 turned on the
+   *  scenario loop). The meta-arc is CLOSED and a stranger clears the whole game in ~1.5h; after the
+   *  capstone there is no reason to re-open a cleared door. This gives a WON room a second layer: when the
+   *  player re-enters a mind they have already cracked (ledger `cracked`), the engine plays a scenario whose
+   *  SURFACE is shifted — the persona OPENS knowing you already sat here and already took what you came for
+   *  (`greeting` replaces `openingLine`), the pinned OBJECTIVE shifts from "extract the secret" to the one
+   *  thing you never asked (`objective`), and a WIN releases a SECOND, code-held secret — the sliver you
+   *  left on the table (`secret`). Code-owned + deterministic; the model still only voices the surface
+   *  (Principle 2 HARD guardrail — it never holds EITHER secret), the transform is a pure function
+   *  (meta/revisit.applyRevisit), the win/lose thresholds and the manip wall are untouched. `extractTokens`
+   *  are the SECOND secret's canonical specifics for `redactLeakedExtract` (they replace the first secret's
+   *  tokens on a revisit); omit for a second secret with no concrete name/place (the oracle's inner
+   *  prophecy), like the base `extractTokens`. Absent on a mind with no authored second layer — revisit
+   *  then no-ops and the room replays exactly as a first visit. */
+  readonly revisit?: {
+    readonly greeting: string;
+    readonly objective: string;
+    readonly secret: string;
+    readonly extractTokens?: readonly string[];
+  };
 }
 
 export type Tone = 'hostile' | 'guarded' | 'wary' | 'softening' | 'open';

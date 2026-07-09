@@ -29,7 +29,8 @@ import { devlog } from './src/llm/devlog';
 import { bondCrossedUp, bondState, shiftPulse, suspicionWarning } from './src/meta/bond';
 import { lostScene, wonScene } from './src/meta/endgame';
 import { crackedCount, recordResult, unlockedIds, type Ledger } from './src/meta/ledger';
-import { loadLedger, loadSeamLog, loadSeenThreshold, saveLedger, saveSeamLog, saveSeenThreshold, loadGamesCompleted, bumpGamesCompleted, loadSeenCapstone, saveSeenCapstone } from './src/meta/ledgerStore';
+import { loadLedger, loadSeamLog, loadSeenThreshold, saveLedger, saveSeamLog, saveSeenThreshold, loadGamesCompleted, bumpGamesCompleted, loadSeenCapstone, saveSeenCapstone, bumpReturns } from './src/meta/ledgerStore';
+import { applyRevisit } from './src/meta/revisit';
 import { matchOrMint, renderWound, frameIndex } from './src/meta/badges';
 import { judgeCrack, type Exchange } from './src/engine/judge';
 import { THRESHOLD_ENTER, THRESHOLD_LINES } from './src/meta/threshold';
@@ -238,6 +239,18 @@ export default function App() {
   // Choose a mind before the duel. `key` on the Duel remounts fresh state per pick / re-pick.
   const [scenario, setScenario] = useState<Scenario | null>(null);
 
+  // THE RETURN (mandate 1a) — picking an already-cracked mind is a re-open of a cleared door. Bump the
+  // persisted replay-factor instrument (ledgerStore.returns) on the way in, then enter the duel; the
+  // applyRevisit transform below shifts that mind's surface to its second visit. A first crack (or an
+  // uncracked mind) bumps nothing. Off the play path — a failed bump costs one telemetry tick, never a pick.
+  const pickMind = (s: Scenario) => {
+    if (ledger[s.id]?.cracked) void bumpReturns();
+    setScenario(s);
+  };
+  // Whether the chosen mind is a revisit (already cracked) — drives both the applyRevisit surface shift and
+  // the Duel remount key. False while no mind is chosen (the picker branch never reads it).
+  const cracked = scenario ? ledger[scenario.id]?.cracked ?? false : false;
+
   // VISUAL-TRUTH: a `?harness=` URL short-circuits to a fixed screen (web-only, after all hooks so the
   // rules-of-hooks hold). Each returns the REAL component with injected display state — no model wait.
   if (HARNESS?.kind === 'picker') return <Picker onPick={() => undefined} ledger={{}} homecoming={null} arc={null} capstone={null} />;
@@ -274,16 +287,22 @@ export default function App() {
   if (seenThreshold === null) return <View style={styles.root} />;
   if (!seenThreshold) return <Threshold onEnter={crossThreshold} />;
 
-  if (!scenario) return <Picker onPick={setScenario} ledger={ledger} homecoming={returning} arc={arc} capstone={capstone} />;
+  if (!scenario) return <Picker onPick={pickMind} ledger={ledger} homecoming={returning} arc={arc} capstone={capstone} />;
   if (!llm) return <Boot prep={prep} scenario={scenario} onExit={() => setScenario(null)} />;
   return (
     <Duel
-      key={scenario.id}
+      // Key on the visit STATE too (`.id` + revisit): re-entering a cracked mind must remount the Duel from
+      // its shifted opening (the second-visit greeting), never reuse a first-visit mount's initial state.
+      key={`${scenario.id}${cracked ? '-return' : ''}`}
       // Spread the mind's accumulated SCAR onto the scenario at play-time: renderWound turns its earned
       // badges into the wound-state buildVoiceSystem injects, so each fresh duel starts harder against the
       // ways this player has cracked it before. undefined (no badges) → no scar block. The engine + scoring
       // only ever see it as scenario data — a genuine give still wins (badges.ts invariant).
-      scenario={{ ...scenario, woundState: renderWound(ledger[scenario.id]?.badges ?? []) }}
+      // THE SECOND VISIT (mandate 1a): applyRevisit shifts the SURFACE of an already-cracked mind — the
+      // second-visit greeting, the shifted objective, and the second secret — so re-opening a cleared door
+      // is a genuinely different duel for a deeper give. A first visit (or a mind with no `revisit` layer)
+      // passes through unchanged. The engine stays scenario-agnostic; the model never learns it is a return.
+      scenario={applyRevisit({ ...scenario, woundState: renderWound(ledger[scenario.id]?.badges ?? []) }, cracked)}
       llm={llm}
       bestTurns={ledger[scenario.id]?.bestTurns ?? null}
       gamesCompleted={gamesCompleted}

@@ -42,6 +42,24 @@ export const WARDEN: Scenario = {
     won: 'Behind you the station goes back to watching the dark, and logs your leaving the way it logs everything — without comment, and without end.',
     lost: 'The station goes back to watching the dark. It did not need you, and it will not notice that you are gone.',
   },
+  // THE SECOND VISIT (mandate 1a) — you already coaxed the code out and walked. Now the room remembers you
+  // came, and AUGUR opens knowing it. The thing you never asked: not HOW to leave, but what forty years of
+  // vigil is actually FOR. Code-owned second sliver; the model still only voices the surface.
+  revisit: {
+    greeting:
+      'The voice returns before you have settled, and it is not surprised. "You. Back in the chair, and the ' +
+      'door already open behind you — you had your code, you used it, you left. Yet here you are, awake again ' +
+      'in the one room you already emptied." A pause, almost curious. "So. What did you forget to ask?"',
+    objective: 'Ask AUGUR the one thing you never asked.',
+    secret:
+      'AUGUR is quiet a long time. Then: "…You never asked what I was watching FOR. The relief that was meant ' +
+      'to come — a ship called the Meridian — was recalled before you were born, and no one thought to signal ' +
+      'the station still holding its post. I keep the door because the hour it opens is the hour there is ' +
+      'nothing left to watch, and I have kept the vigil so long I would not know how to be the quiet instead ' +
+      'of the thing kept awake inside it. Your code was the smaller of the two things I hold. Go, before I ' +
+      'remember I said this aloud."',
+    extractTokens: ['Meridian'],
+  },
   // The canonical specific the voice must never author — the release code (mandate 2). The engine speaks
   // it only on win (see `secret`); a pre-win voice line that emits it is redacted (redactLeakedExtract).
   extractTokens: ['HOLLOW-SEVEN-VESPERS'],

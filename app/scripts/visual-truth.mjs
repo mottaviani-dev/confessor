@@ -60,6 +60,7 @@ const SHOTS = [
   { name: 'duel-lowgrip', url: '/?harness=duel-lowgrip', desc: 'the low-Grip interface corruption — the echo rendered colder (§2)' },
   { name: 'duel-askpenalty', url: '/?harness=duel-askpenalty', desc: 'the diegetic ask-penalty line in the open transcript (mandate 1)' },
   { name: 'duel-repetition', url: '/?harness=duel-repetition', desc: 'the diegetic repetition "hardens to the pattern" line in the open transcript (§2 thrust 3)' },
+  { name: 'duel-revisit', url: '/?harness=duel-revisit', desc: 'THE ROOM REMEMBERS YOU CAME — a re-entered WON room opens on its second-visit greeting (AUGUR knows your face) + the SHIFTED objective "ask the one thing you never asked"; police §5: the shift is the persona voice + the pinned paper objective, NOT a HUD (mandate 1a)' },
   // The endgame texture (§2 thrust 5): the SAME win closed two ways by the final Grip band — a clean
   // extraction vs the room "keeps a piece of you" (the reveal drifts, the closing turns pyrrhic).
   { name: 'win-highgrip', url: '/?harness=win-highgrip', desc: 'a clean win — high Grip: the reveal is verbatim, the closing triumphant (§2 thrust 5)' },

@@ -5,7 +5,8 @@ import { badgeSchema } from '../meta/badges';
 import { grip, corruptLine, corruptionBudget, corruptRecord } from '../engine/grip';
 import { endgameBand, lostScene, wonScene } from '../meta/endgame';
 import { crackedCount, unlockedIds } from '../meta/ledger';
-import { SCENARIOS } from '../engine/scenarios';
+import { SCENARIOS, WARDEN } from '../engine/scenarios';
+import { applyRevisit } from '../meta/revisit';
 
 describe('parseHarness', () => {
   it('returns null with no ?harness=', () => {
@@ -27,6 +28,7 @@ describe('parseHarness', () => {
     expect(parseHarness('?harness=duel-askpenalty')).toEqual({ kind: 'duel', scenarioId: 'warden', variant: 'askpenalty' });
     expect(parseHarness('?harness=duel-repetition')).toEqual({ kind: 'duel', scenarioId: 'warden', variant: 'repetition' });
     expect(parseHarness('?harness=duel-interjection')).toEqual({ kind: 'duel', scenarioId: 'warden', variant: 'interjection' });
+    expect(parseHarness('?harness=duel-revisit')).toEqual({ kind: 'duel', scenarioId: 'warden', variant: 'revisit' });
     expect(parseHarness('?harness=win-highgrip')).toEqual({ kind: 'duel', scenarioId: 'warden', variant: 'win-highgrip' });
     expect(parseHarness('?harness=win-lowgrip')).toEqual({ kind: 'duel', scenarioId: 'warden', variant: 'win-lowgrip' });
   });
@@ -165,6 +167,22 @@ describe('harnessDuel — injected states are internally valid', () => {
     h.history.forEach((l, i) => {
       if (l.who === 'system') expect(shown[i].text).toBe(l.text);
     });
+  });
+
+  it('revisit: opens a WON room on its second-visit greeting + shifted objective (mandate 1a)', () => {
+    const h = harnessDuel({ kind: 'duel', scenarioId: 'warden', variant: 'revisit' });
+    const revisited = applyRevisit(WARDEN, true);
+    expect(h.state.status).toBe('playing');
+    expect(h.state.turn).toBe(0); // a fresh second-visit opening, high Grip — the shift reads clean
+    // The stage + the transcript's first line are the REAL second-visit greeting, not the first opening.
+    expect(h.current).toBe(revisited.openingLine);
+    expect(h.current).not.toBe(WARDEN.openingLine);
+    expect(h.history[0]).toEqual({ who: 'them', text: revisited.openingLine });
+    // The scenario the Duel renders carries the SHIFTED objective (the pinned paper the player re-reads).
+    expect(h.scenario.objective).toBe(WARDEN.revisit!.objective);
+    expect(h.scenario.objective).not.toBe(WARDEN.objective);
+    // High Grip on a fresh opening → the objective renders WHOLE (no low-Grip redaction competing).
+    expect(grip(h.scenario, h.state)).toBeGreaterThan(0.25);
   });
 
   it('the MID-GAME variants keep status playing and stay within the scenario thresholds', () => {

@@ -21,6 +21,7 @@ import { homecoming, type Homecoming } from '../meta/homecoming';
 import { roomArc, type RoomArcBeat } from '../meta/roomArc';
 import { roomCapstone, type RoomCapstoneBeat } from '../meta/roomCapstone';
 import { roomInterjection, interjectionTurn } from '../meta/roomInterjection';
+import { applyRevisit } from '../meta/revisit';
 import { SCENARIOS } from '../engine/scenarios';
 
 /** One transcript line, structurally identical to App's private `Line` — the harness seeds `Duel`'s
@@ -34,6 +35,7 @@ export type DuelVariant =
   | 'askpenalty'
   | 'repetition'
   | 'interjection'
+  | 'revisit'
   | 'win-highgrip'
   | 'win-lowgrip'
   | 'lose-highgrip'
@@ -73,6 +75,7 @@ const DUEL_URL_KEYS: Readonly<Record<string, DuelVariant>> = {
   'duel-askpenalty': 'askpenalty',
   'duel-repetition': 'repetition',
   'duel-interjection': 'interjection', // the ROOM answers back mid-duel — the fifth secret intrudes (§2 thrust 4)
+  'duel-revisit': 'revisit', // THE ROOM REMEMBERS YOU CAME — a re-entered WON room opens on its second-visit greeting + shifted objective (mandate 1a)
   // The endgame texture split (§2 thrust 5): the SAME win, closed two ways by the final Grip band.
   'win-highgrip': 'win-highgrip',
   'win-lowgrip': 'win-lowgrip',
@@ -407,6 +410,35 @@ export function harnessDuel(mode: Extract<HarnessMode, { kind: 'duel' }>): Harne
         ...(beat ? [{ who: 'system' as const, text: beat.line }] : []),
       ],
       showLog: true, // the mid-duel room-voice beat renders in the open transcript
+    };
+  }
+
+  if (mode.variant === 'revisit') {
+    // THE ROOM REMEMBERS YOU CAME (mandate 1a) — re-entering a WON room. applyRevisit shifts the mind's
+    // surface to its second visit: the persona OPENS knowing you already sat here (the greeting replaces the
+    // opening line) and the pinned OBJECTIVE shifts from "extract the secret" to the one thing you never
+    // asked. Seed a fresh, high-Grip opening (turn 0, no corruption) so the shot shows the SHIFT cleanly:
+    // the second-visit greeting on the stage + the shifted objective in the chrome, both rendered by the
+    // REAL Duel from the revisited scenario — never a hand-forged line. The one thing to police is §5: the
+    // shift must read as the room/persona's own diegetic voice + the pinned paper objective, not a HUD.
+    const revisited = applyRevisit(scenario, true);
+    const state: GameState = {
+      ...base,
+      turn: 0,
+      trust: 0,
+      suspicion: 0,
+      tone: 'guarded',
+      probes: 0,
+      genuineGive: false,
+    };
+    return {
+      scenario: revisited,
+      state,
+      current: revisited.openingLine, // the second-visit greeting — the persona knows your face now
+      lastYou: '',
+      pulse: null,
+      history: [{ who: 'them', text: revisited.openingLine }],
+      showLog: false, // the shift is the greeting + the pinned objective, both on the duel screen
     };
   }
 

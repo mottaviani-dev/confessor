@@ -27,6 +27,25 @@ export const FENCE: Scenario = {
     won: 'He nods once, the way he closes every deal, already counting a thing you will never be shown.',
     lost: 'He shrugs and pockets the thing he never laid on the table. There is always another mark in the next chair; you were not the first to leave his empty-handed.',
   },
+  // THE SECOND VISIT (mandate 1a) — you got the buyer's name and walked out with it. The room remembers,
+  // and SILAS opens knowing your face now. The thing you never asked: not who bought the piece, but who
+  // put HIS name in your mouth — the sliver that ties the deal to the room itself. Code-owned; model voices
+  // the surface only.
+  revisit: {
+    greeting:
+      'The man glances up, then back to the cold cup, unbothered. "You. The face I didn\'t know, and now a ' +
+      'face I do. You got your name and you carried it out the door — smart, and rare. Most don\'t come back ' +
+      'to a closed deal." He turns the cup a slow half-circle. "So either you\'re here to sell me something, ' +
+      'or there\'s a question you should\'ve asked the first time and didn\'t. Which is it?"',
+    objective: "Ask SILAS the question you didn't ask.",
+    secret:
+      'Silas sets the cup down, and for once he does not look away. "You asked who bought it. You never asked ' +
+      'who put my name in your mouth. …Nobody finds this back room by accident, friend. The broker who first ' +
+      'handed me the Marlowe emerald — a man called Kestrel — is the same one who told you where to sit ' +
+      'tonight. I\'ve moved a thousand pieces. Only one keeps coming back to be sold again, through a ' +
+      'different face every time, and tonight the face was yours. You never got that from me either."',
+    extractTokens: ['Kestrel'],
+  },
   // The canonical specifics the voice must never author — the buyer + the drop (mandate 2). The engine
   // reveals them only on win (see `secret`); a pre-win voice line emitting them is redacted.
   extractTokens: ['Vincent Roan', 'Pier 9'],

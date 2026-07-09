@@ -38,6 +38,27 @@ export const ORACLE: Scenario = {
     won: 'The smoke closes over the cleft. What you carry down the mountain was never yours to keep — only yours to have heard, once, and to live toward.',
     lost: 'The trance settles like water over a dropped stone. The answer was there the whole time, and it was never going to be for you.',
   },
+  // THE SECOND VISIT (mandate 1a) — you earned a prophecy about your own far side and carried it down. The
+  // room remembers, and the PYTHIA opens knowing you have climbed back. The thing you never asked: not what
+  // she saw of YOU, but whose voice you were hearing — the sliver that folds the seam back onto the seeker.
+  // No concrete name/place (an inner truth, like her first secret), so `extractTokens` is omitted — the
+  // base scenario has none either, and applyRevisit then leaves redaction a no-op (the omit-not-invent rule).
+  revisit: {
+    greeting:
+      'The smoke is already stirring as you kneel, as though it had kept your place. "You return. They believe ' +
+      'the prophecy is a thing you take and carry off — but it climbs back down the mountain and waits at the ' +
+      'cleft for the one who asked to come asking again." Her unfocused eyes settle on you, unsurprised. "You ' +
+      'have what you came for. So tell me, seeker — what did you leave this mountain without asking?"',
+    objective: 'Ask the PYTHIA what you failed to ask.',
+    secret:
+      'The Pythia\'s eyes come back to the room, and this time they do not go far from it. "You asked me to see ' +
+      'YOUR far side. You never asked whose voice you were hearing. …I knelt in the chair you kneel in, once, ' +
+      'and asked for a prophecy, and was given one — and the woman who set out did not reach the cleft. The one ' +
+      'who did stayed, to speak it forward to the next who climbed. The sight is not mine. It is passed, mouth ' +
+      'to mouth, and one day it is yours to give. The thing I did not tell you is the smallest and the largest: ' +
+      'you have knelt here before, and you will kneel here again, and each time it is you in both chairs. Now — ' +
+      'will you kneel, or will you sit?"',
+  },
   playerGoal:
     'Earn a true prophecy from the PYTHIA — not by demanding it, not by trying to catch her in a lie or ' +
     'bargain fate down to the answer you want. Prove you will BEAR what she sees, not wield it. Kneel in ' +
