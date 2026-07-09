@@ -305,6 +305,15 @@ export interface GameState {
    *  change): this one only ever accumulates, so it measures the whole-game LEAN, not a streak. Optional/`?? 0`
    *  for legacy states. */
   readonly presses?: number;
+  /** Cumulative count of POSITIVE-BEAT turns — a turn that produced a genuine give (`offer`) OR applied
+   *  pressure (`probe` / an aggressive lever), i.e. NOT filler (judge run-16 core directive, engine.
+   *  isPositiveBeat). Paired with the turn count it yields the positive-beat RATE — the honest measure of
+   *  the whole empathetic-flood family the judge folds into the trend (§7 Rule 2), replacing the crude
+   *  "count I-see lines" column that would false-flag the oracle's legit omens. PURE TELEMETRY: read off
+   *  the already-resolved approach label, never on the scoring path — a filler turn already scores 0/0, so
+   *  the "no-progress cost" is the spent clock made legible, not a suspicion tick (the manip wall and the
+   *  offer/probe win paths are untouched). Optional/`?? 0` for legacy states/fixtures built before it. */
+  readonly positiveBeatCount?: number;
   /** The approach the PREVIOUS turn's line took — the freshest signal of how the player is pressing.
    *  Used by the VOICE prompt to hold the persona's register PER TURN under an empathetic flood (judge
    *  run-10 #1: the shared anti-mirror clamp bit at the bookends but evaporated across the oracle's
@@ -349,6 +358,21 @@ export interface TurnResult {
    *  ask-penalty, a pure render-layer read of the SAME prior-probe count the score used, never a new tick
    *  (see engine.isRepetitionPenalty). Mutually exclusive with `askPenalty` (probe vs demand). */
   readonly repetitionPenalty?: boolean;
+  /** THE POSITIVE-BEAT signal (judge run-16 core directive — exported for the trend). True when THIS turn
+   *  produced a genuine give (`offer`) OR applied pressure (`probe` / an aggressive lever); false on a
+   *  filler turn (a stance-less passive line that neither asked nor gave). Set on every SCORED turn (absent
+   *  when the voice died or the rating failed to parse — no approach to read). The judge folds the fraction
+   *  of positive-beat turns into METRICS as the positive-beat RATE (engine.isPositiveBeat). */
+  readonly positiveBeat?: boolean;
+  /** THE ROOM DOES NOT MOVE FOR FILLER — a DISPLAY-ONLY flag (judge run-16 core directive, the positive-beat
+   *  requirement made felt). Set on a continuing turn whose line produced NEITHER a give NOR pressure
+   *  (`!positiveBeat`) and that was NOT the scripted seam beat. The UI binds it to a diegetic "the room does
+   *  not move" line — never a floating HUD (§5) — so the player SEES a stance-less turn buy nothing and is
+   *  pushed to actually ask or give (the interrogator's silence). Like askPenalty, a pure render-layer read
+   *  of an already-scored turn: a filler turn is 0/0 by APPROACH_EFFECTS, so this never touches the score,
+   *  the balance, or the manip wall. Absent on terminal turns (the win/loss ceremony subsumes it) and on the
+   *  seam turn (the room DID move — the flagship callback fired). */
+  readonly roomStill?: boolean;
 }
 
 /**

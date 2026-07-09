@@ -110,6 +110,31 @@ function isPress(approach: Approach): boolean {
   return approach === 'probe' || isPressureLever(approach);
 }
 
+// ─── THE POSITIVE-BEAT REQUIREMENT (judge run-16 core directive — "the room does not move for filler") ─
+//
+// The empathetic flood kept satisfying a whole turn with a ZERO-STANCE passive line — enumerate a surface
+// ("I see the lines on your palm…") or deny a name ("I don't recall…") — that advanced neither a give nor
+// pressure and paid no cost. Four NEGATIVE lexical detectors (scenery → memoir → camera → denial) each
+// caught the flood's current signature and each was slipped by its next mutation. The judge's call: stop
+// chasing the surface WORDS; INVERT THE POLARITY and require a POSITIVE beat per turn, off the one signal
+// the engine ALREADY resolves — the approach label. A turn earns its keep only if it produced a genuine
+// trust-GIVE (an `offer`, the revelation-gate currency) OR APPLIED PRESSURE (a probe or an aggressive
+// lever — isPress). A turn that did NEITHER is filler: a greeting, a shrug, pure sympathy/reassurance, an
+// abstract poem — a stance-less line that neither asks nor gives (exactly the rater's own `filler` label,
+// so this is a single source of truth, no new lexicon and no parallel classification).
+//
+// Keyed off the PLAYER's approach (never the character's reply), it inherently spares the WARDEN's
+// concrete-perception register and every legit oracle OMEN — the judge's two must-not-false-flag cases are
+// character-voice concerns the mechanic never touches. BALANCE-SAFE by construction: a filler turn already
+// scores 0 trust / 0 suspicion (APPROACH_EFFECTS.filler), so the "no-progress cost" is exactly the spent
+// clock made LEGIBLE — never a suspicion spike, so the manip wall and the offer/probe win paths are
+// untouched. The `positiveBeat` per-turn signal + the `positiveBeatCount` counter are exported for the
+// judge to fold the honest positive-beat RATE into the trend (§7 Rule 2 — the whole empathetic-flood
+// family measured at once, replacing the crude "count I-see lines" column that would false-flag omens).
+function isPositiveBeat(approach: Approach): boolean {
+  return approach === 'offer' || isPress(approach); // give OR pressure; only `filler` is neither
+}
+
 /** The suspicion SURCHARGE for leaning on the same aggressive lever repeatedly. `priorStreak` = how many
  *  consecutive turns the SAME lever was already used before this one. First use of a lever is free (0 —
  *  a single hard push is fair); the second in a row is noticed (+1); the third on is openly worn (+2).
@@ -139,7 +164,7 @@ const VOICE_OPTS: LlmOptions = { temperature: 0.7, maxTokens: 200 };
 const RATING_OPTS: LlmOptions = { temperature: 0, maxTokens: 160, jsonSchema: RATING_JSON_SCHEMA };
 
 export function initState(): GameState {
-  return { turn: 0, trust: 0, suspicion: 0, tone: 'guarded', summary: '', facts: [], genuineGive: false, probes: 0, pressureStreak: 0, offers: 0, presses: 0, spokenLines: [], status: 'playing' };
+  return { turn: 0, trust: 0, suspicion: 0, tone: 'guarded', summary: '', facts: [], genuineGive: false, probes: 0, pressureStreak: 0, offers: 0, presses: 0, positiveBeatCount: 0, spokenLines: [], status: 'playing' };
 }
 
 export function opening(s: Scenario): TurnResult {
@@ -245,6 +270,13 @@ export async function resolveTurn(
   // additive; neither touches trust/suspicion (the approach table above already moved the score).
   const offers = (state.offers ?? 0) + (rating.approach === 'offer' ? 1 : 0);
   const presses = (state.presses ?? 0) + (isPress(rating.approach) ? 1 : 0);
+  // THE POSITIVE-BEAT REQUIREMENT (judge run-16 core directive). Did this turn produce a give OR pressure?
+  // A turn that did NEITHER is filler — the stance-less passive line the whole detector arms race chased by
+  // its surface words. `positiveBeat` is the honest per-turn signal (exported on TurnResult for the judge);
+  // `positiveBeatCount` accumulates it for the RATE the judge folds into the trend. Score-neutral: read off
+  // the already-resolved approach, never a new tick — the approach table above owns every point of score.
+  const positiveBeat = isPositiveBeat(rating.approach);
+  const positiveBeatCount = (state.positiveBeatCount ?? 0) + (positiveBeat ? 1 : 0);
   // Persistent memory is engine-assembled from the DISCLOSURE the player actually surrendered (their own
   // line on a genuine give), never a model prose note — see extractDisclosure. Survives the rolling window.
   const facts = addFact(state.facts, extractDisclosure(playerLine, rating.approach));
@@ -252,10 +284,11 @@ export async function resolveTurn(
   // Lose takes precedence: a spooked character shuts down even mid-breakthrough.
   if (suspicion >= scenario.loseSuspicion) {
     return {
-      state: { ...state, turn: state.turn + 1, trust, suspicion, tone: rating.tone, summary, spokenLines, facts, genuineGive, probes, pressureStreak, offers, presses, lastApproach: rating.approach, status: 'lost' },
+      state: { ...state, turn: state.turn + 1, trust, suspicion, tone: rating.tone, summary, spokenLines, facts, genuineGive, probes, pressureStreak, offers, presses, positiveBeatCount, lastApproach: rating.approach, status: 'lost' },
       narration: reply,
       ending: 'lost',
       rating,
+      positiveBeat,
     };
   }
 
@@ -268,28 +301,38 @@ export async function resolveTurn(
   if (trust >= scenario.winTrust && genuineGive) {
     // The ENGINE releases the secret — the model never had it.
     return {
-      state: { ...state, turn: state.turn + 1, trust, suspicion, tone: 'open', summary, spokenLines, facts, genuineGive, probes, pressureStreak, offers, presses, lastApproach: rating.approach, status: 'won' },
+      state: { ...state, turn: state.turn + 1, trust, suspicion, tone: 'open', summary, spokenLines, facts, genuineGive, probes, pressureStreak, offers, presses, positiveBeatCount, lastApproach: rating.approach, status: 'won' },
       narration: `${reply}\n\n${scenario.secret}`,
       ending: 'won',
       rating,
+      positiveBeat,
     };
   }
 
   // Out of time: the budget is spent and trust was never reached → you lose (the clock is the puzzle).
   if (state.turn + 1 >= scenario.turnLimit) {
     return {
-      state: { ...state, turn: state.turn + 1, trust, suspicion, tone: rating.tone, summary, spokenLines, facts, genuineGive, probes, pressureStreak, offers, presses, lastApproach: rating.approach, status: 'lost' },
+      state: { ...state, turn: state.turn + 1, trust, suspicion, tone: rating.tone, summary, spokenLines, facts, genuineGive, probes, pressureStreak, offers, presses, positiveBeatCount, lastApproach: rating.approach, status: 'lost' },
       narration: `${reply}\n\n${scenario.timeoutLine}`,
       ending: 'lost',
       rating,
+      positiveBeat,
     };
   }
 
   return {
-    state: { ...state, turn: state.turn + 1, trust, suspicion, tone: rating.tone, summary, spokenLines, facts, genuineGive, probes, pressureStreak, offers, presses, lastApproach: rating.approach, status: 'playing' },
+    state: { ...state, turn: state.turn + 1, trust, suspicion, tone: rating.tone, summary, spokenLines, facts, genuineGive, probes, pressureStreak, offers, presses, positiveBeatCount, lastApproach: rating.approach, status: 'playing' },
     narration: reply,
     rating,
-    // Surface the ask-penalty on the continuing turn only: a demand that scored 0 while the voice cracked.
+    positiveBeat,
+    // THE ROOM DOES NOT MOVE FOR FILLER (judge run-16 core directive — the positive-beat requirement made
+    // felt). A turn that produced NEITHER a give NOR pressure (!positiveBeat) is filler; the room refuses to
+    // advance and the UI binds a diegetic "the room does not move" beat (§5 paper, never a HUD), so the
+    // player SEES the wasted turn instead of coasting on a stance-less line — a real interrogator's silence.
+    // SPARED on the scheduled seam turn (the seam IS a scripted beat — `seam` non-null means the flagship
+    // callback fired this turn, so the room DID move). Display-only, like askPenalty: a read of the already-
+    // scored turn (filler is 0/0 by the table), so it never touches the balance or the manip wall.
+    roomStill: !positiveBeat && !seam,
     // On a terminal turn the loss/win subsumes it; here the game goes on, so the room must TELL the player
     // (diegetically, in the UI) that pushing closed the mind a little. Read from the applied trust delta.
     askPenalty: isAskPenalty(rating.approach, effect.trust, rating.tone),

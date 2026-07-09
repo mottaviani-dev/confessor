@@ -605,6 +605,15 @@ function Duel({
       if (r.repetitionPenalty) {
         crossings.push({ who: 'system', text: `You circle back the same way — and ${scenario.title.replace(/^The /, 'the ')} hardens to the pattern.` });
       }
+      // THE ROOM DOES NOT MOVE FOR FILLER (judge run-16 core directive — the positive-beat requirement made
+      // felt). A stance-less turn that neither asked nor gave (r.roomStill) buys nothing; the ROOM — not the
+      // persona — refuses to advance, a diegetic system line in the room's own voice (§5 paper, never a HUD),
+      // so the player SEES the wasted turn instead of coasting a passive line (the interrogator's silence).
+      // Display-only: r.roomStill reads the already-scored turn (filler is 0/0), so nothing the referee saw
+      // changes. Suppressed on the seam turn + terminal turns by the engine (never competes with the dread).
+      if (r.roomStill) {
+        crossings.push({ who: 'system', text: `The room does not move. It waits for you to spend something — a real question, or a piece of yourself.` });
+      }
       // THE ROOM ANSWERS BACK (§2 thrust 4 / roomInterjection.ts). On the single scheduled mid-duel turn,
       // the ROOM — not the persona — speaks ONCE of the fifth secret (the door, the chair, the constant =
       // you), deepening with the finished-game count. Code-owned, deterministic, no model call; rendered as

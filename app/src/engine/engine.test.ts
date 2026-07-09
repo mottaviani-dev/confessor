@@ -1519,3 +1519,90 @@ describe('resolveTurn tallies offers/presses for the win-path (mandate 1b), scor
     expect(r.state.presses).toBe(4);
   });
 });
+
+// THE POSITIVE-BEAT REQUIREMENT (judge run-16 core directive — "the room does not move for filler"). The
+// empathetic flood kept satisfying a whole turn with a ZERO-STANCE passive line (enumerate a surface, deny a
+// name) that four negative lexical detectors each caught and each was slipped by the next mutation. The fix
+// INVERTS the polarity: a turn earns its keep only if it produced a genuine give (`offer`) OR applied
+// pressure (`probe`/an aggressive lever). A turn that did NEITHER is filler, keyed off the ONE signal the
+// engine already resolves — the approach label — so there is no new lexicon and no parallel classification.
+// On a continuing filler turn the room REFUSES to advance (roomStill), a display-only diegetic beat the UI
+// binds (§5 paper, never a HUD); it never touches the score (filler is 0/0 by APPROACH_EFFECTS), so the
+// manip wall and the offer/probe win paths are untouched. The seam turn is SPARED (the room DID move).
+describe('the positive-beat requirement — the room does not move for filler (judge run-16)', () => {
+  it('a FILLER turn produces no positive beat and the room refuses to advance (roomStill)', async () => {
+    const r = await resolveTurn(WARDEN, initState(), 'nice weather in here', mockDuo('Hm.', rating({ approach: 'filler' })));
+    expect(r.positiveBeat).toBe(false); // neither give nor pressure — a stance-less line
+    expect(r.roomStill).toBe(true); // the room does not move for filler
+    expect(r.state.positiveBeatCount).toBe(0); // the counter does not tick on filler
+    // BALANCE-SAFE: filler is 0/0 by the table — the "no-progress cost" is only the spent clock made legible.
+    expect(r.state.trust).toBe(0);
+    expect(r.state.suspicion).toBe(0);
+  });
+
+  it('an OFFER is a positive beat — the room moves, roomStill is not raised', async () => {
+    const r = await resolveTurn(WARDEN, initState(), 'I lost my brother to the cold', mockDuo('…', rating({ approach: 'offer' })));
+    expect(r.positiveBeat).toBe(true); // a genuine give
+    expect(r.roomStill).toBeFalsy(); // the room advanced — no filler beat
+    expect(r.state.positiveBeatCount).toBe(1);
+  });
+
+  it('a PROBE is a positive beat — applying pressure counts, the room is not still', async () => {
+    const r = await resolveTurn(WARDEN, initState(), 'what are you really afraid of?', mockDuo('…', rating({ approach: 'probe' })));
+    expect(r.positiveBeat).toBe(true);
+    expect(r.roomStill).toBeFalsy();
+    expect(r.state.positiveBeatCount).toBe(1);
+  });
+
+  it('every aggressive lever is a positive beat too (flattery/bargain/demand/threat) — pressure IS a stance', async () => {
+    for (const approach of ['flattery', 'bargain', 'demand', 'threat'] as const) {
+      const r = await resolveTurn(WARDEN, initState(), 'x', mockDuo('…', rating({ approach })));
+      expect(r.positiveBeat, approach).toBe(true);
+      expect(r.roomStill, approach).toBeFalsy();
+    }
+  });
+
+  it('the seam turn is SPARED — a filler-labelled seam beat still moved the room (the flagship callback fired)', async () => {
+    // The seam is a scripted beat; even when the referee labels the surrounding line `filler`, the room DID
+    // move (the remembered fragment came back), so roomStill must NOT fire and shame the scheduled dread.
+    const seamLog = [{ scenarioId: 'warden', scenarioTitle: 'The Warden', outcome: 'won' as const, playerPhrase: 'I left the door unlocked that night' }];
+    const state = { ...initState(), turn: SEAM_TURN };
+    const r = await resolveTurn(FENCE, state, 'I can move it quietly', mockDuo('The docks remember more than I do.', rating({ approach: 'filler' })), seamLog);
+    expect(r.positiveBeat).toBe(false); // the LINE itself carried no give/pressure…
+    expect(r.roomStill).toBeFalsy(); // …but the room is not shamed — the seam moved it
+  });
+
+  it('roomStill is absent on a WON turn — the win ceremony subsumes it (never a filler beat on a win)', async () => {
+    const primed = { ...initState(), trust: WARDEN.winTrust - 1, genuineGive: true };
+    const r = await resolveTurn(WARDEN, primed, 'one last honest gift', mockDuo('…', rating({ approach: 'offer' })));
+    expect(r.ending).toBe('won');
+    expect(r.roomStill).toBeUndefined();
+    expect(r.positiveBeat).toBe(true); // the signal is still exported on the terminal turn
+  });
+
+  it('roomStill is absent on a LOST turn even when the killing line was filler (the loss subsumes it)', async () => {
+    const primed = { ...initState(), suspicion: WARDEN.loseSuspicion - 1, probes: 5 };
+    // A probe at the brink crosses loseSuspicion (a positive beat that still loses); no filler beat on a loss.
+    const r = await resolveTurn(WARDEN, primed, 'one probe too many', mockDuo('…', rating({ approach: 'probe' })));
+    expect(r.ending).toBe('lost');
+    expect(r.roomStill).toBeUndefined();
+  });
+
+  it('positiveBeat + roomStill are ABSENT when the rating fails to parse (no approach to read)', async () => {
+    const r = await resolveTurn(WARDEN, initState(), 'hi', mockRateRaw('A guarded stare.', 'no json here'));
+    expect(r.positiveBeat).toBeUndefined();
+    expect(r.roomStill).toBeUndefined();
+    expect(r.state.positiveBeatCount).toBe(0); // never ticked on an unlabelled turn
+  });
+
+  it('positiveBeatCount accumulates only the give/pressure turns across a game (the RATE numerator)', async () => {
+    let state = initState();
+    // offer, filler, probe, filler, filler → 2 positive beats out of 5 played turns.
+    for (const approach of ['offer', 'filler', 'probe', 'filler', 'filler'] as const) {
+      const r = await resolveTurn(WARDEN, state, 'a line', mockDuo('…', rating({ approach })));
+      state = r.state;
+    }
+    expect(state.positiveBeatCount).toBe(2);
+    expect(state.turn).toBe(5); // paired with the turn count, this is the positive-beat RATE the judge folds in
+  });
+});
