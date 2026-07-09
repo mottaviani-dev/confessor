@@ -9,6 +9,7 @@ const LEDGER_KEY = 'confessor.ledger.v1';
 const SEAM_KEY = 'confessor.seam.v1';
 const THRESHOLD_KEY = 'confessor.threshold.v1';
 const ROOMARC_KEY = 'confessor.roomarc.v1';
+const CAPSTONE_KEY = 'confessor.capstone.v1';
 
 export async function loadLedger(): Promise<Ledger> {
   try {
@@ -96,5 +97,27 @@ export async function bumpGamesCompleted(): Promise<number> {
     return next;
   } catch {
     return 0;
+  }
+}
+
+// THE CAPSTONE SPENT FLAG — whether the meta-arc's terminal beat (roomCapstone.ts, "the door behind the
+// chair") has already fired. It surfaces EXACTLY ONCE across all sessions, so a persisted flag guards it.
+// Present + '1' → already spent (never show again); absent/unreadable → not yet spent. A failed READ
+// defaults to spent (false-negative bias, like the Threshold): a returning player who briefly loses storage
+// would rather never see a mis-fired ending than see the once-in-a-playthrough capstone a second time; a
+// genuine eligible run persists the flag the first time it shows, so a healthy device fires it exactly once.
+export async function loadSeenCapstone(): Promise<boolean> {
+  try {
+    return (await AsyncStorage.getItem(CAPSTONE_KEY)) === '1';
+  } catch {
+    return true; // storage unavailable → suppress rather than risk re-firing the terminal beat
+  }
+}
+
+export async function saveSeenCapstone(): Promise<void> {
+  try {
+    await AsyncStorage.setItem(CAPSTONE_KEY, '1');
+  } catch {
+    // best-effort: a failed save may re-show the capstone next launch, never blocks play
   }
 }

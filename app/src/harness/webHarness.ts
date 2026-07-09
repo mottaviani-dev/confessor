@@ -17,6 +17,7 @@ import type { Badge } from '../meta/badges';
 import { matchOrMint } from '../meta/badges';
 import { homecoming, type Homecoming } from '../meta/homecoming';
 import { roomArc, type RoomArcBeat } from '../meta/roomArc';
+import { roomCapstone, type RoomCapstoneBeat } from '../meta/roomCapstone';
 import { roomInterjection, interjectionTurn } from '../meta/roomInterjection';
 import { SCENARIOS } from '../engine/scenarios';
 
@@ -41,6 +42,7 @@ export type HarnessMode =
   | { readonly kind: 'picker-badges' }
   | { readonly kind: 'picker-homecoming' }
   | { readonly kind: 'picker-roomarc' }
+  | { readonly kind: 'picker-capstone' }
   | { readonly kind: 'threshold' }
   | { readonly kind: 'duel'; readonly scenarioId: string; readonly variant: DuelVariant };
 
@@ -93,6 +95,7 @@ export function parseHarness(search: string): HarnessMode | null {
   if (key === 'picker-badges') return { kind: 'picker-badges' }; // the badge/scar surface on the cards (§5)
   if (key === 'picker-homecoming') return { kind: 'picker-homecoming' }; // the scar with teeth — a returning wound greets you (§2 P2)
   if (key === 'picker-roomarc') return { kind: 'picker-roomarc' }; // the fifth-secret meta-beat on the picker head (§2 thrust 4)
+  if (key === 'picker-capstone') return { kind: 'picker-capstone' }; // the terminal beat — the door behind the chair, all five won (§2 thrust 4)
   if (key === 'threshold') return { kind: 'threshold' }; // the one-time diegetic cold-open (threshold.ts)
   // The fixed warden probes first (their suffixes are variants, never scenario ids).
   const variant = DUEL_URL_KEYS[key];
@@ -171,6 +174,27 @@ export function seededHomecoming(): { ledger: Ledger; greeting: Homecoming | nul
 export function seededRoomArc(): { ledger: Ledger; arc: RoomArcBeat | null } {
   // Three finished games in → the arc is on its third beat (the fifth-door reveal), still mid-story.
   return { ledger: seededLedger(), arc: roomArc(3) };
+}
+
+/** A player at the very END of the meta-arc — ALL FIVE minds cracked and the roomArc at its final capped
+ *  fragment (roomCapstone.ts) — so the terminal beat, the door behind the chair, fires. Seeds a full-clear
+ *  ledger (every scenario cracked) and runs the REAL `roomCapstone()` over it, so the shot shows the genuine
+ *  code-authored ending, never a hand-forged line. The one thing to police is §5: the capstone must read as
+ *  the room's own quiet diegetic voice on the head, ending on a question — NOT a floating "you win" HUD. */
+export function seededCapstone(): { ledger: Ledger; capstone: RoomCapstoneBeat | null } {
+  const allIds = SCENARIOS.map((s) => s.id);
+  const ledger: Ledger = {};
+  allIds.forEach((id, i) => {
+    ledger[id] = { attempts: i + 1, cracked: true, bestTurns: 6 + i };
+  });
+  // A finished-game count at/past the arc's cap so roomArc is `final` — the ending has a close to pay off.
+  const capstone = roomCapstone({
+    wonScenarioIds: new Set(allIds),
+    allScenarioIds: allIds,
+    gamesCompleted: 99,
+    spent: false,
+  });
+  return { ledger, capstone };
 }
 
 function scenarioById(id: string): Scenario {

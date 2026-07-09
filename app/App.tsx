@@ -29,15 +29,16 @@ import { devlog } from './src/llm/devlog';
 import { bondCrossedUp, bondState, shiftPulse, suspicionWarning } from './src/meta/bond';
 import { lostScene, wonScene } from './src/meta/endgame';
 import { crackedCount, recordResult, unlockedIds, type Ledger } from './src/meta/ledger';
-import { loadLedger, loadSeamLog, loadSeenThreshold, saveLedger, saveSeamLog, saveSeenThreshold, loadGamesCompleted, bumpGamesCompleted } from './src/meta/ledgerStore';
+import { loadLedger, loadSeamLog, loadSeenThreshold, saveLedger, saveSeamLog, saveSeenThreshold, loadGamesCompleted, bumpGamesCompleted, loadSeenCapstone, saveSeenCapstone } from './src/meta/ledgerStore';
 import { matchOrMint, renderWound, frameIndex } from './src/meta/badges';
 import { judgeCrack, type Exchange } from './src/engine/judge';
 import { THRESHOLD_ENTER, THRESHOLD_LINES } from './src/meta/threshold';
 import { homecoming, type Homecoming } from './src/meta/homecoming';
 import { roomArc, type RoomArcBeat } from './src/meta/roomArc';
+import { roomCapstone, type RoomCapstoneBeat } from './src/meta/roomCapstone';
 import { roomInterjection } from './src/meta/roomInterjection';
 import { useAudioDirector } from './src/audio/useAudioDirector';
-import { harnessDuel, parseHarness, seededLedger, seededBadgeLedger, seededHomecoming, seededRoomArc, type HarnessDuel } from './src/harness/webHarness';
+import { harnessDuel, parseHarness, seededLedger, seededBadgeLedger, seededHomecoming, seededRoomArc, seededCapstone, type HarnessDuel } from './src/harness/webHarness';
 
 type Line = { who: 'them' | 'you' | 'system'; text: string };
 
@@ -153,6 +154,12 @@ export default function App() {
   // The raw finished-game count (not just the derived picker beat) — the mid-duel room interjection
   // (roomInterjection.ts) needs it live: the fifth secret intrudes INTO a duel, deepening with this count.
   const [gamesCompleted, setGamesCompleted] = useState(0);
+  // THE DOOR BEHIND THE CHAIR (roomCapstone.ts) — the meta-arc's terminal beat. `seenCapstone` is the
+  // persisted spent flag (null while resolving); `capstone` LATCHES the fired beat for this session's
+  // picker so it stays shown even after the spent flag flips (see the latch effect below). null until the
+  // player has won all five AND the roomArc is complete — before then a returning player reads clean.
+  const [seenCapstone, setSeenCapstone] = useState<boolean | null>(null);
+  const [capstone, setCapstone] = useState<RoomCapstoneBeat | null>(null);
   useEffect(() => {
     void loadLedger().then(setLedger);
     void loadSeamLog().then((log) => {
@@ -164,7 +171,27 @@ export default function App() {
       setArc(roomArc(n));
       setGamesCompleted(n);
     });
+    void loadSeenCapstone().then(setSeenCapstone);
   }, []);
+  // Latch the capstone ONCE per playthrough: when the spent flag has resolved to not-yet-spent and the
+  // player is eligible (all five won, arc complete), fire the terminal beat, latch it into `capstone` so it
+  // survives the flag flip through this session, and persist the flag so it never fires again. Runs off the
+  // same async loads as the arc, so it settles once the ledger + finished-game count are in.
+  useEffect(() => {
+    if (seenCapstone !== false) return; // still resolving, or already spent
+    if (capstone) return; // already latched this session
+    const beat = roomCapstone({
+      wonScenarioIds: new Set(Object.entries(ledger).filter(([, e]) => e.cracked).map(([id]) => id)),
+      allScenarioIds: SCENARIOS.map((s) => s.id),
+      gamesCompleted,
+      spent: false,
+    });
+    if (beat) {
+      setCapstone(beat);
+      setSeenCapstone(true); // never again
+      void saveSeenCapstone();
+    }
+  }, [seenCapstone, capstone, ledger, gamesCompleted]);
   const crossThreshold = () => {
     setSeenThreshold(true);
     void saveSeenThreshold();
@@ -211,13 +238,15 @@ export default function App() {
 
   // VISUAL-TRUTH: a `?harness=` URL short-circuits to a fixed screen (web-only, after all hooks so the
   // rules-of-hooks hold). Each returns the REAL component with injected display state — no model wait.
-  if (HARNESS?.kind === 'picker') return <Picker onPick={() => undefined} ledger={{}} homecoming={null} arc={null} />;
-  if (HARNESS?.kind === 'picker-seeded') return <Picker onPick={() => undefined} ledger={seededLedger()} homecoming={null} arc={null} />;
-  if (HARNESS?.kind === 'picker-badges') return <Picker onPick={() => undefined} ledger={seededBadgeLedger()} homecoming={null} arc={null} />;
+  if (HARNESS?.kind === 'picker') return <Picker onPick={() => undefined} ledger={{}} homecoming={null} arc={null} capstone={null} />;
+  if (HARNESS?.kind === 'picker-seeded') return <Picker onPick={() => undefined} ledger={seededLedger()} homecoming={null} arc={null} capstone={null} />;
+  if (HARNESS?.kind === 'picker-badges') return <Picker onPick={() => undefined} ledger={seededBadgeLedger()} homecoming={null} arc={null} capstone={null} />;
   if (HARNESS?.kind === 'picker-homecoming')
-    return <Picker onPick={() => undefined} ledger={seededHomecoming().ledger} homecoming={seededHomecoming().greeting} arc={null} />;
+    return <Picker onPick={() => undefined} ledger={seededHomecoming().ledger} homecoming={seededHomecoming().greeting} arc={null} capstone={null} />;
   if (HARNESS?.kind === 'picker-roomarc')
-    return <Picker onPick={() => undefined} ledger={seededRoomArc().ledger} homecoming={null} arc={seededRoomArc().arc} />;
+    return <Picker onPick={() => undefined} ledger={seededRoomArc().ledger} homecoming={null} arc={seededRoomArc().arc} capstone={null} />;
+  if (HARNESS?.kind === 'picker-capstone')
+    return <Picker onPick={() => undefined} ledger={seededCapstone().ledger} homecoming={null} arc={null} capstone={seededCapstone().capstone} />;
   if (HARNESS?.kind === 'threshold') return <Threshold onEnter={() => undefined} />;
   if (HARNESS?.kind === 'duel') {
     const h = harnessDuel(HARNESS);
@@ -239,7 +268,7 @@ export default function App() {
   if (seenThreshold === null) return <View style={styles.root} />;
   if (!seenThreshold) return <Threshold onEnter={crossThreshold} />;
 
-  if (!scenario) return <Picker onPick={setScenario} ledger={ledger} homecoming={returning} arc={arc} />;
+  if (!scenario) return <Picker onPick={setScenario} ledger={ledger} homecoming={returning} arc={arc} capstone={capstone} />;
   if (!llm) return <Boot prep={prep} scenario={scenario} onExit={() => setScenario(null)} />;
   return (
     <Duel
@@ -331,6 +360,7 @@ function Picker({
   ledger,
   homecoming,
   arc,
+  capstone,
 }: {
   onPick: (s: Scenario) => void;
   ledger: Ledger;
@@ -340,6 +370,10 @@ function Picker({
   // THE ROOM META-ARC (roomArc.ts): the fifth-secret beat drip-fed one per finished game. Null before the
   // first finished game — the arc has not begun, so a first visit shows nothing.
   arc: RoomArcBeat | null;
+  // THE DOOR BEHIND THE CHAIR (roomCapstone.ts): the meta-arc's terminal beat — the ending as a question.
+  // Non-null ONLY when every mind is won and the arc is complete; it SUPERSEDES the arc beat when present
+  // (the ending replaces the drip). Null on every ordinary visit.
+  capstone: RoomCapstoneBeat | null;
 }) {
   const cracked = crackedCount(ledger);
   const open = unlockedIds(
@@ -361,8 +395,14 @@ function Picker({
         {homecoming && <Text style={styles.homecoming}>{homecoming.line}</Text>}
         {/* THE ROOM META-ARC (roomArc.ts) — the fifth-secret beat, drip-fed one per finished game. Dimmer,
             set apart from the greeting: the room's own quiet aside about YOU, ending on a question. Diegetic
-            paper on the head (§5), never a quest-log HUD. */}
-        {arc && <Text style={styles.roomArc}>{arc.line}</Text>}
+            paper on the head (§5), never a quest-log HUD. SUPPRESSED once the capstone has fired — the
+            ending replaces the drip. */}
+        {!capstone && arc && <Text style={styles.roomArc}>{arc.line}</Text>}
+        {/* THE DOOR BEHIND THE CHAIR (roomCapstone.ts) — the meta-arc's TERMINAL beat, shown once when every
+            mind is won and the arc is complete. A shade more present than the drip (it is the ending) but
+            still the room's own bone-italic diegetic voice on the head, ending on a question — never a
+            floating "you win" HUD (§5). */}
+        {capstone && <Text style={styles.roomCapstone}>{capstone.line}</Text>}
       </View>
       <ScrollView contentContainerStyle={styles.pickerList}>
         {SCENARIOS.map((s, i) =>
@@ -859,6 +899,11 @@ const styles = StyleSheet.create({
   // The room meta-arc beat — dimmer + smaller than the homecoming, set further down: the vestibule's quiet
   // aside about the seeker themselves, the fifth secret surfacing one question at a time (§5 diegetic paper).
   roomArc: { color: '#6f6862', fontSize: 12, fontStyle: 'italic', marginTop: 14, textAlign: 'center', lineHeight: 19, paddingHorizontal: 14 },
+  // The meta-arc's TERMINAL beat — the door behind the chair, the ending as a question. A shade brighter and
+  // roomier than the drip (it is the close, not a mid-story aside), but the same bone-italic room voice on
+  // the head — never a "you win" HUD (§5). Bounded by a hairline top rule so it reads as a final line drawn
+  // under the whole arc, not another card.
+  roomCapstone: { color: '#8f857e', fontSize: 12.5, fontStyle: 'italic', marginTop: 18, paddingTop: 16, textAlign: 'center', lineHeight: 20, paddingHorizontal: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#2a2a33' },
   error: { color: '#f87171', fontSize: 12, marginBottom: 6, textAlign: 'center' },
   inputRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-end' },
   input: {
