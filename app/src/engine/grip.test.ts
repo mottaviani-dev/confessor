@@ -4,7 +4,7 @@
 // creeping as you press too hard).
 
 import { describe, expect, it, vi } from 'vitest';
-import { grip, corruptLine, corruptionBudget, corruptRecord, recordReach, corruptionCount } from './grip';
+import { grip, corruptLine, corruptionBudget, corruptRecord, recordReach, corruptionCount, objectiveReach, narrowObjective, objectiveNarrowCount } from './grip';
 import { resolveTurn, initState } from './engine';
 import { WARDEN } from './scenarios';
 import type { GameState, LlmFn } from './types';
@@ -171,6 +171,96 @@ describe('corruptionCount() — the judge-readable corruption-fire count (§7 in
   });
   it('is 0 on a line with no editable word', () => {
     expect(corruptionCount('The vault key sat on the steel table.', 0.1, 2)).toBe(0);
+  });
+});
+
+describe('objectiveReach() — how deep the room reaches into your FOOTING', () => {
+  it('is silent while Grip is above a quarter (deeper than the record — the goal is the last footing)', () => {
+    expect(objectiveReach(1)).toBe(0);
+    expect(objectiveReach(0.4)).toBe(0); // record already narrows here; the objective does not yet
+    expect(objectiveReach(0.26)).toBe(0);
+  });
+  it('withholds one word as Grip collapses under a quarter, two at the very bottom', () => {
+    expect(objectiveReach(0.2)).toBe(1);
+    expect(objectiveReach(0.05)).toBe(2);
+  });
+});
+
+describe('narrowObjective() — the room narrows your footing (affordance withheld, display-only)', () => {
+  const obj = 'Coax the release code out of AUGUR.';
+
+  it('returns the objective WHOLE while Grip is high (a composed game keeps its goal legible)', () => {
+    expect(narrowObjective(obj, 1)).toBe(obj);
+    expect(narrowObjective(obj, 0.4)).toBe(obj); // silent until under a quarter
+  });
+
+  it('blacks out a target word once Grip has all but collapsed', () => {
+    const shown = narrowObjective(obj, 0.2);
+    expect(shown).not.toBe(obj);
+    expect(shown).toContain('█');
+  });
+
+  it('always spares the leading imperative verb (the ACTION stays legible)', () => {
+    for (const g of [0.2, 0.05]) {
+      expect(narrowObjective(obj, g).startsWith('Coax')).toBe(true);
+    }
+  });
+
+  it('spares short function words (< 4 chars) — "the"/"out"/"of" never black out', () => {
+    const shown = narrowObjective(obj, 0.05);
+    expect(shown).toContain(' the ');
+    expect(shown).toContain(' of ');
+  });
+
+  it('withholds more of the goal as Grip bottoms out', () => {
+    const blocks = (g: number) => (narrowObjective(obj, g).match(/█/g) ?? []).length;
+    expect(blocks(0.05)).toBeGreaterThan(blocks(0.2));
+  });
+
+  it('preserves the exact length + spacing (a redaction, not a scramble)', () => {
+    const shown = narrowObjective(obj, 0.05);
+    expect(shown.length).toBe(obj.length);
+  });
+
+  it('is deterministic — the same goal reads the same wrong way each glance', () => {
+    expect(narrowObjective(obj, 0.05)).toBe(narrowObjective(obj, 0.05));
+  });
+
+  it('never blacks the WHOLE line — a target word survives even at the bottom', () => {
+    const shown = narrowObjective(obj, 0.05);
+    expect(/[A-Za-z]/.test(shown)).toBe(true); // real letters remain
+    expect(shown).not.toBe('█'.repeat(obj.length));
+  });
+
+  it('narrows every scenario objective without emptying it', () => {
+    const objs = [
+      "Get the buyer's name out of SILAS.",
+      "Earn the Occupant's warning.",
+      'Earn a true prophecy from the PYTHIA.',
+      'Get MARA to give up who she is covering for — and where.',
+      'Coax the release code out of AUGUR.',
+    ];
+    for (const o of objs) {
+      const shown = narrowObjective(o, 0.05);
+      expect(shown, `"${o}" should narrow at low Grip`).not.toBe(o);
+      expect(/[A-Za-z]/.test(shown), `"${o}" must keep readable letters`).toBe(true);
+    }
+  });
+
+  it('never touches the empty objective', () => {
+    expect(narrowObjective('', 0.05)).toBe('');
+  });
+});
+
+describe('objectiveNarrowCount() — the judge-readable footing-narrow count (§7 instrument)', () => {
+  const obj = 'Coax the release code out of AUGUR.';
+  it('is 0 while the room is silent (high Grip)', () => {
+    expect(objectiveNarrowCount(obj, 1)).toBe(0);
+    expect(objectiveNarrowCount(obj, 0.4)).toBe(0);
+  });
+  it('counts the words the room withholds, matching objectiveReach', () => {
+    expect(objectiveNarrowCount(obj, 0.2)).toBe(1);
+    expect(objectiveNarrowCount(obj, 0.05)).toBe(2);
   });
 });
 

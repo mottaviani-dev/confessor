@@ -18,7 +18,7 @@ import { StatusBar } from 'expo-status-bar';
 import { Image } from 'expo-image';
 import { SCENARIOS } from './src/engine/scenarios';
 import { opening, resolveTurn, turnsLeft } from './src/engine/engine';
-import { grip, corruptLine, corruptRecord } from './src/engine/grip';
+import { grip, corruptLine, corruptRecord, narrowObjective } from './src/engine/grip';
 import { recordPlaythrough, distillSeamPhrase } from './src/engine/seam';
 import type { GameState, LlmFn, Scenario, SeamLog, Tone } from './src/engine/types';
 import { BUILD_LLM_CONFIG, makeLlm } from './src/llm/openaiCompatible';
@@ -655,6 +655,12 @@ function Duel({
   // been into the transcript. DISPLAY-LAYER ONLY (§6): `history` is the rated record; this is a projection
   // of it — a new array, the state untouched, the engine never sees it. Silent while Grip is high.
   const record = corruptRecord(history, gripLevel);
+  // THE ROOM NARROWS YOUR FOOTING (mandate 1 · bible §2 Grip / Principle 4 "options narrow") — the third,
+  // deepest Grip tooth. corruptLine/corruptRecord recolor what you type + re-read; this WITHDRAWS. As Grip
+  // all but collapses, the room blacks out a word of the one always-legible thing — your pinned objective —
+  // so you press on toward a goal you can no longer fully read. DISPLAY-LAYER ONLY (§6): scenario.objective
+  // is untouched; the engine never sees this. Silent while Grip is high — a composed game keeps its goal whole.
+  const objectiveShown = narrowObjective(scenario.objective, gripLevel);
   // THE ENDGAME TEXTURE (§2 thrust 5) — a win is not just a win. Code selects the closing scene off the
   // final Grip band (endgame.ts): high Grip → a clean extraction; low Grip → the room "keeps a piece of
   // you", the extracted secret rendered back slightly ALTERED and the closing line pyrrhic. Computed in
@@ -704,7 +710,7 @@ function Duel({
       </View>
 
       {/* The objective, always legible — inked in the room's accent */}
-      <Text style={[styles.objective, { color: accent }]}>{scenario.objective}</Text>
+      <Text style={[styles.objective, { color: accent }]}>{objectiveShown}</Text>
 
       {/* Thin diegetic edges instead of loud bars */}
       <View style={styles.edges}>

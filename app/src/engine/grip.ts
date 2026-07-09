@@ -184,6 +184,58 @@ export function corruptRecord<L extends { readonly who: string; readonly text: s
   return history.map((l, i) => (reached.has(i) ? { ...l, text: corruptLine(l.text, gripLevel, i) } : l));
 }
 
+// ─── THE ROOM NARROWS YOUR FOOTING (the "affordance narrows" tooth — Principle 4) ──────────────────
+//
+// corruptLine/corruptRecord give the teeth on what you TYPE and what you RE-READ. But Principle 4 asks
+// for one more thing a recolor cannot deliver: "as it drops … options narrow" — the engine *withdraws*,
+// not just repaints. The one piece of always-legible footing in the duel is the pinned OBJECTIVE: the
+// single line that never wavers, telling you what you came to take. As Grip collapses the room reaches
+// even THAT — it blacks out a word of your goal like a redacted page, so you press on toward something
+// you can no longer fully read. This is an affordance NARROWING (information withheld), the last and
+// deepest tooth, and it reaches the objective LATER than the record (a deeper Grip threshold): the goal
+// is the final thing the room takes from you, and only when you have all but lost your grip on it.
+//
+// HARD GUARDRAIL (bible §6, unchanged): DISPLAY-LAYER only + pure/deterministic. This renders a NEW string
+// for the UI; `scenario.objective` is never mutated, and nothing here touches the engine, the secret, or
+// the score. Silent while Grip is high — a composed game keeps its whole goal legible.
+
+/** How many words of the objective the room withholds at this Grip — the objective analogue of
+ *  `recordReach`, gated DEEPER: silent until Grip is nearly shot, because the pinned goal is the last
+ *  legible footing and the room reaches it only when you have all but lost your grip. Stepped: one word
+ *  as Grip collapses under a quarter, a second at the very bottom (near the shut-out). */
+export function objectiveReach(gripLevel: number): number {
+  if (gripLevel > 0.25) return 0;
+  if (gripLevel > 0.1) return 1;
+  return 2;
+}
+
+/** THE ROOM NARROWS YOUR FOOTING. Render the pinned objective as the room shows it back at this Grip: up
+ *  to `objectiveReach` of its content words blacked out (a redacted page), chosen deterministically so the
+ *  same goal reads the same wrong way each glance. The LEADING word (the imperative verb — "Coax"/"Get"/
+ *  "Earn") and short function words (< 4 chars) are always SPARED, so the ACTION and the sentence shape
+ *  stay legible; only a target word (the code, the name, the warning) is withdrawn. Never blacks the whole
+ *  line — with too few content words it withholds what it can and no more. Returns a NEW string;
+ *  `objective` is never mutated. Silent while Grip is high. */
+export function narrowObjective(objective: string, gripLevel: number): string {
+  const reach = objectiveReach(gripLevel);
+  if (reach <= 0 || !objective) return objective;
+  // Split keeping separators (word tokens on even-ish indices, punctuation runs between) so the rejoined
+  // line keeps its exact spacing; index 0 is the leading imperative verb — always spared.
+  const tokens = objective.split(/(\W+)/);
+  const eligible: number[] = [];
+  for (let i = 1; i < tokens.length; i++) {
+    if (/\w/.test(tokens[i]) && tokens[i].length >= 4) eligible.push(i);
+  }
+  if (eligible.length === 0) return objective;
+  const start = hash(objective) % eligible.length;
+  const redacted = new Set<number>();
+  for (let k = 0; k < reach && k < eligible.length; k++) {
+    redacted.add(eligible[(start + k) % eligible.length]);
+  }
+  for (const i of redacted) tokens[i] = '█'.repeat(tokens[i].length);
+  return tokens.join('');
+}
+
 // ─── THE GRIP INSTRUMENT (§7 Rule 2 — Grip had ZERO telemetry) ────────────────────────────────────
 //
 // Grip is the flagship PLAYER-side dread system and, until now, the ONLY sanity track with no judge
@@ -203,4 +255,15 @@ export function corruptionCount(text: string, gripLevel: number, seed: number): 
   let n = 0;
   for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) n++;
   return n;
+}
+
+/** How many words of the OBJECTIVE the room actually withholds at this Grip — the footing-narrow analogue
+ *  of `corruptionCount`, so the judge can chart the OTHER Grip tooth: how often, and how deep, aggressive
+ *  play costs you the legibility of your own goal. 0 when the room is silent (high Grip) or the objective
+ *  has no eligible content word; up to `objectiveReach` when it bites. Deterministic, no model call. */
+export function objectiveNarrowCount(objective: string, gripLevel: number): number {
+  // A redacted word is a maximal run of block glyphs, so count the runs (the token-diff trick
+  // corruptionCount uses does not apply — a block run is non-word punctuation, not a swapped word).
+  const runs = narrowObjective(objective, gripLevel).match(/█+/g);
+  return runs ? runs.length : 0;
 }
