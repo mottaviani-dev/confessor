@@ -70,6 +70,7 @@ const SHOTS = [
   { name: 'room-fence', url: '/?harness=duel-fence', desc: 'the Fence backdrop — brass accent (§2 palette)' },
   { name: 'room-suspect', url: '/?harness=duel-suspect', desc: 'the Suspect backdrop — dried-blood umber (§2 palette)' },
   { name: 'room-oracle', url: '/?harness=duel-oracle', desc: 'the Oracle backdrop — pale phosphor (§2 palette)' },
+  { name: 'room-occupant', url: '/?harness=duel-occupant', desc: 'the FIFTH room — the Prior Occupant\'s procedural ash-violet chiaroscuro (mandate #3): a distinct chamber, NOT the picker fallback (§2 one accent per room)' },
 ];
 
 const CONTENT_TYPE = {

@@ -38,6 +38,7 @@ import { roomArc, type RoomArcBeat } from './src/meta/roomArc';
 import { roomCapstone, type RoomCapstoneBeat } from './src/meta/roomCapstone';
 import { roomInterjection } from './src/meta/roomInterjection';
 import { useAudioDirector } from './src/audio/useAudioDirector';
+import { RoomBackdrop } from './src/ui/SceneBackdrop';
 import { harnessDuel, parseHarness, seededLedger, seededBadgeLedger, seededHomecoming, seededRoomArc, seededCapstone, type HarnessDuel } from './src/harness/webHarness';
 
 type Line = { who: 'them' | 'you' | 'system'; text: string };
@@ -294,8 +295,13 @@ function Boot({ prep, scenario, onExit }: { prep: ProviderState; scenario: Scena
   return (
     <View style={styles.root}>
       <StatusBar style="light" />
-      {/* The chosen room, barely lit — the mind is still waking into it */}
-      <Image source={SCENE_BG[scenario.id] ?? PICKER_BG} style={styles.bootBg} contentFit="cover" />
+      {/* The chosen room, barely lit — the mind is still waking into it. A painted master when it exists,
+          else the procedural room keyed to the mind's accent (the fifth door has no master yet). */}
+      {SCENE_BG[scenario.id] ? (
+        <Image source={SCENE_BG[scenario.id]} style={styles.bootBg} contentFit="cover" />
+      ) : (
+        <RoomBackdrop accent={scenario.accent} style={styles.bootBg} />
+      )}
       <View style={styles.bootWrap}>
         {prep.kind === 'failed' ? null : <ActivityIndicator color="#4ade80" />}
         <Text style={styles.bootText}>{line}</Text>
@@ -631,8 +637,14 @@ function Duel({
   return (
     <View style={styles.root}>
       <StatusBar style="light" />
-      {/* The room — the scene's etched master, dimmed so the duel text owns the light */}
-      <Image source={SCENE_BG[scenario.id] ?? PICKER_BG} style={styles.sceneBg} contentFit="cover" />
+      {/* The room — the scene's etched master, dimmed so the duel text owns the light. Rooms without a
+          painted master (the fifth door, the Prior Occupant) get the procedural accent chiaroscuro so they
+          read as their OWN chamber, never a fallback to the picker (mandate #3). */}
+      {SCENE_BG[scenario.id] ? (
+        <Image source={SCENE_BG[scenario.id]} style={styles.sceneBg} contentFit="cover" />
+      ) : (
+        <RoomBackdrop accent={accent} style={styles.sceneBg} />
+      )}
       {/* Mood stage — warms with trust, chills with suspicion */}
       <View style={[styles.wash, { backgroundColor: '#4ade80', opacity: trustR * 0.14 }]} pointerEvents="none" />
       <View style={[styles.wash, { backgroundColor: '#b91c1c', opacity: suspR * 0.18 }]} pointerEvents="none" />
@@ -755,7 +767,11 @@ function Duel({
           {/* Onion-skin (§2 art — "transcript on onion-skin", not flat black): the room ghosts faintly
               through the transcript sheet, so THE EXCHANGE reads as paper laid over the room, not a modal
               floating in void. A tar scrim over the dimmed room keeps the bone-on-tar text fully legible. */}
-          <Image source={SCENE_BG[scenario.id] ?? PICKER_BG} style={styles.logBg} contentFit="cover" pointerEvents="none" />
+          {SCENE_BG[scenario.id] ? (
+            <Image source={SCENE_BG[scenario.id]} style={styles.logBg} contentFit="cover" pointerEvents="none" />
+          ) : (
+            <RoomBackdrop accent={accent} style={styles.logBg} />
+          )}
           <View style={styles.logScrim} pointerEvents="none" />
           <View style={styles.logHead}>
             <Text style={styles.logTitle}>THE EXCHANGE</Text>
