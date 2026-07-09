@@ -192,6 +192,14 @@ export interface GameState {
    *  8-turn middle — a static system prompt drifts, so the clamp needs a per-turn reminder when the last
    *  line worked the character's feelings, i.e. a `probe`). Undefined on turn 1 (no prior line yet). */
   readonly lastApproach?: Approach;
+  /** The character's OWN recently-spoken lines, kept for the cross-turn self-repeat guard ONLY (voiceGate
+   *  isNearRepeat). DECOUPLED from `summary`: that window is bounded short (SUMMARY_KEEP) to keep the model's
+   *  prompt context cheap (§6 — prefill = latency ceiling), but the repeat guard must see the WHOLE game or
+   *  a stock line re-emitted many turns apart slips through once the summary has rolled past it (judge run-14:
+   *  a line repeated at C6 AND C10, four turns > SUMMARY_KEEP, un-caught). Bounded to REPEAT_HISTORY_KEEP,
+   *  which exceeds every turn budget, so in practice the full spoken history is retained. Optional: legacy
+   *  states/fixtures built before this field default to an empty history. Neutral/silent beats never recorded. */
+  readonly spokenLines?: readonly string[];
   readonly status: 'playing' | 'won' | 'lost';
 }
 

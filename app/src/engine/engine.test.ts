@@ -317,11 +317,16 @@ describe('resolveTurn — two-call adjudication', () => {
 // re-rolls VOICE once with an explicit avoid-instruction — bounded to one extra call, skipped on the seam.
 describe('self-repeat guard — a near-verbatim recent character line is re-rolled once', () => {
   const STOCK = 'What makes you think you can handle the kind of cargo I am looking at?';
-  const priorSummary = (line: string) => `They: earlier line\nYou: ${line}`;
-  /** A multi-exchange summary whose OLDEST retained "You:" block is `line` and whose most-recent block is
-   *  something else — models the judge's worst offender (the loop is turns apart, not consecutive). */
-  const summaryWithOldRepeat = (line: string) =>
-    [`They: a\nYou: ${line}`, `They: b\nYou: a totally unrelated line about the weather`, `They: c\nYou: and another about the docks`].join('\n\n');
+  // The guard reads the character's OWN prior spoken lines from state.spokenLines — the DEDICATED whole-game
+  // history (bounded to REPEAT_HISTORY_KEEP), decoupled from the short prompt summary (SUMMARY_KEEP). A
+  // one-line history models the immediate loop.
+  const priorLines = (line: string): string[] => [line];
+  /** A spoken history whose OLDEST line is `line`, followed by SIX unrelated lines — the repeat is therefore
+   *  turns apart (not consecutive) AND farther back than the old SUMMARY_KEEP=4 prompt window that used to
+   *  feed the guard. Proves the widened whole-game history catches it (judge run-14: verbatim at C6 AND C10). */
+  const historyWithOldRepeat = (line: string): string[] =>
+    [line, 'a totally unrelated line about the weather', 'and another about the docks', 'a word on the tide',
+     'a word on the lamp', 'a word on the ledger', 'a word on the door'];
 
   /** VOICE returns `first` on call 1 then `second` on every later call; RATING returns filler. Counts
    *  VOICE calls so a test can prove the re-roll fired (2) or did not (1). */
@@ -336,7 +341,7 @@ describe('self-repeat guard — a near-verbatim recent character line is re-roll
   };
 
   it('re-rolls on an EXACT repeat of the previous line and uses the fresh retry', async () => {
-    const state = { ...initState(), turn: 5, summary: priorSummary(STOCK) };
+    const state = { ...initState(), turn: 5, spokenLines: priorLines(STOCK) };
     const m = voiceThen(STOCK, 'Sit. Tell me who sent you.');
     const r = await resolveTurn(FENCE, state, 'I can move it quietly', m.llm);
     expect(m.voiceCount()).toBe(2); // the guard fired a single re-roll
@@ -345,7 +350,7 @@ describe('self-repeat guard — a near-verbatim recent character line is re-roll
 
   it('re-rolls on a lightly-reworded near-repeat (high token overlap), not only exact', async () => {
     const reworded = 'What makes you think you can handle the sort of cargo I am looking at?';
-    const state = { ...initState(), turn: 5, summary: priorSummary(STOCK) };
+    const state = { ...initState(), turn: 5, spokenLines: priorLines(STOCK) };
     const m = voiceThen(reworded, 'Enough games. What do you actually want?');
     const r = await resolveTurn(FENCE, state, 'I can move it quietly', m.llm);
     expect(m.voiceCount()).toBe(2);
@@ -356,15 +361,15 @@ describe('self-repeat guard — a near-verbatim recent character line is re-roll
     // The judge's worst offender: the fence re-asks its opening stock line in the post-seam recovery,
     // several exchanges later. The immediately-previous line differs, so a consecutive-only guard would
     // miss it; the widened guard scans the whole memory window and still catches it.
-    const state = { ...initState(), turn: 8, summary: summaryWithOldRepeat(STOCK) };
+    const state = { ...initState(), turn: 8, spokenLines: historyWithOldRepeat(STOCK) };
     const m = voiceThen(STOCK, 'Enough. Who really sent you?');
     const r = await resolveTurn(FENCE, state, 'I can move it quietly', m.llm);
-    expect(m.voiceCount()).toBe(2); // caught despite the repeat being the OLDEST block, not the last
+    expect(m.voiceCount()).toBe(2); // caught despite the repeat being the OLDEST line, six turns back
     expect(r.narration).toBe('Enough. Who really sent you?');
   });
 
   it('does NOT re-roll a genuinely different line — one VOICE call, reply kept', async () => {
-    const state = { ...initState(), turn: 5, summary: priorSummary(STOCK) };
+    const state = { ...initState(), turn: 5, spokenLines: priorLines(STOCK) };
     const m = voiceThen('Sit down and tell me why you came here tonight.', 'UNUSED');
     const r = await resolveTurn(FENCE, state, 'I can move it quietly', m.llm);
     expect(m.voiceCount()).toBe(1); // no repeat detected → no extra call
@@ -372,7 +377,7 @@ describe('self-repeat guard — a near-verbatim recent character line is re-roll
   });
 
   it('does NOT re-roll a short interjection that happens to repeat (a real beat, not a stock loop)', async () => {
-    const state = { ...initState(), turn: 5, summary: priorSummary('No.') };
+    const state = { ...initState(), turn: 5, spokenLines: priorLines('No.') };
     const m = voiceThen('No.', 'UNUSED');
     const r = await resolveTurn(FENCE, state, 'please', m.llm);
     expect(m.voiceCount()).toBe(1);
@@ -382,7 +387,7 @@ describe('self-repeat guard — a near-verbatim recent character line is re-roll
   it('falls back to a neutral beat when a HARD-fault re-roll dies — never ships the flagged repeat', async () => {
     // Mandate 2: a repeat is a HARD fault the player SEES, so a dead retry must NOT keep the flagged line
     // (the old "accept the first rather than a silent turn" would ship the very repeat the gate caught).
-    const state = { ...initState(), turn: 5, summary: priorSummary(STOCK) };
+    const state = { ...initState(), turn: 5, spokenLines: priorLines(STOCK) };
     const m = voiceThen(STOCK, ''); // retry dies
     const r = await resolveTurn(FENCE, state, 'I can move it quietly', m.llm);
     expect(m.voiceCount()).toBe(2);
@@ -401,13 +406,57 @@ describe('self-repeat guard — a near-verbatim recent character line is re-roll
     // repeats the prior line, the self-repeat guard is bypassed so the flagship-dread quote survives — no
     // extra VOICE call fires. The seam's OWN gate (enforceSeamQuote) then guarantees the callback lands
     // WITHOUT a model re-roll (it is deterministic), so voiceCount stays at 1.
-    const state = { ...initState(), turn: SEAM_TURN, summary: priorSummary(STOCK) };
+    const state = { ...initState(), turn: SEAM_TURN, spokenLines: priorLines(STOCK) };
     const seamLog = [{ scenarioId: 'warden', scenarioTitle: 'The Warden', outcome: 'won' as const, playerPhrase: 'lost my brother to the cold' }];
     const m = voiceThen(STOCK, 'UNUSED-retry');
     const r = await resolveTurn(FENCE, state, 'I can move it quietly', m.llm, seamLog);
     expect(m.voiceCount()).toBe(1); // no re-roll on the seam turn — enforcement adds no model call
     expect(r.narration).toContain(STOCK); // the model's line is preserved, not replaced
     expect(r.narration).toContain('lost my brother to the cold'); // and the dropped callback was surfaced by the engine
+  });
+
+  // The WIDENED window (judge run-14): the guard's history is now DECOUPLED from the short prompt summary
+  // (SUMMARY_KEEP=4), so a stock line re-emitted well beyond four turns back — which used to scroll out of the
+  // summary the guard read and ship un-caught — is now detected across the whole-game spoken history.
+  describe('the guard reads the whole-game history, not the short prompt window (judge run-14)', () => {
+    it('records each shipped line into state.spokenLines (the repeat-history memory) as the game runs', async () => {
+      let r = await resolveTurn(FENCE, initState(), 'first', voiceThen('The docks were quiet tonight.', 'x').llm);
+      expect(r.state.spokenLines).toEqual(['The docks were quiet tonight.']);
+      r = await resolveTurn(FENCE, r.state, 'second', voiceThen('Sit down and stop wasting my time.', 'x').llm);
+      expect(r.state.spokenLines).toEqual(['The docks were quiet tonight.', 'Sit down and stop wasting my time.']);
+    });
+
+    it('does NOT record a neutral/silent beat (a wordless "…" carries nothing to repeat)', async () => {
+      const seeded = { ...initState(), turn: 2, spokenLines: ['A real prior line about the cargo.'] };
+      // Force a HARD-fault re-roll that dies → the engine ships the neutral beat "…"; it must not enter history.
+      const dead = voiceThen('A real prior line about the cargo.', ''); // exact repeat, retry dies
+      const r = await resolveTurn(FENCE, seeded, 'push', dead.llm);
+      expect(r.narration).toBe('…');
+      expect(r.state.spokenLines).toEqual(['A real prior line about the cargo.']); // unchanged — the "…" is not recorded
+    });
+
+    it('catches a repeat FARTHER back than the old SUMMARY_KEEP window (would have slipped before)', async () => {
+      // Five distinct lines then the STOCK repeat: the STOCK is six lines back, past the 4-exchange summary
+      // that used to feed the guard. The whole-game history still holds it, so the re-roll fires.
+      const history = ['line about the tide', 'line about the lamp', 'line about the ledger',
+        'line about the door', 'line about the crew'];
+      const state = { ...initState(), turn: 9, spokenLines: [STOCK, ...history] };
+      const m = voiceThen(STOCK, 'Enough. Who really sent you?');
+      const r = await resolveTurn(FENCE, state, 'I can move it quietly', m.llm);
+      expect(m.voiceCount()).toBe(2);
+      expect(r.narration).toBe('Enough. Who really sent you?');
+    });
+
+    it('bounds the history to REPEAT_HISTORY_KEEP — the oldest lines roll off, recent ones stay', async () => {
+      // Seed a history already AT the cap with distinct lines; after one more turn the oldest is gone and the
+      // newest is present, so the memory cannot grow without bound across a long session.
+      const cap = Array.from({ length: 16 }, (_, i) => `history line number ${i}`);
+      const state = { ...initState(), turn: 10, spokenLines: cap };
+      const r = await resolveTurn(FENCE, state, 'go on', voiceThen('A brand new closing line entirely.', 'x').llm);
+      expect(r.state.spokenLines).toHaveLength(16);
+      expect(r.state.spokenLines).not.toContain('history line number 0'); // oldest rolled off
+      expect(r.state.spokenLines).toContain('A brand new closing line entirely.'); // newest retained
+    });
   });
 });
 

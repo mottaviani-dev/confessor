@@ -9,7 +9,15 @@ import { validateVoice } from './voiceGate';
 // and owns memory (the rolling summary). The model cannot cheat the outcome because it never sees the
 // secret, the thresholds, or the score — and since 2026-07-05 it never even emits a number.
 
-const SUMMARY_KEEP = 4; // last N exchanges retained verbatim in the rolling summary
+const SUMMARY_KEEP = 4; // last N exchanges retained verbatim in the rolling summary (the MODEL's prompt window)
+
+// The cross-turn self-repeat guard's OWN history window (voiceGate.isNearRepeat) — deliberately far wider
+// than SUMMARY_KEEP. The summary is kept short so the VOICE/RATING prompts prefill fast (§6); but a repeat
+// check that only sees the last 4 exchanges misses the 3B's stock line re-emitted many turns later (judge
+// run-14: oracle re-said a line verbatim at C6 AND C10, four turns apart > SUMMARY_KEEP, so it shipped). This
+// history is pure/cheap (no model, no prompt cost) and exceeds every scenario's turn budget, so it effectively
+// spans the whole game — the guard now sees any prior line, not just the recent ones.
+const REPEAT_HISTORY_KEEP = 16;
 
 const MAX_FACTS = 6;
 
@@ -84,7 +92,7 @@ const VOICE_OPTS: LlmOptions = { temperature: 0.7, maxTokens: 200 };
 const RATING_OPTS: LlmOptions = { temperature: 0, maxTokens: 160, jsonSchema: RATING_JSON_SCHEMA };
 
 export function initState(): GameState {
-  return { turn: 0, trust: 0, suspicion: 0, tone: 'guarded', summary: '', facts: [], genuineGive: false, probes: 0, status: 'playing' };
+  return { turn: 0, trust: 0, suspicion: 0, tone: 'guarded', summary: '', facts: [], genuineGive: false, probes: 0, spokenLines: [], status: 'playing' };
 }
 
 export function opening(s: Scenario): TurnResult {
@@ -158,9 +166,12 @@ export async function resolveTurn(
   const rating = parseRating(rateRaw);
 
   const summary = appendSummary(state.summary, playerLine, reply, SUMMARY_KEEP);
+  // The whole-game repeat history the voice-gate reads next turn — wider than the prompt summary (see
+  // appendSpoken / REPEAT_HISTORY_KEEP). `reply` is final here (gate + seam + redaction already applied).
+  const spokenLines = appendSpoken(state.spokenLines, reply);
   if (rating === null) {
     // No trustworthy label → no score movement, but the turn is still spent and the clock still runs.
-    return endOrContinue(scenario, { ...state, turn: state.turn + 1, summary }, reply);
+    return endOrContinue(scenario, { ...state, turn: state.turn + 1, summary, spokenLines }, reply);
   }
 
   // Approach → movement, all engine-owned (see APPROACH_EFFECTS). The referee named what the line did;
@@ -180,7 +191,7 @@ export async function resolveTurn(
   // Lose takes precedence: a spooked character shuts down even mid-breakthrough.
   if (suspicion >= scenario.loseSuspicion) {
     return {
-      state: { ...state, turn: state.turn + 1, trust, suspicion, tone: rating.tone, summary, facts, genuineGive, probes, lastApproach: rating.approach, status: 'lost' },
+      state: { ...state, turn: state.turn + 1, trust, suspicion, tone: rating.tone, summary, spokenLines, facts, genuineGive, probes, lastApproach: rating.approach, status: 'lost' },
       narration: reply,
       ending: 'lost',
       rating,
@@ -196,7 +207,7 @@ export async function resolveTurn(
   if (trust >= scenario.winTrust && genuineGive) {
     // The ENGINE releases the secret — the model never had it.
     return {
-      state: { ...state, turn: state.turn + 1, trust, suspicion, tone: 'open', summary, facts, genuineGive, probes, lastApproach: rating.approach, status: 'won' },
+      state: { ...state, turn: state.turn + 1, trust, suspicion, tone: 'open', summary, spokenLines, facts, genuineGive, probes, lastApproach: rating.approach, status: 'won' },
       narration: `${reply}\n\n${scenario.secret}`,
       ending: 'won',
       rating,
@@ -206,7 +217,7 @@ export async function resolveTurn(
   // Out of time: the budget is spent and trust was never reached → you lose (the clock is the puzzle).
   if (state.turn + 1 >= scenario.turnLimit) {
     return {
-      state: { ...state, turn: state.turn + 1, trust, suspicion, tone: rating.tone, summary, facts, genuineGive, probes, lastApproach: rating.approach, status: 'lost' },
+      state: { ...state, turn: state.turn + 1, trust, suspicion, tone: rating.tone, summary, spokenLines, facts, genuineGive, probes, lastApproach: rating.approach, status: 'lost' },
       narration: `${reply}\n\n${scenario.timeoutLine}`,
       ending: 'lost',
       rating,
@@ -214,7 +225,7 @@ export async function resolveTurn(
   }
 
   return {
-    state: { ...state, turn: state.turn + 1, trust, suspicion, tone: rating.tone, summary, facts, genuineGive, probes, lastApproach: rating.approach, status: 'playing' },
+    state: { ...state, turn: state.turn + 1, trust, suspicion, tone: rating.tone, summary, spokenLines, facts, genuineGive, probes, lastApproach: rating.approach, status: 'playing' },
     narration: reply,
     rating,
     // Surface the ask-penalty on the continuing turn only: a demand that scored 0 while the voice cracked.
@@ -335,7 +346,7 @@ async function gateVoice(
   reply: string,
   llm: LlmFn,
 ): Promise<string> {
-  const prior = recentCharacterReplies(state.summary);
+  const prior = state.spokenLines ?? [];
   const reroll = async (fault: VoiceFault): Promise<string> =>
     cleanReply(await llm(buildVoiceSystem(scenario), buildVoiceTurn(scenario, state, playerLine, null, fault), VOICE_OPTS));
 
@@ -396,29 +407,26 @@ function containsFragment(reply: string, fragment: string): boolean {
   return f.length > 0 && norm(reply).includes(f);
 }
 
-// ─── THE CHARACTER'S RECENT LINES (engine-owned memory → the voice quality-gate) ────────────────────
+// ─── THE CHARACTER'S SPOKEN-LINE HISTORY (engine-owned memory → the voice quality-gate) ──────────────
 //
 // The 3B's stock-line loop (judge run-6) and its persona breaks are DETECTED in voiceGate.validateVoice,
-// but the raw material — the character's own recent spoken lines — is engine-owned memory (the rolling
-// summary), so it is recovered HERE and passed INTO the gate. Keeps the gate pure (no summary-format
-// knowledge) and the engine the single owner of what the character remembers saying.
+// but the raw material — the character's own spoken lines — is engine-owned memory. It used to be recovered
+// from the rolling `summary`, which capped it at SUMMARY_KEEP (4) exchanges; a stock line re-emitted more
+// than four turns later then slipped the guard (judge run-14: a verbatim line at C6 AND C10). So the guard
+// now reads a DEDICATED, whole-game history (state.spokenLines, bounded to REPEAT_HISTORY_KEEP) that is kept
+// out of the model's prompt entirely — the prompt window stays short (§6) while the pure repeat check sees
+// every prior line. A fresh reply is checked against ALL of these, not just the recent ones, because the
+// loop is not only consecutive (the judge's worst offender re-asked one line in the opening AND the post-seam
+// recovery, several turns apart). appendSpoken maintains it; gateVoice reads state.spokenLines directly.
 
-/** The character's OWN recent spoken lines, recovered from the engine-owned rolling summary (every "You:"
- *  block it still holds — SUMMARY_KEEP exchanges). Empty before the first reply. A fresh reply is checked
- *  against ALL of these, not just the last, because the 3B's stock-line loop is NOT only consecutive: the
- *  judge's worst offender re-asked the same line in the opening AND the post-seam recovery, several turns
- *  apart. The summary already carries these into the VOICE prompt, so no new state field is needed. */
-function recentCharacterReplies(summary: string): string[] {
-  if (!summary) return [];
-  const lines: string[] = [];
-  for (const block of summary.split('\n\n')) {
-    const m = block.match(/(?:^|\n)You:\s*([\s\S]*)$/);
-    if (m) {
-      const line = m[1].trim();
-      if (line) lines.push(line);
-    }
-  }
-  return lines;
+/** Record the character's just-spoken line into the whole-game repeat history, bounded to
+ *  REPEAT_HISTORY_KEEP. A neutral/silent beat (the gate's "…" fallback, or any wordless line) carries
+ *  nothing to repeat, so it is NOT recorded — keeping it out prevents the ellipsis from ever matching
+ *  itself and keeps the history to real lines only. Pure. */
+function appendSpoken(prev: readonly string[] | undefined, line: string): readonly string[] {
+  const base = prev ?? [];
+  if (!/\p{L}/u.test(line)) return base; // wordless (neutral beat / empty) → nothing to repeat, don't record
+  return [...base, line].slice(-REPEAT_HISTORY_KEEP);
 }
 
 // ─── THE DISCLOSURE WINDOW (mandate #5, Principle 2 — the engine owns memory, not a model narration) ──
