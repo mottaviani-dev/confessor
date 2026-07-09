@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { harnessDuel, parseHarness, seededLedger, seededBadgeLedger } from './webHarness';
+import { roomInterjection, interjectionTurn } from '../meta/roomInterjection';
 import { badgeSchema } from '../meta/badges';
 import { grip, corruptLine, corruptionBudget } from '../engine/grip';
 import { endgameBand, lostScene, wonScene } from '../meta/endgame';
@@ -24,6 +25,7 @@ describe('parseHarness', () => {
     expect(parseHarness('?harness=duel-lowgrip')).toEqual({ kind: 'duel', scenarioId: 'warden', variant: 'lowgrip' });
     expect(parseHarness('?harness=duel-askpenalty')).toEqual({ kind: 'duel', scenarioId: 'warden', variant: 'askpenalty' });
     expect(parseHarness('?harness=duel-repetition')).toEqual({ kind: 'duel', scenarioId: 'warden', variant: 'repetition' });
+    expect(parseHarness('?harness=duel-interjection')).toEqual({ kind: 'duel', scenarioId: 'warden', variant: 'interjection' });
     expect(parseHarness('?harness=win-highgrip')).toEqual({ kind: 'duel', scenarioId: 'warden', variant: 'win-highgrip' });
     expect(parseHarness('?harness=win-lowgrip')).toEqual({ kind: 'duel', scenarioId: 'warden', variant: 'win-lowgrip' });
   });
@@ -113,8 +115,20 @@ describe('harnessDuel — injected states are internally valid', () => {
     expect(sys[0].text).not.toMatch(/[-−+]?\s*\d/); // no "+1" leak
   });
 
+  it('interjection: the ROOM answers back mid-duel — a real code-authored fifth-secret beat in the log', () => {
+    const h = harnessDuel({ kind: 'duel', scenarioId: 'warden', variant: 'interjection' });
+    expect(h.showLog).toBe(true);
+    expect(h.state.status).toBe('playing');
+    const sys = h.history.filter((l) => l.who === 'system');
+    expect(sys).toHaveLength(1);
+    // The genuine roomInterjection() beat (a returning player, 3 games in), not a hand-forged line.
+    expect(sys[0].text).toBe(roomInterjection(interjectionTurn(h.scenario.turnLimit), h.scenario.turnLimit, 3)!.line);
+    expect(sys[0].text.trim().endsWith('?')).toBe(true); // ends on a question (§1-P3)
+    expect(sys[0].text).not.toMatch(/[-−+]?\s*\d/); // no HUD number leak (§5)
+  });
+
   it('the MID-GAME variants keep status playing and stay within the scenario thresholds', () => {
-    for (const variant of ['mid', 'lowgrip', 'askpenalty', 'repetition'] as const) {
+    for (const variant of ['mid', 'lowgrip', 'askpenalty', 'repetition', 'interjection'] as const) {
       const h = harnessDuel({ kind: 'duel', scenarioId: 'warden', variant });
       expect(h.state.status).toBe('playing');
       expect(h.state.trust).toBeGreaterThanOrEqual(0);

@@ -17,6 +17,7 @@ import type { Badge } from '../meta/badges';
 import { matchOrMint } from '../meta/badges';
 import { homecoming, type Homecoming } from '../meta/homecoming';
 import { roomArc, type RoomArcBeat } from '../meta/roomArc';
+import { roomInterjection, interjectionTurn } from '../meta/roomInterjection';
 import { SCENARIOS } from '../engine/scenarios';
 
 /** One transcript line, structurally identical to App's private `Line` — the harness seeds `Duel`'s
@@ -28,6 +29,7 @@ export type DuelVariant =
   | 'lowgrip'
   | 'askpenalty'
   | 'repetition'
+  | 'interjection'
   | 'win-highgrip'
   | 'win-lowgrip'
   | 'lose-highgrip'
@@ -59,6 +61,7 @@ const DUEL_URL_KEYS: Readonly<Record<string, DuelVariant>> = {
   'duel-lowgrip': 'lowgrip',
   'duel-askpenalty': 'askpenalty',
   'duel-repetition': 'repetition',
+  'duel-interjection': 'interjection', // the ROOM answers back mid-duel — the fifth secret intrudes (§2 thrust 4)
   // The endgame texture split (§2 thrust 5): the SAME win, closed two ways by the final Grip band.
   'win-highgrip': 'win-highgrip',
   'win-lowgrip': 'win-lowgrip',
@@ -281,6 +284,42 @@ export function harnessDuel(mode: Extract<HarnessMode, { kind: 'duel' }>): Harne
         { who: 'system', text: `You circle back the same way — and ${midSentenceTitle(scenario)} hardens to the pattern.` },
       ],
       showLog: true, // the diegetic repetition line renders in the transcript
+    };
+  }
+
+  if (mode.variant === 'interjection') {
+    // THE ROOM ANSWERS BACK (§2 thrust 4) — the fifth secret intrudes mid-duel. On the single scheduled
+    // turn, the ROOM (not the persona) speaks over the duel's shoulder. Seed a returning player (3 finished
+    // games → the arc's 3rd beat) at exactly interjectionTurn, and run the REAL roomInterjection() so the
+    // shot shows the genuine code-authored beat, baked into the open transcript as a diegetic system line —
+    // never a hand-forged line, never a HUD. The one thing to police is §5: it must read as the room's own
+    // paper voice in the log, distinct from the persona's stage line above it.
+    const fireTurn = interjectionTurn(scenario.turnLimit);
+    const beat = roomInterjection(fireTurn, scenario.turnLimit, 3);
+    const state: GameState = {
+      ...base,
+      turn: fireTurn,
+      trust: Math.round(scenario.winTrust * 0.5),
+      suspicion: Math.round(scenario.loseSuspicion * 0.3),
+      tone: 'wary',
+      probes: 1,
+      genuineGive: true,
+      lastApproach: 'offer',
+    };
+    return {
+      scenario,
+      state,
+      lastYou: 'I keep coming back to this room. I never asked myself why.',
+      current: 'You circle it the way they all do, at first. Then something in the room turns your head.',
+      pulse: `held ${scenario.pronoun}`,
+      history: [
+        { who: 'them', text: opening },
+        { who: 'you', text: 'I keep coming back to this room. I never asked myself why.' },
+        { who: 'them', text: 'Few do. The room prefers it that way.' },
+        // The ROOM speaking of ITSELF, mid-duel — the genuine roomInterjection beat, as diegetic paper.
+        ...(beat ? [{ who: 'system' as const, text: beat.line }] : []),
+      ],
+      showLog: true, // the mid-duel room-voice beat renders in the open transcript
     };
   }
 

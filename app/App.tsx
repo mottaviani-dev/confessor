@@ -35,6 +35,7 @@ import { judgeCrack, type Exchange } from './src/engine/judge';
 import { THRESHOLD_ENTER, THRESHOLD_LINES } from './src/meta/threshold';
 import { homecoming, type Homecoming } from './src/meta/homecoming';
 import { roomArc, type RoomArcBeat } from './src/meta/roomArc';
+import { roomInterjection } from './src/meta/roomInterjection';
 import { useAudioDirector } from './src/audio/useAudioDirector';
 import { harnessDuel, parseHarness, seededLedger, seededBadgeLedger, seededHomecoming, seededRoomArc, type HarnessDuel } from './src/harness/webHarness';
 
@@ -149,6 +150,9 @@ export default function App() {
   // persisted finished-game counter (not the capped seam log), surfaced as diegetic paper on the picker
   // head alongside the homecoming; null before the first finished game, so a true first visit reads clean.
   const [arc, setArc] = useState<RoomArcBeat | null>(null);
+  // The raw finished-game count (not just the derived picker beat) — the mid-duel room interjection
+  // (roomInterjection.ts) needs it live: the fifth secret intrudes INTO a duel, deepening with this count.
+  const [gamesCompleted, setGamesCompleted] = useState(0);
   useEffect(() => {
     void loadLedger().then(setLedger);
     void loadSeamLog().then((log) => {
@@ -156,7 +160,10 @@ export default function App() {
       setReturning(homecoming(log));
     });
     void loadSeenThreshold().then(setSeenThreshold);
-    void loadGamesCompleted().then((n) => setArc(roomArc(n)));
+    void loadGamesCompleted().then((n) => {
+      setArc(roomArc(n));
+      setGamesCompleted(n);
+    });
   }, []);
   const crossThreshold = () => {
     setSeenThreshold(true);
@@ -244,6 +251,7 @@ export default function App() {
       scenario={{ ...scenario, woundState: renderWound(ledger[scenario.id]?.badges ?? []) }}
       llm={llm}
       bestTurns={ledger[scenario.id]?.bestTurns ?? null}
+      gamesCompleted={gamesCompleted}
       onResult={onResult}
       onExit={() => setScenario(null)}
     />
@@ -410,6 +418,7 @@ function Duel({
   scenario,
   llm,
   bestTurns,
+  gamesCompleted = 0,
   onResult,
   onExit,
   harness,
@@ -417,6 +426,9 @@ function Duel({
   scenario: Scenario;
   llm: LlmFn;
   bestTurns: number | null;
+  /** The player's persisted finished-game count — drives the mid-duel room interjection (roomInterjection.ts):
+   *  the fifth secret intrudes ONCE per game, deepening with this count. 0 (a first-ever game) → no beat. */
+  gamesCompleted?: number;
   onResult: (scenarioId: string, outcome: 'won' | 'lost', turns: number, transcript: readonly Exchange[]) => void;
   onExit: () => void;
   /** VISUAL-TRUTH only (web screenshot harness): seed a fixed display state instead of a fresh opening.
@@ -437,6 +449,10 @@ function Duel({
   // Every player line this duel — the raw material the seam distills into a future callback. Kept in a
   // ref (not state): it feeds the log on game-end, never the render.
   const youLines = useRef<string[]>([]);
+  // THE ROOM ANSWERS BACK (roomInterjection.ts, §2 thrust 4): the fifth secret intrudes ONCE mid-duel. This
+  // ref makes the once-per-game guarantee belt-and-suspenders (the module already fires on one scheduled
+  // turn; a remount/re-pick resets it via the Duel `key`).
+  const roomSpoke = useRef(false);
   // The room's sound (mandate #3): room-tone bed for the whole scene, pen-scratch mask across each
   // generation await. Silent until the native port lands, but the lifecycle is wired live now.
   const audio = useAudioDirector();
@@ -487,6 +503,18 @@ function Duel({
       // (§5). Display-only, like the ask-penalty: r.repetitionPenalty reads the already-scored turn.
       if (r.repetitionPenalty) {
         crossings.push({ who: 'system', text: `You circle back the same way — and ${scenario.title.replace(/^The /, 'the ')} hardens to the pattern.` });
+      }
+      // THE ROOM ANSWERS BACK (§2 thrust 4 / roomInterjection.ts). On the single scheduled mid-duel turn,
+      // the ROOM — not the persona — speaks ONCE of the fifth secret (the door, the chair, the constant =
+      // you), deepening with the finished-game count. Code-owned, deterministic, no model call; rendered as
+      // a diegetic system line in the transcript (§5 paper, never a HUD). Suppressed on a game-ending turn so
+      // it never competes with the win/loss ceremony.
+      if (!r.ending && !roomSpoke.current) {
+        const beat = roomInterjection(r.state.turn, scenario.turnLimit, gamesCompleted);
+        if (beat) {
+          roomSpoke.current = true;
+          crossings.push({ who: 'system', text: beat.line });
+        }
       }
       setState(r.state);
       // The room descends with the fiction (mandate #2 / Principle 4): the bed detunes as the séance
