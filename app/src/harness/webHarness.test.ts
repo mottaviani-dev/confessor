@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { harnessDuel, harnessBoot, parseHarness, seededLedger, seededBadgeLedger } from './webHarness';
 import { roomInterjection, interjectionTurn } from '../meta/roomInterjection';
 import { badgeSchema } from '../meta/badges';
-import { grip, corruptLine, corruptionBudget } from '../engine/grip';
+import { grip, corruptLine, corruptionBudget, corruptRecord } from '../engine/grip';
 import { endgameBand, lostScene, wonScene } from '../meta/endgame';
 import { crackedCount, unlockedIds } from '../meta/ledger';
 import { SCENARIOS } from '../engine/scenarios';
@@ -23,6 +23,7 @@ describe('parseHarness', () => {
     expect(parseHarness('?harness=threshold')).toEqual({ kind: 'threshold' });
     expect(parseHarness('?harness=duel')).toEqual({ kind: 'duel', scenarioId: 'warden', variant: 'mid' });
     expect(parseHarness('?harness=duel-lowgrip')).toEqual({ kind: 'duel', scenarioId: 'warden', variant: 'lowgrip' });
+    expect(parseHarness('?harness=duel-record')).toEqual({ kind: 'duel', scenarioId: 'warden', variant: 'record' });
     expect(parseHarness('?harness=duel-askpenalty')).toEqual({ kind: 'duel', scenarioId: 'warden', variant: 'askpenalty' });
     expect(parseHarness('?harness=duel-repetition')).toEqual({ kind: 'duel', scenarioId: 'warden', variant: 'repetition' });
     expect(parseHarness('?harness=duel-interjection')).toEqual({ kind: 'duel', scenarioId: 'warden', variant: 'interjection' });
@@ -151,8 +152,23 @@ describe('harnessDuel — injected states are internally valid', () => {
     expect(sys[0].text).not.toMatch(/[-−+]?\s*\d/); // no HUD number leak (§5)
   });
 
+  it('record: opens the transcript and the room edits the RECORD at low Grip (teeth on the read)', () => {
+    const h = harnessDuel({ kind: 'duel', scenarioId: 'warden', variant: 'record' });
+    expect(h.showLog).toBe(true); // the corrupted record is the whole shot
+    const g = grip(h.scenario, h.state);
+    expect(g).toBeLessThanOrEqual(0.25); // low Grip → the room reaches into the past
+    // App maps history through corruptRecord in the log modal — at least one PAST line reads back wrong.
+    const shown = corruptRecord(h.history, g);
+    const changed = shown.filter((l, i) => l.text !== h.history[i].text);
+    expect(changed.length).toBeGreaterThan(0);
+    // …and no system line is ever misquoted (the room does not touch its own paper voice).
+    h.history.forEach((l, i) => {
+      if (l.who === 'system') expect(shown[i].text).toBe(l.text);
+    });
+  });
+
   it('the MID-GAME variants keep status playing and stay within the scenario thresholds', () => {
-    for (const variant of ['mid', 'lowgrip', 'askpenalty', 'repetition', 'interjection'] as const) {
+    for (const variant of ['mid', 'lowgrip', 'record', 'askpenalty', 'repetition', 'interjection'] as const) {
       const h = harnessDuel({ kind: 'duel', scenarioId: 'warden', variant });
       expect(h.state.status).toBe('playing');
       expect(h.state.trust).toBeGreaterThanOrEqual(0);

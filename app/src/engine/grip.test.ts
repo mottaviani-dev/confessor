@@ -4,7 +4,7 @@
 // creeping as you press too hard).
 
 import { describe, expect, it, vi } from 'vitest';
-import { grip, corruptLine, corruptionBudget } from './grip';
+import { grip, corruptLine, corruptionBudget, corruptRecord, recordReach, corruptionCount } from './grip';
 import { resolveTurn, initState } from './engine';
 import { WARDEN } from './scenarios';
 import type { GameState, LlmFn } from './types';
@@ -95,6 +95,82 @@ describe('corruptLine() — the room edits you (display-layer only)', () => {
       const line = `I ${w} you.`;
       expect(corruptLine(line, 0.1, 1), `"${w}" should render colder at low Grip`).not.toBe(line);
     }
+  });
+});
+
+describe('recordReach() — how deep the room reaches into the RECORD', () => {
+  it('is silent while Grip is above half (a composed game keeps its record true)', () => {
+    expect(recordReach(1)).toBe(0);
+    expect(recordReach(0.6)).toBe(0);
+  });
+  it('reaches one line as Grip slips, deeper once it collapses', () => {
+    expect(recordReach(0.4)).toBe(1);
+    expect(recordReach(0.1)).toBeGreaterThan(1);
+  });
+});
+
+describe('corruptRecord() — the room edits the RECORD (teeth on the read)', () => {
+  const history = [
+    { who: 'them' as const, text: 'I remember every one who promised me that.' },
+    { who: 'you' as const, text: 'Please, trust me — I only want to help.' },
+    { who: 'system' as const, text: 'You reach straight for it — and the Warden draws back.' },
+    { who: 'you' as const, text: 'Be kind. We can carry this together, gently.' },
+  ];
+
+  it('returns the record UNCHANGED while Grip is high', () => {
+    const out = corruptRecord(history, 0.7);
+    expect(out.map((l) => l.text)).toEqual(history.map((l) => l.text));
+  });
+
+  it('edits at least one past line once Grip has slipped', () => {
+    const out = corruptRecord(history, 0.1);
+    const changed = out.filter((l, i) => l.text !== history[i].text);
+    expect(changed.length).toBeGreaterThan(0);
+  });
+
+  it('never touches a system line (the room does not misquote its own paper voice)', () => {
+    const out = corruptRecord(history, 0.1);
+    const sysIdx = history.findIndex((l) => l.who === 'system');
+    expect(out[sysIdx].text).toBe(history[sysIdx].text);
+  });
+
+  it('never mutates the passed history (returns a NEW array — display projection only)', () => {
+    const snapshot = history.map((l) => l.text);
+    corruptRecord(history, 0.05);
+    expect(history.map((l) => l.text)).toEqual(snapshot);
+  });
+
+  it('is deterministic — the same record + Grip reads the same wrong way each re-read', () => {
+    expect(corruptRecord(history, 0.1)).toEqual(corruptRecord(history, 0.1));
+  });
+
+  it('reaches deeper into the record as Grip collapses', () => {
+    const changed = (gripLevel: number) =>
+      corruptRecord(history, gripLevel).filter((l, i) => l.text !== history[i].text).length;
+    expect(changed(0.1)).toBeGreaterThanOrEqual(changed(0.4));
+  });
+
+  it('leaves a record with no editable word untouched', () => {
+    const plain = [
+      { who: 'them' as const, text: 'The vault key sat on the steel table all night.' },
+      { who: 'you' as const, text: 'Where is the second ledger.' },
+    ];
+    expect(corruptRecord(plain, 0.05).map((l) => l.text)).toEqual(plain.map((l) => l.text));
+  });
+});
+
+describe('corruptionCount() — the judge-readable corruption-fire count (§7 instrument)', () => {
+  const line = 'Please trust me — I only want to help, my friend.';
+  it('is 0 while the room is silent (high Grip)', () => {
+    expect(corruptionCount(line, 1, 3)).toBe(0);
+    expect(corruptionCount(line, 0.7, 3)).toBe(0);
+  });
+  it('counts the words the room actually edits, matching corruptionBudget', () => {
+    expect(corruptionCount(line, 0.4, 3)).toBe(1);
+    expect(corruptionCount(line, 0.1, 3)).toBe(2);
+  });
+  it('is 0 on a line with no editable word', () => {
+    expect(corruptionCount('The vault key sat on the steel table.', 0.1, 2)).toBe(0);
   });
 });
 

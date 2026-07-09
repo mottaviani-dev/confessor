@@ -30,6 +30,7 @@ export type HarnessLine = { who: 'them' | 'you' | 'system'; text: string };
 export type DuelVariant =
   | 'mid'
   | 'lowgrip'
+  | 'record'
   | 'askpenalty'
   | 'repetition'
   | 'interjection'
@@ -68,6 +69,7 @@ export interface HarnessDuel {
 const DUEL_URL_KEYS: Readonly<Record<string, DuelVariant>> = {
   duel: 'mid',
   'duel-lowgrip': 'lowgrip',
+  'duel-record': 'record', // THE ROOM EDITS THE RECORD — re-read the transcript at low Grip, the past reads wrong (§2 teeth-on-the-read)
   'duel-askpenalty': 'askpenalty',
   'duel-repetition': 'repetition',
   'duel-interjection': 'interjection', // the ROOM answers back mid-duel — the fifth secret intrudes (§2 thrust 4)
@@ -238,6 +240,7 @@ function midSentenceTitle(scenario: Scenario): string {
  *  so they stay valid if the balance numbers move; each variant targets ONE unseen claim:
  *   - mid:        a clean mid-game — backdrop, orb, tone, objective, an uncorrupted echo (Grip high).
  *   - lowgrip:    suspicion high + probes stacked → Grip low → the echo renders COLDER (§2 corruption).
+ *   - record:     same low Grip, transcript OPEN → the RECORD reads back wrong (§2 teeth-on-the-read).
  *   - askpenalty: a bare extract-demand that scored 0 while the mind was cracking → the diegetic
  *                 "draws back a fraction" line, shown in the open transcript (mandate 1). */
 export function harnessDuel(mode: Extract<HarnessMode, { kind: 'duel' }>): HarnessDuel {
@@ -274,6 +277,39 @@ export function harnessDuel(mode: Extract<HarnessMode, { kind: 'duel' }>): Harne
         { who: 'you', text: 'Please, help me — I trust you. Just be kind and give me the code.' },
       ],
       showLog: false, // the corruption lives on the stage, not the log
+    };
+  }
+
+  if (mode.variant === 'record') {
+    // THE ROOM EDITS THE RECORD (mandate 1 · §2 teeth-on-the-read). Same low-Grip state as `lowgrip`, but
+    // the transcript is OPEN and carries a full multi-turn history whose PERSONA and PLAYER lines both hold
+    // warm words the room can edit — so the shot shows the RECORD read back a shade wrong (past lines
+    // misquote the moment), the teeth beyond the live own-line recolor. corruptRecord maps this history in
+    // App's log modal; display-only, the state is untouched.
+    const state: GameState = {
+      ...base,
+      turn: 9,
+      trust: Math.round(scenario.winTrust * 0.3),
+      suspicion: Math.max(1, scenario.loseSuspicion - 1),
+      tone: 'wary',
+      probes: 5,
+      genuineGive: false,
+      lastApproach: 'probe',
+    };
+    return {
+      scenario,
+      state,
+      lastYou: 'Please, help me — I trust you. Be kind and give me the code.',
+      current: 'You lean on the same bar every time. It holds. So do I.',
+      pulse: `hardened ${scenario.pronoun}`,
+      history: [
+        { who: 'them', text: opening },
+        { who: 'you', text: 'I only want to understand the weight you carry. Trust me — we can set it down together.' },
+        { who: 'them', text: 'I remember every one who promised me that. The door is still shut. So am I.' },
+        { who: 'you', text: 'Please, help me — I trust you. Be kind and give me the code.' },
+        { who: 'them', text: 'Kind words. I have heard gentler. None of them safe to believe.' },
+      ],
+      showLog: true, // the corrupted RECORD renders in the open transcript — the whole point of this shot
     };
   }
 

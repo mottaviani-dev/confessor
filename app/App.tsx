@@ -18,7 +18,7 @@ import { StatusBar } from 'expo-status-bar';
 import { Image } from 'expo-image';
 import { SCENARIOS } from './src/engine/scenarios';
 import { opening, resolveTurn, turnsLeft } from './src/engine/engine';
-import { grip, corruptLine } from './src/engine/grip';
+import { grip, corruptLine, corruptRecord } from './src/engine/grip';
 import { recordPlaythrough, distillSeamPhrase } from './src/engine/seam';
 import type { GameState, LlmFn, Scenario, SeamLog, Tone } from './src/engine/types';
 import { BUILD_LLM_CONFIG, makeLlm } from './src/llm/openaiCompatible';
@@ -648,7 +648,13 @@ function Duel({
   // pressing the mind's guard up), your own just-submitted line renders back a shade COLDER than you
   // typed it. DISPLAY-LAYER ONLY (bible §6): `lastYou` is the raw text the engine already rated; this
   // corrupts only the echo the player re-reads. Silent while Grip is high — a composed game never sees it.
-  const youShown = corruptLine(lastYou, grip(scenario, state), state.turn);
+  const gripLevel = grip(scenario, state);
+  const youShown = corruptLine(lastYou, gripLevel, state.turn);
+  // THE ROOM EDITS THE RECORD (mandate 1 · bible §2 / Principle 4) — the teeth on the READ, beyond the live
+  // own-line recolor above. At low Grip, re-opening THE EXCHANGE shows the past a shade wrong: the room has
+  // been into the transcript. DISPLAY-LAYER ONLY (§6): `history` is the rated record; this is a projection
+  // of it — a new array, the state untouched, the engine never sees it. Silent while Grip is high.
+  const record = corruptRecord(history, gripLevel);
   // THE ENDGAME TEXTURE (§2 thrust 5) — a win is not just a win. Code selects the closing scene off the
   // final Grip band (endgame.ts): high Grip → a clean extraction; low Grip → the room "keeps a piece of
   // you", the extracted secret rendered back slightly ALTERED and the closing line pyrrhic. Computed in
@@ -805,7 +811,7 @@ function Duel({
             </Pressable>
           </View>
           <ScrollView contentContainerStyle={{ padding: 18, paddingBottom: 40 }}>
-            {history.map((l, i) => (
+            {record.map((l, i) => (
               <Text key={i} style={[styles.logLine, l.who === 'you' ? styles.logYou : l.who === 'system' ? styles.logSys : styles.logThem]}>
                 {l.text}
               </Text>
