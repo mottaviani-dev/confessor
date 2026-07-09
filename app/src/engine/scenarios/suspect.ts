@@ -64,6 +64,15 @@ export const SUSPECT: Scenario = {
     'Mara\'s shoulders drop, and something in her face finally lets go. "…It was Danny. My brother. He\'s ' +
     'at the fishing cabin off Route 9 — our dad\'s old place, the green one past the second bridge. He ' +
     'never knew anyone was inside. Please — he\'s all I have left." The recorder\'s red light blinks on.',
+  // PATH-BRANCHED SLIVER (mandate 1b) — the same name, two ways it left her. Won by being SEEN (empathy) →
+  // she gives him to someone she trusts to be fair; won by being CORNERED (pressure) → she gives him with
+  // nothing but a plea you not close the file cheap. MARA's exhausted, careful register; no new specifics.
+  revealByPath: {
+    empathy:
+      '"…You saw me — not a file to close, a person who did a wrong thing out of love. Be fair to him. You\'re the first at this table I\'ve believed would."',
+    pressure:
+      '"…You boxed me in, and I gave him up because you left me no other door. Just — he was drunk and terrified and sorry. Remember that when you go and get him. It was never in your evidence."',
+  },
   openingLine:
     'She doesn\'t touch the cup. When she finally speaks it\'s flat, rehearsed: "I already told the other ' +
     'one everything. I left at nine, I went home, I heard about the fire on the news like everyone else." ' +

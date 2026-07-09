@@ -59,6 +59,13 @@ describe('applyRevisit — the surface shift, gated on `cracked`', () => {
     expect(r.extractTokens).toBe(ORACLE.extractTokens); // both undefined → redaction stays a no-op
   });
 
+  it('CLEARS the base path-reveal sliver on a revisit — the base 1b split cannot bleed onto the second secret', () => {
+    // The base revealByPath is written for the FIRST secret; the spread would carry it and misquote the
+    // self-contained revisit reveal. applyRevisit must drop it (the revisit reveal stands alone).
+    expect(WARDEN.revealByPath).toBeDefined(); // the base mind authors a split…
+    expect(applyRevisit(WARDEN, true).revealByPath).toBeUndefined(); // …but the revisit does not carry it
+  });
+
   it('preserves a spread woundState — the scar block survives the transform (App composes both)', () => {
     const scarred: Scenario = { ...WARDEN, woundState: 'You have reached it before through grief.' };
     const r = applyRevisit(scarred, true);

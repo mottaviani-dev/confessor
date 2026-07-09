@@ -128,11 +128,51 @@ function withCoda(spine: string, coda: string | undefined): string {
   return coda ? `${spine} ${coda}` : spine;
 }
 
+// ─── THE WIN-PATH READING (mandate 1b — the room yields a different sliver depending on HOW you won) ──
+//
+// Every win crosses the SAME thresholds and releases the SAME core secret (engine.ts). But a win carried
+// mostly by GIVING and one that leaned on probing/pressure to get there are two different readings of the
+// mind, and the room marks it: a short extra beat woven onto the reveal, in the mind's own register. This
+// is the honest content-hours lever — REPLAY-factor, not turns-per-game (the run-14 drag). A stranger who
+// cracks a mind a SECOND way earns a second reading of its secret, a real reason to re-open a cleared door.
+//
+// PURELY A READING OF ALREADY-RECORDED STATE (Principle 2): the classification is deterministic off the
+// cumulative offers/presses the engine tallied per turn — no roll, no model, no new score. Like the Grip
+// endgame texture, this is DISPLAY-LAYER only; it never gated the win (the revelation gate + thresholds
+// already did), so the balance and the manip wall are untouched — a path only re-colours the prize.
+
+/** How a win was EARNED, read from the cumulative turn composition. `empathy` = giving carried it (offers
+ *  ≥ presses — the warmer default, and always the read when the counts tie or are absent, since any win
+ *  has at least one genuine give); `pressure` = the player leaned on probing/leverage to get there (presses
+ *  outnumbered offers). Pure — the judge imports it as the §7 replay-texture instrument, same shape as the
+ *  Grip instruments (corruptionCount / objectiveNarrowCount) and revisitableCount. */
+export type WinPath = 'empathy' | 'pressure';
+export function winPath(state: GameState): WinPath {
+  return (state.presses ?? 0) > (state.offers ?? 0) ? 'pressure' : 'empathy';
+}
+
+/** Weave the path-branched reveal SLIVER onto the (possibly Grip-corrupted) core reveal: the mind's extra
+ *  beat for the reading you earned, as the next sentence after the secret. No `revealByPath` authored → the
+ *  core reveal stands alone on both paths (backward-compatible). The sliver itself is NOT corrupted — like
+ *  the endgame coda, it is the room's parting word, not part of the load-bearing extract Grip taints. */
+function withPathSliver(
+  reveal: string,
+  byPath: { readonly empathy: string; readonly pressure: string } | undefined,
+  path: WinPath,
+): string {
+  if (!byPath) return reveal;
+  return `${reveal} ${byPath[path]}`;
+}
+
 export function wonScene(scenario: Scenario, state: GameState): WonScene {
   const band = endgameBand(scenario, state);
   return {
     band,
-    reveal: corruptReveal(scenario.secret, band, state.turn),
+    reveal: withPathSliver(
+      corruptReveal(scenario.secret, band, state.turn),
+      scenario.revealByPath,
+      winPath(state),
+    ),
     closing: withCoda(closingLine(band), scenario.endgameVoice?.won),
     pyrrhic: band !== 'clean',
   };

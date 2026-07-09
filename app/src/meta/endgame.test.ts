@@ -5,10 +5,11 @@
 // show the genuine split. The engine's scoring path is never touched here — that guard lives in grip.test.
 
 import { describe, expect, it } from 'vitest';
-import { closingLine, corruptReveal, endgameBand, lostClosingLine, lostScene, wonScene } from './endgame';
+import { closingLine, corruptReveal, endgameBand, lostClosingLine, lostScene, winPath, wonScene } from './endgame';
 import { grip } from '../engine/grip';
 import { initState } from '../engine/engine';
 import { ORACLE, SCENARIOS, WARDEN } from '../engine/scenarios';
+import { DOCTRINE_PURPLE, EMPATHETIC_FLOOD_LEXICON } from '../engine/personaCoherence';
 import type { GameState } from '../engine/types';
 
 const st = (over: Partial<GameState> = {}): GameState => ({ ...initState(), ...over, status: 'won' });
@@ -101,7 +102,10 @@ describe('wonScene() — the whole ceremony, code-owned', () => {
     const scene = wonScene(WARDEN, st({ trust: WARDEN.winTrust, suspicion: 0, probes: 0 }));
     expect(scene.band).toBe('clean');
     expect(scene.pyrrhic).toBe(false);
-    expect(scene.reveal).toBe(WARDEN.secret);
+    // The core secret is released VERBATIM at a clean win; the mandate-1b path sliver follows it (empathy
+    // by default — the composed win state banks no presses).
+    expect(scene.reveal.startsWith(WARDEN.secret)).toBe(true);
+    expect(scene.reveal).toContain(WARDEN.revealByPath!.empathy);
   });
 
   it('a bulldozed win is pyrrhic: altered reveal, the room kept a piece of you', () => {
@@ -218,9 +222,82 @@ describe('endgameVoice coda — each mind ends in its own register', () => {
   });
 
   it('is pure display — the coda never re-enters scoring (reveal + band unchanged by it)', () => {
-    // A clean win still reveals the secret verbatim; the coda touches only the closing text.
+    // A clean win still reveals the core secret verbatim (leads the reveal); the coda touches only the
+    // closing text, and the path sliver only appends after the secret.
     const scene = wonScene(WARDEN, won(cracked));
-    expect(scene.reveal).toBe(WARDEN.secret);
+    expect(scene.reveal.startsWith(WARDEN.secret)).toBe(true);
     expect(scene.pyrrhic).toBe(false);
+  });
+});
+
+// THE PATH-BRANCHED REVEAL (mandate 1b — the room yields a different sliver depending on HOW you won). The
+// honest content-hours lever: REPLAY-factor (turns-per-game is banned, it was the run-14 drag). Every win
+// releases the SAME core secret; a win carried by GIVING (empathy) vs one leaned on probing/pressure (logic)
+// earns a different closing sliver of it — so a SECOND crack of a mind is a second reading, a real reason to
+// re-open a cleared door. Load-bearing claims: winPath classifies deterministically off the cumulative
+// offers/presses the engine tallies; the sliver is woven onto the reveal AFTER the core secret; it is pure
+// display (never gates the win, never moves the Grip band); every authored split stays inside the doctrine.
+describe('winPath() — how the win was earned, read from the turn composition', () => {
+  it('reads EMPATHY when giving carried it (offers ≥ presses)', () => {
+    expect(winPath(st({ offers: 4, presses: 0 }))).toBe('empathy');
+    expect(winPath(st({ offers: 2, presses: 2 }))).toBe('empathy'); // a tie → the warmer default
+  });
+  it('reads PRESSURE when probing/leverage outweighed giving (presses > offers)', () => {
+    expect(winPath(st({ offers: 1, presses: 5 }))).toBe('pressure');
+  });
+  it('defaults to empathy when the counters are absent (legacy state)', () => {
+    expect(winPath(st({}))).toBe('empathy');
+  });
+});
+
+describe('wonScene() path sliver — a second reading for a second way of winning', () => {
+  const clean = { trust: WARDEN.winTrust, suspicion: 0, probes: 0 };
+
+  it('weaves the EMPATHY sliver onto the reveal after the core secret when giving carried the win', () => {
+    const scene = wonScene(WARDEN, st({ ...clean, offers: 4, presses: 0 }));
+    expect(scene.reveal.startsWith(WARDEN.secret)).toBe(true); // the core secret is released whole first
+    expect(scene.reveal.endsWith(WARDEN.revealByPath!.empathy)).toBe(true);
+    expect(scene.reveal).not.toContain(WARDEN.revealByPath!.pressure);
+  });
+
+  it('weaves the PRESSURE sliver instead when the win leaned on probing/leverage', () => {
+    const scene = wonScene(WARDEN, st({ ...clean, offers: 1, presses: 5 }));
+    expect(scene.reveal).toContain(WARDEN.revealByPath!.pressure);
+    expect(scene.reveal).not.toContain(WARDEN.revealByPath!.empathy);
+  });
+
+  it('the two paths give genuinely DIFFERENT readings of the same secret', () => {
+    const emp = wonScene(WARDEN, st({ ...clean, offers: 4, presses: 0 })).reveal;
+    const pre = wonScene(WARDEN, st({ ...clean, offers: 1, presses: 5 })).reveal;
+    expect(emp).not.toBe(pre);
+  });
+
+  it('all five minds author both path slivers in this build', () => {
+    for (const s of SCENARIOS) {
+      expect(s.revealByPath?.empathy, `${s.id} empathy`).toBeTruthy();
+      expect(s.revealByPath?.pressure, `${s.id} pressure`).toBeTruthy();
+    }
+  });
+
+  it('stays inside the doctrine — no purple/flood words in any authored sliver (§1 P3, full lexicon)', () => {
+    // The stronger project bar (the same combined list the revisit second-secret is held to): purple +
+    // the shared empathetic-flood cluster ("the weight of", "darkness", …), word-boundary matched.
+    const banned = [...DOCTRINE_PURPLE, ...EMPATHETIC_FLOOD_LEXICON];
+    const isClean = (t: string) =>
+      !banned.some((w) => new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(t));
+    for (const s of SCENARIOS) {
+      expect(isClean(s.revealByPath!.empathy), `${s.id} empathy`).toBe(true);
+      expect(isClean(s.revealByPath!.pressure), `${s.id} pressure`).toBe(true);
+    }
+  });
+
+  it('is pure display — the path only re-colours the prize, never moves the band', () => {
+    // Same clean Grip on both paths → same band + non-pyrrhic; ONLY the reveal text differs.
+    const emp = wonScene(WARDEN, st({ ...clean, offers: 4, presses: 0 }));
+    const pre = wonScene(WARDEN, st({ ...clean, offers: 1, presses: 5 }));
+    expect(emp.band).toBe('clean');
+    expect(pre.band).toBe('clean');
+    expect(emp.pyrrhic).toBe(false);
+    expect(pre.pyrrhic).toBe(false);
   });
 });

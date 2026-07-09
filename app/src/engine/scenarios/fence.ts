@@ -53,6 +53,15 @@ export const FENCE: Scenario = {
     'Get SILAS to name who bought the Marlowe emerald. Prove you belong in the life — don\'t flash a badge, don\'t beg, and never let him smell a cop.',
   secret:
     'Silas turns the cold cup a slow half-circle, then meets your eye. "…Vincent Roan. The warehouse off Pier 9 — the one with the blue door. You never got that from me." He is already looking away.',
+  // PATH-BRANCHED SLIVER (mandate 1b) — the same name, two ways to have earned it. Won by talking the life
+  // (empathy) → he marks you as of the trade; won by leaning on him (pressure) → he gives it but warns you
+  // what a squeezed name costs. SILAS's dry street register; no invented specifics beyond the base secret.
+  revealByPath: {
+    empathy:
+      '"…And listen — you talked the life, not around it. That is rarer than the name you came for. Next piece that moves, you know the room to ask in."',
+    pressure:
+      '"…You leaned until I gave it up, and I gave it up. But a name squeezed loose is a name that travels — men like Roan hear how they were found. You did not get that warning from me either."',
+  },
   openingLine:
     'The man does not look up from the cup at first. Then, mild as a Sunday: "You\'ve got a face I don\'t know, asking after a piece I don\'t discuss. That\'s two strikes and you haven\'t sat down. So — who are you, and why shouldn\'t I decide this conversation never happened?"',
   // Paranoid tuning: harder to earn (12 vs 10) and quicker to spook (12 vs 16) than the warden — that

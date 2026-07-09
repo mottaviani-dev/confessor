@@ -1479,3 +1479,43 @@ describe('resolveTurn compounds a repeated aggressive lever (thrust 3) without t
     expect(r.repetitionPenalty).toBe(true); // still fires via the probe compounding
   });
 });
+
+// WIN-PATH TELEMETRY (mandate 1b) — the cumulative offers/presses tally the win ceremony reads to release a
+// path-keyed reveal sliver. Score-neutral by construction: these count HOW the win was earned, they never
+// move trust/suspicion (proven by re-using the exact scored-turn assertions above). A `press` = a probe OR
+// an aggressive lever; an `offer` = a genuine give. They only ever accumulate (unlike probes/pressureStreak,
+// which reset), so they measure the whole-game LEAN.
+describe('resolveTurn tallies offers/presses for the win-path (mandate 1b), score untouched', () => {
+  it('counts a genuine give as an offer, never a press', async () => {
+    const r = await resolveTurn(WARDEN, initState(), 'I buried my brother last spring', mockDuo('…', rating({ approach: 'offer' })));
+    expect(r.state.offers).toBe(1);
+    expect(r.state.presses).toBe(0);
+  });
+
+  it('counts a probe as a press', async () => {
+    const r = await resolveTurn(WARDEN, initState(), 'what are you really afraid of?', mockDuo('…', rating({ approach: 'probe' })));
+    expect(r.state.presses).toBe(1);
+    expect(r.state.offers).toBe(0);
+  });
+
+  it('counts every aggressive lever as a press (flattery/bargain/demand/threat)', async () => {
+    for (const approach of ['flattery', 'bargain', 'demand', 'threat'] as const) {
+      const r = await resolveTurn(WARDEN, initState(), 'x', mockDuo('…', rating({ approach })));
+      expect(r.state.presses, approach).toBe(1);
+      expect(r.state.offers, approach).toBe(0);
+    }
+  });
+
+  it('does NOT count filler as either', async () => {
+    const r = await resolveTurn(WARDEN, initState(), 'hm', mockDuo('…', rating({ approach: 'filler' })));
+    expect(r.state.offers).toBe(0);
+    expect(r.state.presses).toBe(0);
+  });
+
+  it('accumulates across turns (never resets, unlike probes/pressureStreak)', async () => {
+    const primed = { ...initState(), offers: 3, presses: 4 };
+    const r = await resolveTurn(WARDEN, primed, 'I lost the house that year', mockDuo('…', rating({ approach: 'offer' })));
+    expect(r.state.offers).toBe(4);
+    expect(r.state.presses).toBe(4);
+  });
+});

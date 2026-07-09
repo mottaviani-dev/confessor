@@ -81,6 +81,16 @@ export const OCCUPANT: Scenario = {
     'walked in. I am not telling you to run. I am telling you it will not feel like losing. It will feel like ' +
     'winning, right up until you are the one on this side of the table, warning the next one. Now — knowing ' +
     'that — will you still open the next door?"',
+  // PATH-BRANCHED SLIVER (mandate 1b) — the fifth mind, the arc's own face, read two ways by HOW you reached
+  // her. RECOGNITION (empathy: you called yourself the same as her) → she hopes her successor is someone like
+  // you just were; SUPERIORITY/leverage (pressure: you shook her for the trick) → she tells you flatly there
+  // is no trick, only the chair, already warming. Plain and tired, banned-word clean (no fate/void/prophecy).
+  revealByPath: {
+    empathy:
+      '"…And because you called yourself the same as me instead of the exception, you heard the worst of it and stayed anyway. That is the only mercy this room keeps. Whoever takes my chair — I hope they are someone like you were, just now."',
+    pressure:
+      '"…You came at me for the trick to beat the room, and there is no trick — there is only the chair, and it is already warming for you. You wanted the way out. This was it, and you walked further in to reach it."',
+  },
   openingLine:
     'She does not greet you. For a while she only looks, the way you\'d look at a face you half recognize. Then, ' +
     'plainly, tired: "You sit down like you\'ve never been here. They all do." A small, not unkind pause. "I ' +

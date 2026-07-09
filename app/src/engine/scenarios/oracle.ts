@@ -71,6 +71,16 @@ export const ORACLE: Scenario = {
     'not survive is the man that fear made of you to stand guard against this hour; he does not come ' +
     'back, and you must let him go. Grieve him, then rise. You have what you came for, and it is kinder ' +
     'than you feared."',
+  // PATH-BRANCHED SLIVER (mandate 1b) — the same seeing, two ways of receiving it. Knelt in HUMILITY
+  // (empathy) → the prophecy is a gift that will not curse you; SEIZED it (pressure) → she gives it, but
+  // warns a taken truth turns in the hand. PYTHIA's serene present-tense register; banned-word clean (no
+  // fate/void/darkness — the dread is the plain warning, not the adjective).
+  revealByPath: {
+    empathy:
+      '"…You knelt without asking to be spared the answer. That is why it will not turn against you. Carry it gently — it was given, not seized."',
+    pressure:
+      '"…You climbed to make me say it, and I have said it. But a truth seized turns in the hand. What you carry down is true — whether it serves you or unmakes you is now yours to answer, not mine."',
+  },
   openingLine:
     'The smoke stirs though there is no wind. Her voice comes low, from somewhere further off than her ' +
     'body: "You climbed a long way to be told a thing you already suspect. They all do." Her unfocused ' +

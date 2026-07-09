@@ -44,6 +44,11 @@ export function applyRevisit(scenario: Scenario, cracked: boolean): Scenario {
     // no concrete name/place (the oracle's inner prophecy) fall back to the base tokens, mirroring the
     // scenario type's own omit-rather-than-invent rule (undefined → redactLeakedExtract no-ops).
     extractTokens: r.extractTokens ?? scenario.extractTokens,
+    // The base first-visit path-sliver (mandate 1b) does NOT carry onto a revisit: the revisit secret is a
+    // self-contained second-visit reveal, and a base sliver (written for the FIRST secret) woven onto it
+    // would misquote the moment. The spread above would keep it, so clear it — the revisit reveal stands
+    // alone on both win-paths unless a revisit ever authors its own split (none does today).
+    revealByPath: undefined,
   };
 }
 

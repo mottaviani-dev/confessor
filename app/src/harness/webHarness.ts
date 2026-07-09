@@ -458,6 +458,12 @@ export function harnessDuel(mode: Extract<HarnessMode, { kind: 'duel' }>): Harne
       tone: 'open',
       probes: highGrip ? 0 : 5,
       genuineGive: true,
+      // The win-path split (mandate 1b): the composed high-Grip win was carried by GIVING (offers dominate
+      // → the empathy reveal sliver); the pressed low-Grip win leaned on probing (presses dominate → the
+      // pressure sliver). So the two win shots now show BOTH textures — Grip band AND path reading — of the
+      // same crack, and the warden's authored revealByPath renders in each.
+      offers: highGrip ? 4 : 1,
+      presses: highGrip ? 0 : 5,
       lastApproach: highGrip ? 'offer' : 'probe',
       status: 'won',
     };

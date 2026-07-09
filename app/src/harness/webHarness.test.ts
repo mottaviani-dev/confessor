@@ -204,7 +204,10 @@ describe('harnessDuel — injected states are internally valid', () => {
     expect(endgameBand(h.scenario, h.state)).toBe('clean');
     const scene = wonScene(h.scenario, h.state);
     expect(scene.pyrrhic).toBe(false);
-    expect(scene.reveal).toBe(h.scenario.secret);
+    // The core secret leads the reveal VERBATIM (clean Grip); the win-path sliver (mandate 1b) follows —
+    // this shot's offers>presses is the EMPATHY reading, so the warden's empathy sliver renders after it.
+    expect(scene.reveal.startsWith(h.scenario.secret)).toBe(true);
+    expect(scene.reveal.endsWith(h.scenario.revealByPath!.empathy)).toBe(true);
     // Grip is high, so the winning echo the player re-reads is UNcorrupted.
     expect(corruptLine(h.lastYou, grip(h.scenario, h.state), h.state.turn)).toBe(h.lastYou);
   });

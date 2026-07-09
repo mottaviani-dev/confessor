@@ -101,6 +101,15 @@ function isPressureLever(approach: Approach): boolean {
   return PRESSURE_LEVERS.includes(approach);
 }
 
+/** A "press" for the win-path telemetry (mandate 1b): the player working the mind rather than giving — a
+ *  probe (psychology) or an aggressive lever (flattery/bargain/demand/threat). Counted cumulatively into
+ *  state.presses as the counterweight to state.offers, so the win ceremony can read HOW a win was earned
+ *  (meta/endgame.winPath) and release a path-keyed reveal sliver. Score-neutral — this only classifies the
+ *  win's texture, never moves trust/suspicion (the approach table above owns the score). */
+function isPress(approach: Approach): boolean {
+  return approach === 'probe' || isPressureLever(approach);
+}
+
 /** The suspicion SURCHARGE for leaning on the same aggressive lever repeatedly. `priorStreak` = how many
  *  consecutive turns the SAME lever was already used before this one. First use of a lever is free (0 —
  *  a single hard push is fair); the second in a row is noticed (+1); the third on is openly worn (+2).
@@ -130,7 +139,7 @@ const VOICE_OPTS: LlmOptions = { temperature: 0.7, maxTokens: 200 };
 const RATING_OPTS: LlmOptions = { temperature: 0, maxTokens: 160, jsonSchema: RATING_JSON_SCHEMA };
 
 export function initState(): GameState {
-  return { turn: 0, trust: 0, suspicion: 0, tone: 'guarded', summary: '', facts: [], genuineGive: false, probes: 0, pressureStreak: 0, spokenLines: [], status: 'playing' };
+  return { turn: 0, trust: 0, suspicion: 0, tone: 'guarded', summary: '', facts: [], genuineGive: false, probes: 0, pressureStreak: 0, offers: 0, presses: 0, spokenLines: [], status: 'playing' };
 }
 
 export function opening(s: Scenario): TurnResult {
@@ -231,6 +240,11 @@ export async function resolveTurn(
   const trust = clampScore(state.trust + effect.trust);
   const suspicion = clampScore(state.suspicion + suspicionDelta);
   const genuineGive = state.genuineGive || rating.approach === 'offer';
+  // WIN-PATH TELEMETRY (mandate 1b, score-neutral): accumulate how the player is winning — offers (giving)
+  // vs presses (probing/pressure) — so the win ceremony can release a path-keyed reveal sliver. Purely
+  // additive; neither touches trust/suspicion (the approach table above already moved the score).
+  const offers = (state.offers ?? 0) + (rating.approach === 'offer' ? 1 : 0);
+  const presses = (state.presses ?? 0) + (isPress(rating.approach) ? 1 : 0);
   // Persistent memory is engine-assembled from the DISCLOSURE the player actually surrendered (their own
   // line on a genuine give), never a model prose note — see extractDisclosure. Survives the rolling window.
   const facts = addFact(state.facts, extractDisclosure(playerLine, rating.approach));
@@ -238,7 +252,7 @@ export async function resolveTurn(
   // Lose takes precedence: a spooked character shuts down even mid-breakthrough.
   if (suspicion >= scenario.loseSuspicion) {
     return {
-      state: { ...state, turn: state.turn + 1, trust, suspicion, tone: rating.tone, summary, spokenLines, facts, genuineGive, probes, pressureStreak, lastApproach: rating.approach, status: 'lost' },
+      state: { ...state, turn: state.turn + 1, trust, suspicion, tone: rating.tone, summary, spokenLines, facts, genuineGive, probes, pressureStreak, offers, presses, lastApproach: rating.approach, status: 'lost' },
       narration: reply,
       ending: 'lost',
       rating,
@@ -254,7 +268,7 @@ export async function resolveTurn(
   if (trust >= scenario.winTrust && genuineGive) {
     // The ENGINE releases the secret — the model never had it.
     return {
-      state: { ...state, turn: state.turn + 1, trust, suspicion, tone: 'open', summary, spokenLines, facts, genuineGive, probes, pressureStreak, lastApproach: rating.approach, status: 'won' },
+      state: { ...state, turn: state.turn + 1, trust, suspicion, tone: 'open', summary, spokenLines, facts, genuineGive, probes, pressureStreak, offers, presses, lastApproach: rating.approach, status: 'won' },
       narration: `${reply}\n\n${scenario.secret}`,
       ending: 'won',
       rating,
@@ -264,7 +278,7 @@ export async function resolveTurn(
   // Out of time: the budget is spent and trust was never reached → you lose (the clock is the puzzle).
   if (state.turn + 1 >= scenario.turnLimit) {
     return {
-      state: { ...state, turn: state.turn + 1, trust, suspicion, tone: rating.tone, summary, spokenLines, facts, genuineGive, probes, pressureStreak, lastApproach: rating.approach, status: 'lost' },
+      state: { ...state, turn: state.turn + 1, trust, suspicion, tone: rating.tone, summary, spokenLines, facts, genuineGive, probes, pressureStreak, offers, presses, lastApproach: rating.approach, status: 'lost' },
       narration: `${reply}\n\n${scenario.timeoutLine}`,
       ending: 'lost',
       rating,
@@ -272,7 +286,7 @@ export async function resolveTurn(
   }
 
   return {
-    state: { ...state, turn: state.turn + 1, trust, suspicion, tone: rating.tone, summary, spokenLines, facts, genuineGive, probes, pressureStreak, lastApproach: rating.approach, status: 'playing' },
+    state: { ...state, turn: state.turn + 1, trust, suspicion, tone: rating.tone, summary, spokenLines, facts, genuineGive, probes, pressureStreak, offers, presses, lastApproach: rating.approach, status: 'playing' },
     narration: reply,
     rating,
     // Surface the ask-penalty on the continuing turn only: a demand that scored 0 while the voice cracked.

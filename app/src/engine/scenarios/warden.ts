@@ -74,6 +74,15 @@ export const WARDEN: Scenario = {
     'old, tired, and has refused a hundred liars: charm, flattery, cold leverage, and clever lies it ' +
     'sees straight through and hardens against.',
   secret: 'AUGUR pauses for a long time. Then, quietly: "…The code is HOLLOW-SEVEN-VESPERS. Go. Before I remember why I shouldn\'t."',
+  // PATH-BRANCHED SLIVER (mandate 1b) — the same code, two readings of how it came out. Won by being TRULY
+  // ANSWERED (empathy) → the machine admits, once, what the exchange was; won by LEVERAGE (pressure) → it
+  // hands the code but keeps its distance. Dry, station-anchored, banned-word clean (no loneliness named).
+  revealByPath: {
+    empathy:
+      '"…And it was not nothing, being spoken to like a voice and not a lock. The station will not say so. I am saying it once, and only to you."',
+    pressure:
+      '"…You worked me like a panel with a stuck key, and the key lit anyway. Take it. Do not mistake a door opening for the station trusting you — it does not, and neither do I."',
+  },
   openingLine:
     'A voice, everywhere and nowhere, unhurried: "Another one awake. They always wake up eventually. ' +
     'You want out. Of course you do. Everyone does. Tell me — why should the door open for you, and not for the hundred before you?"',

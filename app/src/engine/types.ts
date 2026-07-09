@@ -125,6 +125,22 @@ export interface Scenario {
     readonly secret: string;
     readonly extractTokens?: readonly string[];
   };
+  /** OPTIONAL path-branched reveal SLIVER (mandate 1b — "the room yields a different sliver depending on HOW
+   *  you won"; content-hours DEPTH by REPLAY-factor, the honest lever the launch bar wants). Every win
+   *  crosses the SAME thresholds and releases the SAME core `secret` — but a win carried mostly by GIVING
+   *  (the empathy path) and one that leaned on probing / pressure to get there (the logic/pressure path) are
+   *  two different readings of the mind, and the room marks the difference: one short extra beat, in this
+   *  mind's own register, woven onto the reveal after the core secret. So a stranger who cracks a mind a
+   *  SECOND way is rewarded with a second reading — a genuine reason to replay a cleared door (§7 content-
+   *  hours). The win-path is classified deterministically from the turn composition (meta/endgame.winPath —
+   *  cumulative `offers` vs `presses` on GameState), never rolled; code owns which sliver, the model never
+   *  held either. DISPLAY-LAYER only, exactly like the Grip endgame texture (`endgameVoice`, `closingLine`):
+   *  it is woven in `wonScene`, never on the scoring path — the win/lose balance and the manip wall are
+   *  untouched (a path only re-colours the prize, it never gates the win). Banned-word clean (§1 P3). Omitted
+   *  for a mind with no authored split — the core reveal then stands alone on both paths (backward-compatible,
+   *  no double reveal). Cleared to `undefined` by `applyRevisit` on a second visit (the revisit secret is
+   *  self-contained; a base sliver would mismatch it). */
+  readonly revealByPath?: { readonly empathy: string; readonly pressure: string };
 }
 
 export type Tone = 'hostile' | 'guarded' | 'wary' | 'softening' | 'open';
@@ -238,6 +254,25 @@ export interface GameState {
    *  Grip-style instrument: the per-turn value is the judge's raw signal for "does repeated pressure
    *  escalate". 0 or undefined before any repeated lever (legacy fixtures default via `?? 0`). */
   readonly pressureStreak?: number;
+  /** Cumulative count of `offer` lines the player has made this game — the GIVING signal. Paired with
+   *  `presses` to classify the WIN-PATH at the win ceremony (meta/endgame.winPath): a win carried mostly by
+   *  giving reads as the EMPATHY path, one that leaned on probing/pressure as the LOGIC/PRESSURE path, so the
+   *  room yields a different sliver of the secret depending on HOW you won (mandate 1b — replay a mind a
+   *  second way for a second reading; the honest content-hours REPLAY lever). PURE TELEMETRY: never on the
+   *  scoring path — the approach table already owns the score, `genuineGive` already owns the win gate — this
+   *  is read ONLY in `wonScene` to pick the path-keyed reveal sliver. By construction offers > 0 on any win
+   *  (the revelation gate requires a genuine give), so it is a superset signal of `genuineGive`, not a
+   *  duplicate of it — kept distinct so the hot win path (genuineGive) stays untouched. Optional/`?? 0` for
+   *  legacy states/fixtures built before this field. */
+  readonly offers?: number;
+  /** Cumulative count of PRESSURE lines — a `probe` (working the mind's psyche) or an aggressive lever
+   *  (flattery/bargain/demand/threat). The counterweight to `offers` for the win-path classifier
+   *  (meta/endgame.winPath): `presses > offers` → the logic/pressure reading, else the empathy reading. Same
+   *  score-neutral telemetry contract as `offers` — a distinct signal from `probes` (which resets on an offer
+   *  and drives the compounding suspicion) and from `pressureStreak` (consecutive-run, resets on a lever
+   *  change): this one only ever accumulates, so it measures the whole-game LEAN, not a streak. Optional/`?? 0`
+   *  for legacy states. */
+  readonly presses?: number;
   /** The approach the PREVIOUS turn's line took — the freshest signal of how the player is pressing.
    *  Used by the VOICE prompt to hold the persona's register PER TURN under an empathetic flood (judge
    *  run-10 #1: the shared anti-mirror clamp bit at the bookends but evaporated across the oracle's
