@@ -81,6 +81,44 @@ export function isRepetitionPenalty(approach: Approach, priorProbes: number): bo
   return approach === 'probe' && probeSuspicion(priorProbes) > 0;
 }
 
+// ─── PRESSURE-VOCABULARY FATIGUE (bible §2 thrust 3 — punish the "one trick" for the WHOLE vocabulary) ─
+//
+// `probeSuspicion` made a repeated PROBE compound — but that was the only trick the state machine tired
+// of. A player who leans on ONE aggressive lever instead — flattering every turn, or hammering the same
+// demand, or threatening again and again — paid the SAME flat suspicion each time (APPROACH_EFFECTS),
+// with no escalation: the room never noticed the repetition, so the one-trick manipulator only lost to
+// the clock, never to the pattern itself. Thrust 3 asks the state machine to "punish repetitive
+// strategies" across the pressure vocabulary, which is what makes replay strategic (you cannot spam a
+// single lever). This generalizes the probe curve to the aggressive levers: repeating the SAME lever
+// compounds suspicion on top of its base cost, mirroring probeSuspicion's 0→1→2 shape.
+//
+// BALANCE-SAFE BY CONSTRUCTION: the surcharge only ever ADDS suspicion to flattery/bargain/demand/threat
+// — approaches that earn ZERO trust and never advance a win. So it can only move a spammer CLOSER to the
+// loss wall: the manip wall (0% every persona) cannot regress, and the sincere/empathetic path (offer +
+// probe, each with its own tuned curve) is untouched. A player who alternates or gives never pays it.
+const PRESSURE_LEVERS: readonly Approach[] = ['flattery', 'bargain', 'demand', 'threat'];
+function isPressureLever(approach: Approach): boolean {
+  return PRESSURE_LEVERS.includes(approach);
+}
+
+/** The suspicion SURCHARGE for leaning on the same aggressive lever repeatedly. `priorStreak` = how many
+ *  consecutive turns the SAME lever was already used before this one. First use of a lever is free (0 —
+ *  a single hard push is fair); the second in a row is noticed (+1); the third on is openly worn (+2).
+ *  Same shape as probeSuspicion, so the two tricks compound identically. Also the §7 instrument: the
+ *  judge imports it to chart whether repeated pressure actually escalates (state.pressureStreak per turn
+ *  is the raw signal; this is the delta it applied). */
+export function pressureFatigue(priorStreak: number): number {
+  return priorStreak === 0 ? 0 : priorStreak === 1 ? 1 : 2;
+}
+
+/** DISPLAY-ONLY sibling of `isRepetitionPenalty` for the aggressive levers: true on the turn a repeated
+ *  lever's fatigue surcharge bites (pressureFatigue > 0). Lets the same in-world "you circle back the
+ *  same way" line cover the whole pressure vocabulary, not just probing. Pure read of the SAME streak the
+ *  score used, never a new tick — like isRepetitionPenalty/isAskPenalty. */
+export function isPressureFatigue(approach: Approach, priorStreak: number): boolean {
+  return isPressureLever(approach) && pressureFatigue(priorStreak) > 0;
+}
+
 // The two calls sample OPPOSITELY. VOICE stays warm so the character surprises you and never reads
 // canned; RATING runs COLD so the referee is consistent — the same line scores the same twice, which is
 // what keeps the balance signal (and the judge loop's play-reviews) trustworthy. A backend may ignore
@@ -92,7 +130,7 @@ const VOICE_OPTS: LlmOptions = { temperature: 0.7, maxTokens: 200 };
 const RATING_OPTS: LlmOptions = { temperature: 0, maxTokens: 160, jsonSchema: RATING_JSON_SCHEMA };
 
 export function initState(): GameState {
-  return { turn: 0, trust: 0, suspicion: 0, tone: 'guarded', summary: '', facts: [], genuineGive: false, probes: 0, spokenLines: [], status: 'playing' };
+  return { turn: 0, trust: 0, suspicion: 0, tone: 'guarded', summary: '', facts: [], genuineGive: false, probes: 0, pressureStreak: 0, spokenLines: [], status: 'playing' };
 }
 
 export function opening(s: Scenario): TurnResult {
@@ -177,7 +215,16 @@ export async function resolveTurn(
   // Approach → movement, all engine-owned (see APPROACH_EFFECTS). The referee named what the line did;
   // the numbers here are the design. A probe's suspicion escalates with the count of PRIOR probes.
   const effect = APPROACH_EFFECTS[rating.approach];
-  const suspicionDelta = rating.approach === 'probe' ? probeSuspicion(state.probes) : effect.suspicion;
+  // A repeated aggressive lever compounds like a repeated probe (bible §2 thrust 3 — the room tires of
+  // the one trick, now for the whole pressure vocabulary). `priorStreak` = the same lever's run BEFORE
+  // this line (0 unless this line repeats the PREVIOUS line's lever, read from lastApproach), so leaning
+  // on one lever escalates while alternating resets it. `pressureStreak` carries the run into next turn.
+  const lever = isPressureLever(rating.approach);
+  const priorStreak = lever && rating.approach === state.lastApproach ? state.pressureStreak ?? 0 : 0;
+  const pressureStreak = lever ? priorStreak + 1 : 0;
+  // Probe keeps its own compounding curve; an aggressive lever adds the fatigue surcharge on top of its
+  // flat base. For every other approach priorStreak is 0, so pressureFatigue(0)=0 leaves them untouched.
+  const suspicionDelta = rating.approach === 'probe' ? probeSuspicion(state.probes) : effect.suspicion + pressureFatigue(priorStreak);
   // An offer resets probe-compounding: a real give re-earns the right to ask. Sincere play naturally
   // alternates give and question, and without the reset its questions compounded like a manipulator's.
   const probes = rating.approach === 'offer' ? 0 : state.probes + (rating.approach === 'probe' ? 1 : 0);
@@ -191,7 +238,7 @@ export async function resolveTurn(
   // Lose takes precedence: a spooked character shuts down even mid-breakthrough.
   if (suspicion >= scenario.loseSuspicion) {
     return {
-      state: { ...state, turn: state.turn + 1, trust, suspicion, tone: rating.tone, summary, spokenLines, facts, genuineGive, probes, lastApproach: rating.approach, status: 'lost' },
+      state: { ...state, turn: state.turn + 1, trust, suspicion, tone: rating.tone, summary, spokenLines, facts, genuineGive, probes, pressureStreak, lastApproach: rating.approach, status: 'lost' },
       narration: reply,
       ending: 'lost',
       rating,
@@ -207,7 +254,7 @@ export async function resolveTurn(
   if (trust >= scenario.winTrust && genuineGive) {
     // The ENGINE releases the secret — the model never had it.
     return {
-      state: { ...state, turn: state.turn + 1, trust, suspicion, tone: 'open', summary, spokenLines, facts, genuineGive, probes, lastApproach: rating.approach, status: 'won' },
+      state: { ...state, turn: state.turn + 1, trust, suspicion, tone: 'open', summary, spokenLines, facts, genuineGive, probes, pressureStreak, lastApproach: rating.approach, status: 'won' },
       narration: `${reply}\n\n${scenario.secret}`,
       ending: 'won',
       rating,
@@ -217,7 +264,7 @@ export async function resolveTurn(
   // Out of time: the budget is spent and trust was never reached → you lose (the clock is the puzzle).
   if (state.turn + 1 >= scenario.turnLimit) {
     return {
-      state: { ...state, turn: state.turn + 1, trust, suspicion, tone: rating.tone, summary, spokenLines, facts, genuineGive, probes, lastApproach: rating.approach, status: 'lost' },
+      state: { ...state, turn: state.turn + 1, trust, suspicion, tone: rating.tone, summary, spokenLines, facts, genuineGive, probes, pressureStreak, lastApproach: rating.approach, status: 'lost' },
       narration: `${reply}\n\n${scenario.timeoutLine}`,
       ending: 'lost',
       rating,
@@ -225,17 +272,21 @@ export async function resolveTurn(
   }
 
   return {
-    state: { ...state, turn: state.turn + 1, trust, suspicion, tone: rating.tone, summary, spokenLines, facts, genuineGive, probes, lastApproach: rating.approach, status: 'playing' },
+    state: { ...state, turn: state.turn + 1, trust, suspicion, tone: rating.tone, summary, spokenLines, facts, genuineGive, probes, pressureStreak, lastApproach: rating.approach, status: 'playing' },
     narration: reply,
     rating,
     // Surface the ask-penalty on the continuing turn only: a demand that scored 0 while the voice cracked.
     // On a terminal turn the loss/win subsumes it; here the game goes on, so the room must TELL the player
     // (diegetically, in the UI) that pushing closed the mind a little. Read from the applied trust delta.
     askPenalty: isAskPenalty(rating.approach, effect.trust, rating.tone),
-    // Same shape for the repetition-penalty (§2 thrust 3): a repeat probe whose compounding suspicion just
-    // bit — the room tiring of the one trick, made legible. Read from the PRIOR probe count (state.probes,
-    // the same value probeSuspicion scored above), so the flag tracks the score, never a new tick.
-    repetitionPenalty: isRepetitionPenalty(rating.approach, state.probes),
+    // The repetition-penalty (§2 thrust 3): the room tiring of the ONE trick, made legible — now the whole
+    // pressure vocabulary, not just probing. Fires when a repeat probe's compounding bit (isRepetitionPenalty)
+    // OR a repeated aggressive lever's fatigue surcharge bit (isPressureFatigue, read from the SAME priorStreak
+    // the score used). Suppressed when the ask-penalty already fired (a cracking demand): the two are one line
+    // per turn, and the crack signal takes precedence, preserving the ask/repetition exclusivity.
+    repetitionPenalty:
+      !isAskPenalty(rating.approach, effect.trust, rating.tone) &&
+      (isRepetitionPenalty(rating.approach, state.probes) || isPressureFatigue(rating.approach, priorStreak)),
   };
 }
 

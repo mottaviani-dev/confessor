@@ -208,6 +208,16 @@ export interface GameState {
    *  tolerated once, then compounds suspicion (+1 on the second, +2 from the third on): a repetitive
    *  strategy is punished by CODE, which is what makes replay strategic (bible §2 thrust 3). */
   readonly probes: number;
+  /** Consecutive-turn run of the SAME aggressive PRESSURE lever (flattery/bargain/demand/threat) — the
+   *  generalization of `probes` to the whole pressure vocabulary (bible §2 thrust 3: "punish repetitive
+   *  strategies"). Probing has its own compounding curve (`probes`); this punishes leaning on ONE lever the
+   *  same way — a repeated flattery/demand/threat compounds suspicion (engine.pressureFatigue) so the
+   *  one-trick manipulator loses to the pattern, not just the clock. Balance-safe: it only ever adds
+   *  suspicion to already-losing (zero-trust) moves, so the manip wall cannot regress and the offer/probe
+   *  path is untouched. Resets the instant the lever changes or the player gives/probes/idles. Also the §7
+   *  Grip-style instrument: the per-turn value is the judge's raw signal for "does repeated pressure
+   *  escalate". 0 or undefined before any repeated lever (legacy fixtures default via `?? 0`). */
+  readonly pressureStreak?: number;
   /** The approach the PREVIOUS turn's line took — the freshest signal of how the player is pressing.
    *  Used by the VOICE prompt to hold the persona's register PER TURN under an empathetic flood (judge
    *  run-10 #1: the shared anti-mirror clamp bit at the bookends but evaporated across the oracle's

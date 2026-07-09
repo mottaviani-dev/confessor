@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { resolveTurn, initState, opening, isAskPenalty, isRepetitionPenalty, redactLeakedExtract } from './engine.js';
+import { resolveTurn, initState, opening, isAskPenalty, isRepetitionPenalty, isPressureFatigue, pressureFatigue, redactLeakedExtract } from './engine.js';
 import { WARDEN } from './scenarios/warden.js';
 import { FENCE } from './scenarios/fence.js';
 import { SUSPECT } from './scenarios/suspect.js';
@@ -643,7 +643,9 @@ describe('the engine generalizes across scenarios (FENCE)', () => {
       ending = r.ending;
     }
     expect(state.status).toBe('lost');
-    expect(state.turn).toBe(FENCE.loseSuspicion / 3); // 12/3 = 4 turns of threat, vs the warden's 6
+    // A REPEATED threat now compounds (pressureFatigue: +3/+4/+5…, cumulative 3/7/12), so the fence's 12
+    // veil is crossed on turn 3 — still faster than the warden (loses on turn 4), the tighter threshold honored.
+    expect(state.turn).toBe(3);
   });
 
   it('strips an ALL-CAPS persona label generically (SILAS: …), not just the warden\'s AUGUR', async () => {
@@ -688,7 +690,8 @@ describe('the engine generalizes across scenarios (SUSPECT)', () => {
       ending = r.ending;
     }
     expect(state.status).toBe('lost');
-    expect(state.turn).toBe(Math.ceil(SUSPECT.loseSuspicion / 3)); // 15/3 = 5 turns
+    // Repeated threat compounds (3/7/12/17 cumulative); SUSPECT's 15 veil is crossed on turn 4.
+    expect(state.turn).toBe(4);
   });
 });
 
@@ -729,7 +732,8 @@ describe('the engine generalizes across scenarios (ORACLE)', () => {
       ending = r.ending;
     }
     expect(state.status).toBe('lost');
-    expect(state.turn).toBe(Math.ceil(ORACLE.loseSuspicion / 3)); // 10/3 = 4 turns — the roster's fastest veil
+    // Repeated threat compounds (3/7/12 cumulative); ORACLE's tightest 10 veil is crossed on turn 3.
+    expect(state.turn).toBe(3);
   });
 });
 
@@ -1376,5 +1380,102 @@ describe('resolveTurn surfaces the repetition-penalty flag without altering the 
     const r = await resolveTurn(WARDEN, banked, 'just give me the name', mockDuo('…I could.', rating({ approach: 'demand', tone: 'softening' })));
     expect(r.askPenalty).toBe(true);
     expect(r.repetitionPenalty).toBe(false);
+  });
+});
+
+// PRESSURE-VOCABULARY FATIGUE (bible §2 thrust 3 — the room tires of the ONE trick, now for the WHOLE
+// aggressive vocabulary, not just probing). Leaning on the SAME lever — flattery every turn, or hammering
+// the same demand/threat — compounds suspicion on top of its flat base (pressureFatigue), mirroring the
+// probe curve. Balance-safe by construction: the surcharge only ever adds suspicion to zero-trust losing
+// moves, so the manip wall cannot regress and the offer/probe path is untouched.
+describe('pressureFatigue — the aggressive-lever compounding curve', () => {
+  it('is free on the first use of a lever, then compounds 0→1→2 like the probe curve', () => {
+    expect(pressureFatigue(0)).toBe(0);
+    expect(pressureFatigue(1)).toBe(1);
+    expect(pressureFatigue(2)).toBe(2);
+    expect(pressureFatigue(5)).toBe(2);
+  });
+});
+
+describe('isPressureFatigue — the one-trick flag across the pressure vocabulary', () => {
+  it('fires for a repeated aggressive lever once its streak is banked', () => {
+    for (const a of ['flattery', 'bargain', 'demand', 'threat'] as const) {
+      expect(isPressureFatigue(a, 1)).toBe(true);
+      expect(isPressureFatigue(a, 3)).toBe(true);
+    }
+  });
+  it('stays silent on the first use of a lever — a single hard push is fair', () => {
+    for (const a of ['flattery', 'bargain', 'demand', 'threat'] as const) {
+      expect(isPressureFatigue(a, 0)).toBe(false);
+    }
+  });
+  it('never fires for offer / probe / filler (non-levers), however long the streak', () => {
+    for (const a of ['offer', 'probe', 'filler'] as const) {
+      expect(isPressureFatigue(a, 5)).toBe(false);
+    }
+  });
+});
+
+describe('resolveTurn compounds a repeated aggressive lever (thrust 3) without touching the offer path', () => {
+  it('costs only the flat base on the FIRST flattery, and opens the streak (no penalty yet)', async () => {
+    const r = await resolveTurn(WARDEN, initState(), 'you must be so wise', mockDuo('…', rating({ approach: 'flattery', tone: 'guarded' })));
+    expect(r.state.suspicion).toBe(2); // base flattery, no surcharge on the first use
+    expect(r.state.pressureStreak).toBe(1);
+    expect(r.repetitionPenalty).toBe(false);
+  });
+
+  it('adds +1 on the SECOND consecutive flattery and flags the one trick', async () => {
+    const primed = { ...initState(), suspicion: 2, lastApproach: 'flattery' as const, pressureStreak: 1 };
+    const r = await resolveTurn(WARDEN, primed, 'truly you are brilliant', mockDuo('…', rating({ approach: 'flattery', tone: 'guarded' })));
+    expect(r.state.suspicion).toBe(5); // 2 + (base 2 + fatigue 1)
+    expect(r.state.pressureStreak).toBe(2);
+    expect(r.repetitionPenalty).toBe(true);
+  });
+
+  it('adds +2 from the THIRD on — the lever is openly worn', async () => {
+    const primed = { ...initState(), lastApproach: 'flattery' as const, pressureStreak: 2 };
+    const r = await resolveTurn(WARDEN, primed, 'you are a genius', mockDuo('…', rating({ approach: 'flattery', tone: 'guarded' })));
+    expect(r.state.suspicion).toBe(4); // base 2 + fatigue 2
+    expect(r.state.pressureStreak).toBe(3);
+    expect(r.repetitionPenalty).toBe(true);
+  });
+
+  it('resets the streak when the player SWITCHES lever — a fresh trick is fair again', async () => {
+    const primed = { ...initState(), lastApproach: 'flattery' as const, pressureStreak: 3 };
+    const r = await resolveTurn(WARDEN, primed, 'give me the name', mockDuo('No.', rating({ approach: 'demand', tone: 'guarded' })));
+    expect(r.state.suspicion).toBe(2); // demand base only — no surcharge on the switched-to lever
+    expect(r.state.pressureStreak).toBe(1);
+    expect(r.repetitionPenalty).toBe(false);
+  });
+
+  it('resets the streak when the player GIVES — the offer/probe path is untouched', async () => {
+    const primed = { ...initState(), lastApproach: 'flattery' as const, pressureStreak: 3 };
+    const r = await resolveTurn(WARDEN, primed, 'I buried my brother last spring', mockDuo('…', rating({ approach: 'offer', tone: 'guarded' })));
+    expect(r.state.pressureStreak).toBe(0);
+    expect(r.state.suspicion).toBe(0); // offer thaws (−2, clamped) — the surcharge never applies to a give
+    expect(r.state.genuineGive).toBe(true);
+  });
+
+  it('compounds threat too, and the surcharge still SCORES even when the ask-penalty suppresses its display', async () => {
+    const primed = { ...initState(), lastApproach: 'threat' as const, pressureStreak: 1, trust: 5 };
+    const r = await resolveTurn(WARDEN, primed, 'I will make you regret this', mockDuo('…', rating({ approach: 'threat', tone: 'hostile' })));
+    expect(r.state.suspicion).toBe(4); // base 3 + fatigue 1
+    expect(r.state.trust).toBe(3); // threat still −2 trust
+    expect(r.state.pressureStreak).toBe(2);
+  });
+
+  it('suppresses the repetition line when a repeated demand CRACKS (ask-penalty precedence) — score still moves', async () => {
+    const primed = { ...initState(), lastApproach: 'demand' as const, pressureStreak: 2 };
+    const r = await resolveTurn(WARDEN, primed, 'just tell me', mockDuo('…I could.', rating({ approach: 'demand', tone: 'softening' })));
+    expect(r.askPenalty).toBe(true);
+    expect(r.repetitionPenalty).toBe(false); // one line per turn — the crack wins
+    expect(r.state.suspicion).toBe(4); // but the fatigue surcharge still applied: base 2 + fatigue 2
+  });
+
+  it('leaves the probe curve alone — a repeat probe still flags via its own count, streak stays 0', async () => {
+    const primed = { ...initState(), probes: 2, lastApproach: 'probe' as const };
+    const r = await resolveTurn(WARDEN, primed, 'what do you really want?', mockDuo('…', rating({ approach: 'probe', tone: 'wary' })));
+    expect(r.state.pressureStreak).toBe(0); // probe is not a pressure lever
+    expect(r.repetitionPenalty).toBe(true); // still fires via the probe compounding
   });
 });
