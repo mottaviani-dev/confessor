@@ -72,12 +72,15 @@ export function roomFigure(accent: string): readonly FigurePart[] {
   const rim = lighten(accent, 0.5); // the bulb light wrapping the near edge — the accent lifted, never white
   return [
     // The rim aura — a soft accent dome behind the whole upper body; the dark masses draw over it, leaving a
-    // thin lit edge at the crown + shoulders (a rim-lit silhouette, the light coming from the bulb above).
-    { widthFactor: 0.66, heightFactor: 0.52, bottomFactor: 0, radiusFactor: 0.5, color: rim, opacity: 0.11 },
+    // thin lit edge at the crown + shoulders (a rim-lit silhouette, the light coming from the bulb above). It
+    // reaches ABOVE the raised head (heightFactor > head top) so the crown keeps its grazed accent edge.
+    { widthFactor: 0.66, heightFactor: 0.6, bottomFactor: 0, radiusFactor: 0.5, color: rim, opacity: 0.15 },
     // The shoulders — a broad rounded-top dark mass rising from the floor, occluding the bulb's glow pool.
     { widthFactor: 0.6, heightFactor: 0.44, bottomFactor: 0, radiusFactor: 0.5, color: SILHOUETTE, opacity: 0.97 },
-    // The head — a featureless dark disc seated on the shoulders. No face, no eyes (§2 / Principle 3).
-    { widthFactor: 0.185, heightFactor: 0.185, bottomFactor: 0.3, radiusFactor: 0.5, color: SILHOUETTE, opacity: 0.97 },
+    // The head — a featureless dark disc PERCHED on the shoulders: its base overlaps the shoulder crown
+    // (0.38 < shoulders' 0.44) so it reads as attached, and most of it rises clear (top 0.565 vs the 0.44
+    // shoulder line) so the silhouette reads as head-on-shoulders, not a heap. No face, no eyes (§2 / P3).
+    { widthFactor: 0.185, heightFactor: 0.185, bottomFactor: 0.38, radiusFactor: 0.5, color: SILHOUETTE, opacity: 0.97 },
   ];
 }
 
@@ -106,9 +109,12 @@ export function proceduralRoom(accent: string): RoomBackdropSpec {
   const bright = lighten(accent, 0.72); // the filament's near-bone core
   return {
     base: TAR,
-    veil: { color: accent, opacity: 0.07 },
+    // The veil carries the mind's HUE across the whole chamber. Kept sparing (§2) but strong enough to READ
+    // over the near-black tar — at 0.07 the desaturated ash-violet vanished and the fifth room looked like a
+    // generic grey box (visual-truth room-occupant); at 0.13 the accent tints the chamber without flooding it.
+    veil: { color: accent, opacity: 0.13 },
     halos: [
-      { sizeFactor: 2.4, color: accent, opacity: 0.1 },
+      { sizeFactor: 2.4, color: accent, opacity: 0.14 },
       { sizeFactor: 1.5, color: glow, opacity: 0.16 },
       { sizeFactor: 0.85, color: glow, opacity: 0.24 },
       { sizeFactor: 0.42, color: bright, opacity: 0.32 },

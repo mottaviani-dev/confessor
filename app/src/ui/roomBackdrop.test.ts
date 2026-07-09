@@ -48,8 +48,11 @@ describe('proceduralRoom — the code-composed chiaroscuro', () => {
     }
   });
 
-  it('keeps the accent SPARING — the veil is a dim wash, never a flat colour fill (§2)', () => {
+  it('keeps the accent SPARING yet READABLE — a dim wash that still tints over near-black tar (§2)', () => {
+    // Upper bound: a wash, never a flat colour fill. Lower bound: strong enough to actually read — at 0.07
+    // the desaturated ash-violet vanished over the tar and the fifth room looked like a generic grey box.
     expect(room.veil.opacity).toBeLessThan(0.15);
+    expect(room.veil.opacity).toBeGreaterThanOrEqual(0.1);
   });
 
   it('gives DIFFERENT rooms different accents (the fifth door is distinct from the four)', () => {
@@ -103,6 +106,13 @@ describe('roomFigure — the half-lit silhouette whose face is never resolved (�
     expect(head.bottomFactor).toBeGreaterThan(shoulders.bottomFactor); // the head is raised off the shoulders
     expect(shoulders.bottomFactor).toBe(0); // the shoulders rise out of the dark floor
     expect(head.widthFactor).toBeLessThan(shoulders.widthFactor); // a head, narrower than the shoulders
+    // ATTACHED but EMERGENT: the head's base overlaps the shoulder crown (reads as connected, not floating),
+    // yet its crown clears that crown by a clear margin — so the silhouette reads head-on-shoulders, not a
+    // rounded lump. At the old bottomFactor 0.3 only ~0.045w emerged and the fifth room read as a mound.
+    const shouldersTop = shoulders.bottomFactor + shoulders.heightFactor;
+    const headTop = head.bottomFactor + head.heightFactor;
+    expect(head.bottomFactor).toBeLessThan(shouldersTop); // base overlaps the shoulders (attached)
+    expect(headTop).toBeGreaterThan(shouldersTop + 0.08); // crown clears them by a clear neck of emergence
   });
 
   it('draws NO face — the head is a featureless disc (radiusFactor 0.5), never any feature layer (Principle 3)', () => {
