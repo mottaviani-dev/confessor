@@ -8,6 +8,7 @@ import { parseLedger, serializeLedger, type Ledger } from './ledger';
 const LEDGER_KEY = 'confessor.ledger.v1';
 const SEAM_KEY = 'confessor.seam.v1';
 const THRESHOLD_KEY = 'confessor.threshold.v1';
+const ROOMARC_KEY = 'confessor.roomarc.v1';
 
 export async function loadLedger(): Promise<Ledger> {
   try {
@@ -69,5 +70,31 @@ export async function saveSeenThreshold(): Promise<void> {
     await AsyncStorage.setItem(THRESHOLD_KEY, '1');
   } catch {
     // best-effort: a failed save re-shows the intro next launch, never blocks play
+  }
+}
+
+// THE ROOM META-ARC COUNTER — the persisted count of FINISHED games that drives the fifth-secret drip
+// (roomArc.ts). One integer: bumped once per terminal duel, read on the picker to surface the next beat.
+// A separate key (not derived from the seam log, which caps at 24) so the arc counter can never be frozen
+// by the log rolling over. A missing/garbled value reads as 0 (the arc simply has not begun).
+export async function loadGamesCompleted(): Promise<number> {
+  try {
+    const raw = await AsyncStorage.getItem(ROOMARC_KEY);
+    const n = raw === null ? 0 : Number.parseInt(raw, 10);
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  } catch {
+    return 0; // storage unavailable → the arc has not begun, never crash
+  }
+}
+
+/** Increment the finished-game counter and return the new total (best-effort). A failed read/write costs
+ *  one arc beat, never gameplay — the game is already over when this fires. */
+export async function bumpGamesCompleted(): Promise<number> {
+  try {
+    const next = (await loadGamesCompleted()) + 1;
+    await AsyncStorage.setItem(ROOMARC_KEY, String(next));
+    return next;
+  } catch {
+    return 0;
   }
 }

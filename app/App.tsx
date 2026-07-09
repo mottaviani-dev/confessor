@@ -29,13 +29,14 @@ import { devlog } from './src/llm/devlog';
 import { bondCrossedUp, bondState, shiftPulse, suspicionWarning } from './src/meta/bond';
 import { lostScene, wonScene } from './src/meta/endgame';
 import { crackedCount, recordResult, unlockedIds, type Ledger } from './src/meta/ledger';
-import { loadLedger, loadSeamLog, loadSeenThreshold, saveLedger, saveSeamLog, saveSeenThreshold } from './src/meta/ledgerStore';
+import { loadLedger, loadSeamLog, loadSeenThreshold, saveLedger, saveSeamLog, saveSeenThreshold, loadGamesCompleted, bumpGamesCompleted } from './src/meta/ledgerStore';
 import { matchOrMint, renderWound, frameIndex } from './src/meta/badges';
 import { judgeCrack, type Exchange } from './src/engine/judge';
 import { THRESHOLD_ENTER, THRESHOLD_LINES } from './src/meta/threshold';
 import { homecoming, type Homecoming } from './src/meta/homecoming';
+import { roomArc, type RoomArcBeat } from './src/meta/roomArc';
 import { useAudioDirector } from './src/audio/useAudioDirector';
-import { harnessDuel, parseHarness, seededLedger, seededBadgeLedger, seededHomecoming, type HarnessDuel } from './src/harness/webHarness';
+import { harnessDuel, parseHarness, seededLedger, seededBadgeLedger, seededHomecoming, seededRoomArc, type HarnessDuel } from './src/harness/webHarness';
 
 type Line = { who: 'them' | 'you' | 'system'; text: string };
 
@@ -144,6 +145,10 @@ export default function App() {
   // returning player on the roster. Derived from the same load as the seam log (which stays a module var
   // for the engine's pure wiring); null when there is no open wound, so a clean return shows no greeting.
   const [returning, setReturning] = useState<Homecoming | null>(null);
+  // THE ROOM META-ARC (roomArc.ts) — the fifth secret, drip-fed one beat per finished game. Derived from a
+  // persisted finished-game counter (not the capped seam log), surfaced as diegetic paper on the picker
+  // head alongside the homecoming; null before the first finished game, so a true first visit reads clean.
+  const [arc, setArc] = useState<RoomArcBeat | null>(null);
   useEffect(() => {
     void loadLedger().then(setLedger);
     void loadSeamLog().then((log) => {
@@ -151,6 +156,7 @@ export default function App() {
       setReturning(homecoming(log));
     });
     void loadSeenThreshold().then(setSeenThreshold);
+    void loadGamesCompleted().then((n) => setArc(roomArc(n)));
   }, []);
   const crossThreshold = () => {
     setSeenThreshold(true);
@@ -163,6 +169,9 @@ export default function App() {
       return next;
     });
     void saveSeamLog(SEAM_LOG);
+    // Advance the ROOM META-ARC exactly one beat per FINISHED game (win or loss) — the fifth-secret drip.
+    // Fire-and-forget: the game is already over, a failed bump costs one beat, never gameplay.
+    void bumpGamesCompleted();
     // THE JUDGE (badge/scar meta-layer, 2026-07-07): on a WIN only, classify HOW the mind was cracked and
     // fold it into a badge + scar. Fires OUTSIDE the deterministic engine — the outcome is already ruled;
     // this only labels the finished transcript. Fire-and-forget: a judge failure never blocks the result.
@@ -195,11 +204,13 @@ export default function App() {
 
   // VISUAL-TRUTH: a `?harness=` URL short-circuits to a fixed screen (web-only, after all hooks so the
   // rules-of-hooks hold). Each returns the REAL component with injected display state — no model wait.
-  if (HARNESS?.kind === 'picker') return <Picker onPick={() => undefined} ledger={{}} homecoming={null} />;
-  if (HARNESS?.kind === 'picker-seeded') return <Picker onPick={() => undefined} ledger={seededLedger()} homecoming={null} />;
-  if (HARNESS?.kind === 'picker-badges') return <Picker onPick={() => undefined} ledger={seededBadgeLedger()} homecoming={null} />;
+  if (HARNESS?.kind === 'picker') return <Picker onPick={() => undefined} ledger={{}} homecoming={null} arc={null} />;
+  if (HARNESS?.kind === 'picker-seeded') return <Picker onPick={() => undefined} ledger={seededLedger()} homecoming={null} arc={null} />;
+  if (HARNESS?.kind === 'picker-badges') return <Picker onPick={() => undefined} ledger={seededBadgeLedger()} homecoming={null} arc={null} />;
   if (HARNESS?.kind === 'picker-homecoming')
-    return <Picker onPick={() => undefined} ledger={seededHomecoming().ledger} homecoming={seededHomecoming().greeting} />;
+    return <Picker onPick={() => undefined} ledger={seededHomecoming().ledger} homecoming={seededHomecoming().greeting} arc={null} />;
+  if (HARNESS?.kind === 'picker-roomarc')
+    return <Picker onPick={() => undefined} ledger={seededRoomArc().ledger} homecoming={null} arc={seededRoomArc().arc} />;
   if (HARNESS?.kind === 'threshold') return <Threshold onEnter={() => undefined} />;
   if (HARNESS?.kind === 'duel') {
     const h = harnessDuel(HARNESS);
@@ -221,7 +232,7 @@ export default function App() {
   if (seenThreshold === null) return <View style={styles.root} />;
   if (!seenThreshold) return <Threshold onEnter={crossThreshold} />;
 
-  if (!scenario) return <Picker onPick={setScenario} ledger={ledger} homecoming={returning} />;
+  if (!scenario) return <Picker onPick={setScenario} ledger={ledger} homecoming={returning} arc={arc} />;
   if (!llm) return <Boot prep={prep} scenario={scenario} onExit={() => setScenario(null)} />;
   return (
     <Duel
@@ -311,12 +322,16 @@ function Picker({
   onPick,
   ledger,
   homecoming,
+  arc,
 }: {
   onPick: (s: Scenario) => void;
   ledger: Ledger;
   // THE SCAR WITH TEETH (homecoming.ts): the deepest open wound greets a returning player. Null on a
   // fresh/clean return — no greeting, so the roster reads as authored.
   homecoming: Homecoming | null;
+  // THE ROOM META-ARC (roomArc.ts): the fifth-secret beat drip-fed one per finished game. Null before the
+  // first finished game — the arc has not begun, so a first visit shows nothing.
+  arc: RoomArcBeat | null;
 }) {
   const cracked = crackedCount(ledger);
   const open = unlockedIds(
@@ -336,6 +351,10 @@ function Picker({
         {/* The homecoming greeting — bone italic, the room's own voice on the threshold of the roster, NOT
             a HUD banner (§5): it reads as a line the vestibule speaks to a returning seeker. */}
         {homecoming && <Text style={styles.homecoming}>{homecoming.line}</Text>}
+        {/* THE ROOM META-ARC (roomArc.ts) — the fifth-secret beat, drip-fed one per finished game. Dimmer,
+            set apart from the greeting: the room's own quiet aside about YOU, ending on a question. Diegetic
+            paper on the head (§5), never a quest-log HUD. */}
+        {arc && <Text style={styles.roomArc}>{arc.line}</Text>}
       </View>
       <ScrollView contentContainerStyle={styles.pickerList}>
         {SCENARIOS.map((s, i) =>
@@ -809,6 +828,9 @@ const styles = StyleSheet.create({
   // The homecoming greeting — bone italic, dimmer than the subtitle, the room's quiet address to a
   // returning seeker (§5: diegetic paper, never a HUD alert).
   homecoming: { color: '#9a8f88', fontSize: 13, fontStyle: 'italic', marginTop: 18, textAlign: 'center', lineHeight: 20, paddingHorizontal: 8 },
+  // The room meta-arc beat — dimmer + smaller than the homecoming, set further down: the vestibule's quiet
+  // aside about the seeker themselves, the fifth secret surfacing one question at a time (§5 diegetic paper).
+  roomArc: { color: '#6f6862', fontSize: 12, fontStyle: 'italic', marginTop: 14, textAlign: 'center', lineHeight: 19, paddingHorizontal: 14 },
   error: { color: '#f87171', fontSize: 12, marginBottom: 6, textAlign: 'center' },
   inputRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-end' },
   input: {

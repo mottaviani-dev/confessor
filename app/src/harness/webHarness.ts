@@ -16,6 +16,7 @@ import type { Ledger } from '../meta/ledger';
 import type { Badge } from '../meta/badges';
 import { matchOrMint } from '../meta/badges';
 import { homecoming, type Homecoming } from '../meta/homecoming';
+import { roomArc, type RoomArcBeat } from '../meta/roomArc';
 import { SCENARIOS } from '../engine/scenarios';
 
 /** One transcript line, structurally identical to App's private `Line` — the harness seeds `Duel`'s
@@ -37,6 +38,7 @@ export type HarnessMode =
   | { readonly kind: 'picker-seeded' }
   | { readonly kind: 'picker-badges' }
   | { readonly kind: 'picker-homecoming' }
+  | { readonly kind: 'picker-roomarc' }
   | { readonly kind: 'threshold' }
   | { readonly kind: 'duel'; readonly scenarioId: string; readonly variant: DuelVariant };
 
@@ -87,6 +89,7 @@ export function parseHarness(search: string): HarnessMode | null {
   if (key === 'picker-seeded') return { kind: 'picker-seeded' };
   if (key === 'picker-badges') return { kind: 'picker-badges' }; // the badge/scar surface on the cards (§5)
   if (key === 'picker-homecoming') return { kind: 'picker-homecoming' }; // the scar with teeth — a returning wound greets you (§2 P2)
+  if (key === 'picker-roomarc') return { kind: 'picker-roomarc' }; // the fifth-secret meta-beat on the picker head (§2 thrust 4)
   if (key === 'threshold') return { kind: 'threshold' }; // the one-time diegetic cold-open (threshold.ts)
   // The fixed warden probes first (their suffixes are variants, never scenario ids).
   const variant = DUEL_URL_KEYS[key];
@@ -155,6 +158,16 @@ export function seededHomecoming(): { ledger: Ledger; greeting: Homecoming | nul
     fence: { attempts: 2, cracked: false, bestTurns: null },
   };
   return { ledger, greeting: homecoming(seam) };
+}
+
+/** A returning player mid-way through the ROOM META-ARC (roomArc.ts) — the fifth-secret drip the director
+ *  mandated as the story swing. Seeds a finished-game count partway through the arc and runs the REAL
+ *  `roomArc()` over it, so the shot shows the genuine code-authored meta-beat, never a hand-forged line.
+ *  The paired seeded ledger renders the record cards beneath it. The one thing to police is §5: the beat
+ *  must read as the room's own quiet diegetic voice on the head, NOT a floating quest-log HUD. */
+export function seededRoomArc(): { ledger: Ledger; arc: RoomArcBeat | null } {
+  // Three finished games in → the arc is on its third beat (the fifth-door reveal), still mid-story.
+  return { ledger: seededLedger(), arc: roomArc(3) };
 }
 
 function scenarioById(id: string): Scenario {
