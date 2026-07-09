@@ -1,5 +1,5 @@
 import type { Scenario, VoiceFault } from './types';
-import { personaCoherence, voiceAbandonment, sceneryDrift } from './personaCoherence';
+import { personaCoherence, voiceAbandonment, sceneryDrift, firstPersonMemoir } from './personaCoherence';
 
 // THE VOICE QUALITY-GATE — one place the freshly-voiced reply is validated before it ships, and one
 // bounded re-roll when it fails (engine.resolveTurn calls validateVoice, then re-rolls VOICE once with a
@@ -57,6 +57,15 @@ export function validateVoice(
   //    single re-roll first, and a terse in-voice fact never trips.
   const scenery = sceneryDrift(reply);
   if (scenery.drifted) return { kind: 'scenery', nouns: scenery.nouns };
+
+  // 5. FIRST-PERSON MEMOIR (live, structural) — sceneryDrift's FIRST-PERSON twin (judge run-14 #1). The
+  //    DOMINANT empathetic-flood drift: the persona free-associating its own past ("I recall Victor
+  //    mentioning…", "I remember sitting in that café…") instead of pressing on the matter — every such
+  //    line carries an "I", so (2)+(3)+(4) all spared it while it MANUFACTURED hollow wins (the rating
+  //    engine over-credits the warmth). Disjoint from scenery (that forbids first-person, this requires
+  //    it), so it is the last check: a repeat/persona/POV break is the sharper tell and wins the re-roll.
+  const memoir = firstPersonMemoir(reply);
+  if (memoir.memoir) return { kind: 'memoir', cues: memoir.cues };
 
   return null;
 }

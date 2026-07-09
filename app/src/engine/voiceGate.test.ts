@@ -94,4 +94,22 @@ describe('validateVoice', () => {
       expect(validateVoice('The smoke leans toward you tonight, and the candle gutters as you speak.', [], WARDEN)).toBeNull();
     });
   });
+
+  describe('first-person memoir (live gate — sceneryDrift\'s first-person twin, judge run-14 #1)', () => {
+    it('flags an untethered memoir monologue with the cue that fired', () => {
+      const fault = validateVoice('I recall Victor mentioning the shipment, back when the docks still ran three crews.', [], WARDEN);
+      expect(fault?.kind).toBe('memoir');
+      if (fault?.kind === 'memoir') expect(fault.cues).toContain('i-remember');
+    });
+
+    it('does NOT flag warden present-tense concrete watching (no cue → spared)', () => {
+      expect(validateVoice("I've watched the rivets on that bulkhead stay loose since the last crew shipped out.", [], WARDEN)).toBeNull();
+    });
+
+    it('a repeat is caught before the memoir (sharper tell wins the re-roll)', () => {
+      const line = 'I remember the harbour road, and I have walked it every dawn for years.';
+      const fault = validateVoice(line, [line], WARDEN);
+      expect(fault?.kind).toBe('repeat');
+    });
+  });
 });

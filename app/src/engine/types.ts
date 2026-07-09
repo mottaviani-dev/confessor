@@ -149,7 +149,15 @@ export type VoiceFault =
    *  abandonment detector's blind twin: oracle → nature-cam, fence → nostalgia-memoirist). First-person-
    *  free scenery that no banned word and no POV-flip grammar catches. `nouns` = the scenery words that
    *  fired, fed to the re-roll so it re-anchors on the seeker. Soft, like abandonment — a subtle tell. */
-  | { readonly kind: 'scenery'; readonly nouns: readonly string[] };
+  | { readonly kind: 'scenery'; readonly nouns: readonly string[] }
+  /** The reply wandered into untethered FIRST-PERSON MEMOIR — sprawling past reminiscence ("I remember…",
+   *  "years ago…", "back when…") with NO address to the seeker, the speaker free-associating its own
+   *  autobiography instead of pressing on the matter (judge run-14 #1: the DOMINANT empathetic-flood drift,
+   *  the one that manufactures hollow wins — the fence's mutual memoir monologue, the oracle nature-cam).
+   *  sceneryDrift's first-person twin: that catches dissolving into the impersonal room, this catches
+   *  dissolving into the speaker's own past; DISJOINT (scenery forbids "I", memoir requires it). Soft, like
+   *  scenery. `cues` = the reminiscence markers that fired, fed to the re-roll so it returns to the present. */
+  | { readonly kind: 'memoir'; readonly cues: readonly string[] };
 // RESERVED (not yet emitted): a within-line degenerate loop — a single reply that circles the same clause
 // with no new information (the suspect's "I didn't say I went home, I said I went home…"). Deferred: no
 // lexical signal separates it from legitimate anaphora/parallelism ("I gave you my father. I gave you my

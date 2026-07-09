@@ -189,6 +189,14 @@ function correctionLines(fault: VoiceFault): string[] {
         `room is not your voice. Speak to the person in front of you: address THEM directly, in the first`,
         `person, and name what YOU see, want, or know of them. One or two sentences, plain prose.`,
       ];
+    case 'memoir':
+      return [
+        `# You wandered into an old memory — you told a story instead of answering them`,
+        `Do NOT drift into your own past — no "I remember", no "years ago", no "back when", no reminiscing.`,
+        `A memory told to no one is not an answer and gives them nothing to press on. Stay in THIS room, in`,
+        `the present: answer the person in front of you, about the matter at hand, right now. One or two`,
+        `sentences, plain prose.`,
+      ];
     default: {
       const _exhaustive: never = fault;
       return _exhaustive;

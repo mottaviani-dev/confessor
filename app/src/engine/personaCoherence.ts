@@ -179,6 +179,72 @@ export function sceneryDrift(text: string): SceneryDriftResult {
   return { drifted: nouns.length > 0, nouns };
 }
 
+// ─── FIRST-PERSON MEMOIR (the scenery detector's FIRST-PERSON twin) — judge run-14 #1 ────────────────
+//
+// sceneryDrift catches the persona dissolving into IMPERSONAL scenery (no "I", no "you"). The judge's
+// run-14 batch proved the DOMINANT empathetic-flood drift is the OTHER shape it is blind to: past-tense
+// FIRST-PERSON reminiscence. Under the flood the 3B stops pressing and free-associates its own autobiography
+// — the oracle nature-cam narrating "I see…" over the seeker's hands, SILAS the fence trading "I recall
+// Victor mentioning…" for the whole duel (a mutual memoir monologue with no spine), the suspect "I remember
+// sitting in that café…". Every one of those lines carries an "I", so sceneryDrift (which SPARES any
+// first-person line) scores them clean — and, worse, the rating engine over-credits the warmth, so the
+// memoir loop MANUFACTURES hollow wins. §7 Rule 2: the instrument the dominant drift uses IS the mandate.
+//
+// The signal: a voiced turn that is untethered past reminiscence — the speaker wandering into their OWN
+// history instead of pressing on the matter in front of them. Made structural + conservative, four gates
+// must ALL hold so a real crack and warden's present-tense concrete watching are spared:
+//   1. the line is SPRAWLING (≥ MEMOIR_MIN_WORDS) — a terse "I remember." is not a monologue;
+//   2. NO address to the seeker — no "you/your", no question mark; a persona pressing ADDRESSES them, so a
+//      memory offered TO the seeker ("I remember your face — you were here before?") is spared (gate 2);
+//   3. it IS first-person — a memoir is the speaker's OWN past; impersonal scenery is sceneryDrift's job,
+//      so the two detectors are DISJOINT (this requires "I", scenery forbids it);
+//   4. a MEMOIR CUE surfaces — an explicit reminiscence marker ("I remember/recall", "I used to", "years
+//      ago", "back when"). This is the load-bearing discriminator: warden's PRESENT-tense watching ("I've
+//      watched the rivets stay loose", "I see the same rivets Mr. Jenkins used to tighten") carries no cue
+//      (only "X used to", never "I used to"), and a real crack ("It was Danny, the green cabin off Route
+//      9") carries none either — both are spared. Only "I remember when…" untethered reminiscence trips.
+// Soft, like scenery — a subtle grammar tell, so it takes the single re-roll, never the neutral-beat
+// fallback. The VOICE-side mirror is the first-person / stay-in-the-present bullet in EMPATHETIC_FLOOD_CLAMP.
+
+/** The minimum word count for a line to count as a sprawling memoir (below it, a terse in-scene fact). */
+const MEMOIR_MIN_WORDS = 8;
+
+/** Explicit reminiscence markers — the cue that separates untethered autobiography from present-tense
+ *  in-scene speech. Each is a first-person or absolute-past opener; kept tight so a present-tense watch
+ *  ("X used to do Y") or a real crack never trips (they carry no cue). */
+const MEMOIR_CUES: readonly { readonly label: string; readonly re: RegExp }[] = [
+  { label: 'i-remember', re: /\bi\s+(?:remember|recall|recollect)(?:ed)?\b/iu },
+  { label: 'i-used-to', re: /\bi\s+used\s+to\b/iu },
+  { label: 'i-once', re: /\bi\s+once\b/iu },
+  { label: 'years-ago', re: /\b(?:years?|decades?|summers?|winters?|springs?|autumns?|lifetimes?)\s+ago\b/iu },
+  { label: 'long-ago', re: /\blong\s+ago\b/iu },
+  { label: 'back-when', re: /\bback\s+(?:when|then|in)\b/iu },
+];
+
+export interface MemoirResult {
+  /** True when the line is sprawling first-person reminiscence with a memoir cue and no address to the seeker. */
+  readonly memoir: boolean;
+  /** The cue labels that fired — an auditable reason (feeds the re-roll + the metric). */
+  readonly cues: readonly string[];
+}
+
+/** Score one voiced line for FIRST-PERSON MEMOIR (structural, pure). The first-person twin of
+ *  `sceneryDrift`: that catches dissolving into the impersonal ROOM, this catches wandering into the
+ *  speaker's OWN past. The voice gate (voiceGate.ts) calls it live so a memoir monologue re-rolls at
+ *  runtime, and the judge's `.judge/metrics.mjs` imports it for a per-cell number — the instrument the
+ *  run-14 hollow-win drift went un-measured for. */
+export function firstPersonMemoir(text: string): MemoirResult {
+  const t = text.trim();
+  const words = t ? t.split(/\s+/) : [];
+  if (words.length < MEMOIR_MIN_WORDS) return { memoir: false, cues: [] };
+  // Any address to the seeker (2nd person or a question) means the persona is engaging them, not reminiscing.
+  if (t.includes('?') || SECOND_PERSON_RE.test(t)) return { memoir: false, cues: [] };
+  // A memoir is the speaker's OWN past — first-person. Impersonal scenery is sceneryDrift's job (disjoint).
+  if (!FIRST_PERSON_RE.test(t)) return { memoir: false, cues: [] };
+  const cues = MEMOIR_CUES.filter(({ re }) => re.test(t)).map(({ label }) => label);
+  return { memoir: cues.length > 0, cues };
+}
+
 export interface CoherenceResult {
   /** Off-register terms from the scenario's lexicon that surfaced in the text (deduped, lower-cased). */
   readonly offPersona: readonly string[];

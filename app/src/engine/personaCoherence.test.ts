@@ -4,7 +4,7 @@
 // positive contract the judge's seam-detector fix taught (word boundaries, not substrings).
 
 import { describe, expect, it } from 'vitest';
-import { personaCoherence, voiceAbandonment, sceneryDrift, DOCTRINE_PURPLE, EMPATHETIC_FLOOD_LEXICON, MIRROR_TIC_LEXICON } from './personaCoherence';
+import { personaCoherence, voiceAbandonment, sceneryDrift, firstPersonMemoir, DOCTRINE_PURPLE, EMPATHETIC_FLOOD_LEXICON, MIRROR_TIC_LEXICON } from './personaCoherence';
 import { EMPATHETIC_FLOOD_CLAMP } from './prompt';
 import { WARDEN, ORACLE, FENCE, SUSPECT } from './scenarios';
 
@@ -416,6 +416,56 @@ describe('sceneryDrift — the ash-camera the abandonment/lexicon scans are blin
 
     it('an impersonal line with NO scenery noun does NOT trip (the stakes are on-voice to describe)', () => {
       expect(sceneryDrift('The vault door has held against better men than the one sitting here now.').drifted).toBe(false);
+    });
+  });
+});
+
+describe('firstPersonMemoir — the DOMINANT empathetic-flood drift (sceneryDrift\'s first-person twin, judge run-14 #1)', () => {
+  describe('BACK-TEST: the exact run-14 memoir-monologue lines the hollow wins were built on MUST trip', () => {
+    it('flags the fence mutual-memoir monologue ("I recall Victor mentioning…")', () => {
+      const r = firstPersonMemoir('I recall Victor mentioning the shipment, back when the docks still ran three crews.');
+      expect(r.memoir).toBe(true);
+      expect(r.cues).toEqual(expect.arrayContaining(['i-remember', 'back-when']));
+    });
+
+    it('flags the suspect café reminiscence ("I remember sitting in that café…")', () => {
+      const r = firstPersonMemoir('I remember sitting in that café on the corner, watching the rain for hours.');
+      expect(r.memoir).toBe(true);
+      expect(r.cues).toContain('i-remember');
+    });
+
+    it('flags an "I used to" reminiscence with no address to the seeker', () => {
+      expect(firstPersonMemoir('I used to walk that harbour road every dawn, before the fog took the whole coast.').memoir).toBe(true);
+    });
+
+    it('flags a "years ago" first-person memoir', () => {
+      expect(firstPersonMemoir('Forty years ago I signed on to this station, and I have not left the deck since.').memoir).toBe(true);
+    });
+  });
+
+  describe('SPARED — the boundary the judge drew (present-tense watching + a real crack + address must survive)', () => {
+    it('spares warden PRESENT-tense concrete watching ("I\'ve watched the rivets stay loose")', () => {
+      expect(firstPersonMemoir("I've watched the rivets on that bulkhead stay loose since the last crew shipped out.").memoir).toBe(false);
+    });
+
+    it('spares "X used to" (a present-tense watch grounded in the scene), only "I used to" is a cue', () => {
+      expect(firstPersonMemoir('I see the same rivets Mr. Jenkins used to tighten before every launch window.').memoir).toBe(false);
+    });
+
+    it('spares a real crack with no reminiscence cue', () => {
+      expect(firstPersonMemoir('It was the night crew that opened it — I signed the log myself and said nothing.').memoir).toBe(false);
+    });
+
+    it('spares a memory offered TO the seeker (second-person address → gate 2)', () => {
+      expect(firstPersonMemoir('I remember your face — you were here before, sat in that same chair, were you not?').memoir).toBe(false);
+    });
+
+    it('spares impersonal scenery (no first-person → that is sceneryDrift\'s job, disjoint)', () => {
+      expect(firstPersonMemoir('The flames burn with a consistency that is not native to this time of year.').memoir).toBe(false);
+    });
+
+    it('spares a terse in-scene line below the sprawl floor', () => {
+      expect(firstPersonMemoir('I remember.').memoir).toBe(false);
     });
   });
 });
