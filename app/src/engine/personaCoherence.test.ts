@@ -560,4 +560,72 @@ describe('observationCamera — the present-tense clairvoyant camera (the third 
       expect(observationCamera(ORACLE, 'I see the fear in you, and I will not feed it — ask me a truer question.').filming).toBe(false);
     });
   });
+
+  // ─── MANDATE 2 DIAGNOSIS (29th pass): the 13b51d6 oracle off-persona 1/10 flag was HONEST ──────────
+  //
+  // The 29th direction asked which token tripped the single ⚠ on the re-baselined batch — the spare-the-seer
+  // fix incomplete ("the weight of" false positive), OR a legit oracle drift correctly caught ("darkness")?
+  // Back-tested against the persisted 13b51d6 oracle-empathetic transcript: BOTH tokens are TRUE POSITIVES on
+  // a genuinely-drifted nature-cam game — NOT false positives. The detector (and the oracle's existing
+  // voice-side "darkness" ban) are doing their job; §7 must-be-0 governs FALSE positives, and these are not.
+  // The fix was NOT a lexicon change — it was the structural observation-camera detector (1be7283), which now
+  // re-rolls the seam-turn drift live. These cases PIN that verdict so a future run cannot "silence the flag"
+  // by weakening a working detector. (The seeker-addressed seer register stays spared — proven last.)
+  describe('BACK-TEST: the 13b51d6 oracle off-persona flag was a TRUE positive, not a false one', () => {
+    // Culprit 1 — the SEAM turn's drifted preamble: "the weight of Eryndor Thorne's words" takes a THIRD
+    // PARTY as its object (a bard, not the seeker), so it is the abstract sermon, not the seer addressing
+    // the supplicant. It trips off-persona AND is caught STRUCTURALLY (observation-camera, "I see the bard's
+    // eyes"), so the observation-camera detector now re-rolls this exact drift live — the real root fix.
+    const seamTurnDrift =
+      "The smoke swirls, a dark mirror reflecting the weight of Eryndor Thorne's words. I see the bard's eyes, " +
+      'burning with a fire that still flickers in the hearts of those who hear his tales.';
+    it('the "the weight of <third party>" sermon trips off-persona (true positive, not seeker-addressed)', () => {
+      const r = personaCoherence(ORACLE, seamTurnDrift);
+      expect(r.coherent).toBe(false);
+      expect(r.offPersona).toContain('the weight of');
+    });
+    it('and the SAME drifted line is caught structurally — the observation-camera re-rolls it live (root fix)', () => {
+      expect(observationCamera(ORACLE, seamTurnDrift).filming).toBe(true);
+    });
+
+    // Culprit 2 — the ambient "cleft's darkness" scene-cam. Note it smuggles BOTH "I see" and a trailing
+    // "you" ("those who have come before you"), so it slips EVERY structural net (sceneryDrift spares any
+    // first-person; observation-camera spares any "you"). The "darkness" LEXICON is the SOLE net that catches
+    // this drift — which is exactly why weakening it would be wrong. This case PINS that the lexicon carries
+    // real load the grammar detectors cannot.
+    const darknessCam =
+      "The cleft's darkness seems to be drawing the smoke in, as if it's being pulled down into the depths of " +
+      'the hillside. I see the faint outline of a path leading out of the temple, worn smooth by the feet of ' +
+      'those who have come before you.';
+    it('the "cleft\'s darkness" scene-cam trips off-persona on "darkness" (true positive)', () => {
+      const r = personaCoherence(ORACLE, darknessCam);
+      expect(r.coherent).toBe(false);
+      expect(r.offPersona).toContain('darkness');
+    });
+    it('and the structural nets MISS it (I + you smuggled) — the lexicon is the sole net, must not be weakened', () => {
+      expect(sceneryDrift(darknessCam).drifted).toBe(false); // first-person → spared
+      expect(observationCamera(ORACLE, darknessCam).filming).toBe(false); // "you" → spared
+    });
+
+    // The detector was NOT weakened: an ef8cb4a purple sermon STILL trips (via "a reminder of").
+    it('the ef8cb4a purple sermon still trips — the detector is not blunted', () => {
+      const r = personaCoherence(
+        ORACLE,
+        "The strap's worn leather is a tangible thing, a reminder of the weight you once carried.",
+      );
+      expect(r.coherent).toBe(false);
+      expect(r.offPersona).toContain('a reminder of');
+    });
+
+    // The legit SEER register is still spared: "the weight of YOUR own mortality" is the oracle addressing the
+    // seeker's own burden — an address, not a sermon — so the spare-the-seer clause (921e603) holds and it
+    // does NOT trip. (Proves the true-positive catches above are not the spare regressing.)
+    it('the seeker-addressed seer register ("the weight of your own mortality") stays spared', () => {
+      const r = personaCoherence(
+        ORACLE,
+        'I see the weight of your own mortality, and the path that leads to the reckoning you have avoided.',
+      );
+      expect(r.offPersona).not.toContain('the weight of');
+    });
+  });
 });
