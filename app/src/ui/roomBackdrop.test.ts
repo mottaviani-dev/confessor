@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { proceduralRoom, lighten, TAR } from './roomBackdrop';
+import { proceduralRoom, roomFigure, lighten, TAR, SILHOUETTE } from './roomBackdrop';
 
 // THE FIFTH ROOM, PAINTED-IN-INTERIM (director mandate #3). These pin the pure layer math: the room sits on
 // tar, carries its mind's accent (the whole chamber, not just the bulb), and reads as ONE hanging light
@@ -60,5 +60,60 @@ describe('proceduralRoom — the code-composed chiaroscuro', () => {
 
   it('is pure (same accent → same spec)', () => {
     expect(proceduralRoom('#7a6f95')).toEqual(proceduralRoom('#7a6f95'));
+  });
+
+  it('seats an OCCUPANT below the bulb — the fifth room is not an empty chair (§2 art direction)', () => {
+    expect(room.figure.length).toBeGreaterThan(0);
+  });
+});
+
+describe('roomFigure — the half-lit silhouette whose face is never resolved (§2)', () => {
+  const fig = roomFigure('#7a6f95'); // the Occupant's ash-violet
+
+  it('is layered BACK→FRONT: the accent rim aura first, then the dark masses drawn over it', () => {
+    // The first layer is the rim (an accent lifted toward bone); the later layers are the dark silhouette.
+    expect(fig[0].color).not.toBe(SILHOUETTE);
+    expect(fig.slice(1).every((p) => p.color === SILHOUETTE)).toBe(true);
+  });
+
+  it('the mass is DARKER than the tar floor, so it reads as a silhouette occluding the glow (not lit against it)', () => {
+    const hex = (c: string) => parseInt(c.replace('#', ''), 16);
+    expect(hex(SILHOUETTE)).toBeLessThan(hex(TAR));
+  });
+
+  it('rim-lights the near edge from the accent, never a flat white (keeps the single accent reading, §2)', () => {
+    expect(fig[0].color).toBe(lighten('#7a6f95', 0.5));
+    expect(fig[0].color).not.toBe('#ffffff');
+  });
+
+  it('the rim aura is FAINT — a grazed edge, not a lit body (restraint, §3)', () => {
+    expect(fig[0].opacity).toBeLessThan(0.2);
+  });
+
+  it('the dark masses are near-opaque — a solid figure, not a ghost (a faint glow still bleeds the edge)', () => {
+    for (const p of fig.slice(1)) {
+      expect(p.opacity).toBeGreaterThan(0.9);
+      expect(p.opacity).toBeLessThan(1); // never a dead cut-out — the near edge keeps a whisper of the glow
+    }
+  });
+
+  it('the head sits ABOVE the shoulders (a seated figure, not a heap) and every part rises from the floor', () => {
+    const shoulders = fig[1];
+    const head = fig[2];
+    expect(head.bottomFactor).toBeGreaterThan(shoulders.bottomFactor); // the head is raised off the shoulders
+    expect(shoulders.bottomFactor).toBe(0); // the shoulders rise out of the dark floor
+    expect(head.widthFactor).toBeLessThan(shoulders.widthFactor); // a head, narrower than the shoulders
+  });
+
+  it('draws NO face — the head is a featureless disc (radiusFactor 0.5), never any feature layer (Principle 3)', () => {
+    const head = fig[2];
+    expect(head.widthFactor).toBe(head.heightFactor); // square → a perfect disc at radiusFactor 0.5
+    expect(head.radiusFactor).toBe(0.5);
+    // Restraint invariant: the figure is ONLY the rim + two dark masses — no eyes, no mouth, no feature part.
+    expect(fig.length).toBe(3);
+  });
+
+  it('is pure (same accent → same figure)', () => {
+    expect(roomFigure('#7a6f95')).toEqual(roomFigure('#7a6f95'));
   });
 });

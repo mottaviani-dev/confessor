@@ -15,6 +15,11 @@
  *  here (not imported from App's styles) so the spec is self-contained and testable. */
 export const TAR = '#08080b';
 
+/** The occupant's mass — DARKER than the tar floor so the seated figure reads as a solid silhouette
+ *  occluding the bulb's glow, not a shape lit against it (§2 "a half-lit silhouette whose face is never
+ *  resolved"). A hair of warmth over pure black so a faint glow still bleeds the near edge. */
+export const SILHOUETTE = '#020204';
+
 /** One concentric halo of the hanging bulb's glow — a soft disc, sized as a MULTIPLE of the viewport width
  *  (the component multiplies by the live width) so the bulb scales to any screen. Outer halos are wide +
  *  faint, inner ones tight + bright: the falloff of a single light with no gradient primitive. */
@@ -25,14 +30,55 @@ export interface BackdropHalo {
   readonly opacity: number;
 }
 
+/** One layered piece of the seated occupant — a rounded View, centred, anchored to the container BOTTOM
+ *  (the figure rises out of the dark floor). All sizes are fractions of the viewport WIDTH so the whole
+ *  figure scales with the screen keeping its proportion; the component multiplies by the live width. */
+export interface FigurePart {
+  /** Width as a fraction of the viewport width. */
+  readonly widthFactor: number;
+  /** Height as a fraction of the viewport WIDTH (not height — keeps the figure's proportion device-agnostic). */
+  readonly heightFactor: number;
+  /** The part's BOTTOM edge, as a fraction of the viewport width offset up from the container bottom. */
+  readonly bottomFactor: number;
+  /** borderRadius as a fraction of the part's own width (0.5 = a full dome/disc). */
+  readonly radiusFactor: number;
+  readonly color: string;
+  readonly opacity: number;
+}
+
 /** The full procedural room: a tar floor, a faint full-frame accent VEIL (so the WHOLE room reads in the
- *  mind's hue, not just the bulb), and the concentric bulb halos above it. */
+ *  mind's hue, not just the bulb), the concentric bulb halos above it, and the seated occupant below. */
 export interface RoomBackdropSpec {
   readonly base: string;
   /** A dim full-frame wash in the room accent — the veil that colours the whole chamber (kept sparing, §2). */
   readonly veil: { readonly color: string; readonly opacity: number };
   /** The hanging bulb, as concentric halos ordered OUTER→INNER (wide+faint first, tight+bright last). */
   readonly halos: readonly BackdropHalo[];
+  /** The seated occupant — a half-lit silhouette below the bulb (§2). Ordered BACK→FRONT: the accent rim
+   *  aura first, then the dark head + shoulders drawn over it, so a thin lit edge survives at the crown and
+   *  near shoulders (the overhead bulb catching the near edge) while the face stays lost to the down-shadow. */
+  readonly figure: readonly FigurePart[];
+}
+
+/**
+ * The seated occupant, built from the room accent (pure + deterministic). The chair below the bulb is not
+ * empty: a half-lit silhouette rises from the dark floor, its crown + near shoulders grazed by the overhead
+ * light (a faint accent rim), its face never resolved — no features are ever drawn, the head is a featureless
+ * dark disc and everything below the brow is pure down-shadow (Principle 3 restraint; §2 "a half-lit
+ * silhouette whose face is never resolved"). Three layers only: the accent rim aura (drawn first, behind),
+ * then the dark shoulders + head over it (occluding the aura so only a thin lit edge survives).
+ */
+export function roomFigure(accent: string): readonly FigurePart[] {
+  const rim = lighten(accent, 0.5); // the bulb light wrapping the near edge — the accent lifted, never white
+  return [
+    // The rim aura — a soft accent dome behind the whole upper body; the dark masses draw over it, leaving a
+    // thin lit edge at the crown + shoulders (a rim-lit silhouette, the light coming from the bulb above).
+    { widthFactor: 0.66, heightFactor: 0.52, bottomFactor: 0, radiusFactor: 0.5, color: rim, opacity: 0.11 },
+    // The shoulders — a broad rounded-top dark mass rising from the floor, occluding the bulb's glow pool.
+    { widthFactor: 0.6, heightFactor: 0.44, bottomFactor: 0, radiusFactor: 0.5, color: SILHOUETTE, opacity: 0.97 },
+    // The head — a featureless dark disc seated on the shoulders. No face, no eyes (§2 / Principle 3).
+    { widthFactor: 0.185, heightFactor: 0.185, bottomFactor: 0.3, radiusFactor: 0.5, color: SILHOUETTE, opacity: 0.97 },
+  ];
 }
 
 /** Mix a #rrggbb toward white by `amt` in [0,1] — the lit plaster near the bulb is the room accent pushed
@@ -67,5 +113,6 @@ export function proceduralRoom(accent: string): RoomBackdropSpec {
       { sizeFactor: 0.85, color: glow, opacity: 0.24 },
       { sizeFactor: 0.42, color: bright, opacity: 0.32 },
     ],
+    figure: roomFigure(accent),
   };
 }

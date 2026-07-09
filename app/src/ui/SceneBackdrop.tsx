@@ -37,6 +37,28 @@ export function RoomBackdrop({ accent, style }: { accent: string; style?: StyleP
           />
         );
       })}
+      {/* The seated occupant (§2 "a half-lit silhouette whose face is never resolved") — the chair below the
+          bulb is not empty. Layers drawn BACK→FRONT (rim aura, then the dark shoulders + head over it), each
+          a rounded View sized off the live width and anchored to the floor. Drawn LAST, over the glow pool,
+          so the dark masses read as a silhouette; the face is never drawn (Principle 3 restraint). */}
+      {spec.figure.map((f, i) => {
+        const w = width * f.widthFactor;
+        return (
+          <View
+            key={`fig${i}`}
+            style={{
+              position: 'absolute',
+              width: w,
+              height: width * f.heightFactor,
+              bottom: width * f.bottomFactor,
+              left: (width - w) / 2,
+              borderRadius: w * f.radiusFactor,
+              backgroundColor: f.color,
+              opacity: f.opacity,
+            }}
+          />
+        );
+      })}
     </View>
   );
 }
