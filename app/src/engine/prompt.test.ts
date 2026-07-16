@@ -72,3 +72,19 @@ describe('the clamp is injected into every persona system prompt', () => {
     expect(buildVoiceSystem(WARDEN)).toContain(EMPATHETIC_FLOOD_CLAMP);
   });
 });
+
+describe('the adversarial spine holds under a rapport flood (judge f2182eb #1)', () => {
+  it('forbids co-reminiscing and echoing the seeker musings back as its own', () => {
+    const sys = buildVoiceSystem(WARDEN).toLowerCase();
+    expect(sys).toContain('echo it as your own');
+    expect(sys).toContain('keep pressing');
+  });
+  it('names being liked / rapport as not a give', () => {
+    const sys = buildVoiceSystem(WARDEN).toLowerCase();
+    expect(sys).toContain('being liked is not being given to');
+  });
+  it('the new spine prose carries no doctrine purple word', () => {
+    const sys = buildVoiceSystem(WARDEN).toLowerCase();
+    for (const word of DOCTRINE_PURPLE) expect(sys).not.toContain(word.toLowerCase());
+  });
+});
