@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { recordPlaythrough, selectSeam, distillSeamPhrase, SEAM_TURN } from './seam.js';
+import { recordPlaythrough, selectSeam, distillSeamPhrase } from './seam.js';
 import { resolveTurn, opening } from './engine.js';
 import { SEAM_SECTION_HEADER } from './prompt.js';
 import { FENCE } from './scenarios/fence.js';
@@ -319,13 +319,17 @@ describe('the seam schedule', () => {
     expect(prompts.filter((p) => p.includes(SEAM_SECTION_HEADER)).length).toBe(0);
   });
 
-  it('SECOND GAME (log has a prior run): exactly one seam, on the scheduled turn', async () => {
+  it('SECOND GAME (log has a prior run): exactly one seam, fired off the BRINK (the penultimate beat)', async () => {
+    // THE SEAM AS THE WIN'S FINAL STAMP: the schedule moved from a fixed early turn to the game's brink. A
+    // filler-only game never wins or spooks the mind, so the seam fires off the CLOCK brink — the last voice
+    // call before the timeout — and exactly ONCE (state.seamFired latches it). Same intent as before (zero on
+    // the first game, exactly one on the second), only the moment moved to the penultimate beat.
     const log = recordPlaythrough([], rec({ scenarioId: 'warden', playerPhrase: 'I left the door unlocked that night' }));
-    const prompts = await playFence(log, 6);
+    const prompts = await playFence(log, FENCE.turnLimit);
     const seamPrompts = prompts.filter((p) => p.includes(SEAM_SECTION_HEADER));
     expect(seamPrompts.length).toBe(1);
-    // and it is the scheduled turn's prompt (0-indexed SEAM_TURN → the (SEAM_TURN+1)-th voice call)
-    expect(prompts[SEAM_TURN].includes(SEAM_SECTION_HEADER)).toBe(true);
+    // brink-driven: the seam lands on the clock brink — the FINAL voice call the filler game makes before timeout.
+    expect(prompts[prompts.length - 1].includes(SEAM_SECTION_HEADER)).toBe(true);
     expect(seamPrompts[0]).toContain('I left the door unlocked that night');
   });
 

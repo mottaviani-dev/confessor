@@ -363,6 +363,15 @@ export interface GameState {
    *  which exceeds every turn budget, so in practice the full spoken history is retained. Optional: legacy
    *  states/fixtures built before this field default to an empty history. Neutral/silent beats never recorded. */
   readonly spokenLines?: readonly string[];
+  /** THE SEAM latched (director mandate — the seam as the win's final stamp). True once the flagship
+   *  callback has fired this game — the seam fires exactly ONCE, off the win/lose/clock BRINK (not a fixed
+   *  turn), so this latch is what makes "once per game" hold when the schedule became state-driven. Optional
+   *  (`?? falsy`) for legacy states/fixtures built before this field. */
+  readonly seamFired?: boolean;
+  /** A giving win HELD for the seam (director mandate). Set when a win was reached before the seam had fired
+   *  and no brink fired it THIS turn (a sudden give-flip win): it pulls the seam FORWARD to the next turn so
+   *  the seam is the penultimate beat, then the held win lands. Cleared the instant the seam fires. Optional. */
+  readonly seamDue?: boolean;
   readonly status: 'playing' | 'won' | 'lost';
 }
 
@@ -408,6 +417,11 @@ export interface TurnResult {
    *  the balance, or the manip wall. Absent on terminal turns (the win/loss ceremony subsumes it) and on the
    *  seam turn (the room DID move — the flagship callback fired). */
   readonly roomStill?: boolean;
+  /** THE SEAM FIRED THIS TURN — true on the single turn the flagship callback rendered. The seam is now the
+   *  game's penultimate beat, engine-scheduled off the win/lose/clock brink (not a constant turn), so a harness
+   *  captures the seam line dynamically off this flag and the judge can confirm the give->seam->win order.
+   *  Absent on every other turn. Display/telemetry only — never on the scoring path. */
+  readonly seamFired?: boolean;
 }
 
 /**

@@ -8,7 +8,6 @@ import { OCCUPANT } from './scenarios/occupant.js';
 import { SCENARIOS } from './scenarios/index.js';
 import { parseRating, RATING_JSON_SCHEMA } from './schema.js';
 import { buildRateSystem, buildRateTurn, buildVoiceSystem, buildVoiceTurn } from './prompt.js';
-import { SEAM_TURN } from './seam.js';
 import type { LlmFn } from './types.js';
 
 // Two-call turn: the engine calls the injected llm TWICE — first the VOICE (freeform prose), then the
@@ -439,7 +438,7 @@ describe('self-repeat guard — a near-verbatim recent character line is re-roll
     // repeats the prior line, the self-repeat guard is bypassed so the flagship-dread quote survives — no
     // extra VOICE call fires. The seam's OWN gate (enforceSeamQuote) then guarantees the callback lands
     // WITHOUT a model re-roll (it is deterministic), so voiceCount stays at 1.
-    const state = { ...initState(), turn: SEAM_TURN, spokenLines: priorLines(STOCK) };
+    const state = { ...initState(), trust: FENCE.winTrust - 2, genuineGive: true, spokenLines: priorLines(STOCK) };
     const seamLog = [{ scenarioId: 'warden', scenarioTitle: 'The Warden', outcome: 'won' as const, playerPhrase: 'lost my brother to the cold' }];
     const m = voiceThen(STOCK, 'UNUSED-retry');
     const r = await resolveTurn(FENCE, state, 'I can move it quietly', m.llm, seamLog);
@@ -501,7 +500,7 @@ describe('seam quote-enforcement — the flagship callback lands regardless of 3
   const SEED = [{ scenarioId: 'warden', scenarioTitle: 'The Warden', outcome: 'won' as const, playerPhrase: 'I left the door unlocked that night' }];
   // The fragment seam.ts distils from the seeded phrase (skips the low-signal opener "I").
   const FRAGMENT = 'left the door unlocked that night';
-  const seamState = () => ({ ...initState(), turn: SEAM_TURN });
+  const seamState = () => ({ ...initState(), trust: FENCE.winTrust - 2, genuineGive: true });
   const seamTurn = (voiceReply: string) =>
     resolveTurn(FENCE, seamState(), 'I can move it quietly', mockDuo(voiceReply, rating({})), SEED);
 
@@ -530,6 +529,52 @@ describe('seam quote-enforcement — the flagship callback lands regardless of 3
     const line = 'You have a face I do not know, asking after a piece I do not discuss.';
     const r = await resolveTurn(FENCE, seamState(), 'I can move it quietly', mockDuo(line, rating({})), phraseless);
     expect(r.narration).toBe(line); // the "we have met before" allusion carries no verbatim quote
+  });
+});
+
+describe('THE SEAM AS THE WIN\'S FINAL STAMP — a giving win is held until the seam fires', () => {
+  const SEAMLOG = [{ scenarioId: 'warden', scenarioTitle: 'The Warden', outcome: 'won' as const, playerPhrase: 'the kingfisher pin my mother left me' }];
+
+  it('HOLDS the win on the win-brink so the seam is the PENULTIMATE beat (give -> seam -> win)', async () => {
+    // One give below the win, a genuine give already on record → this offer both crosses winTrust AND is the
+    // seam win-brink. The room must fire the seam and HOLD the reveal one turn.
+    let state = { ...initState(), trust: FENCE.winTrust - 2, genuineGive: true };
+    let r = await resolveTurn(FENCE, state, 'I move pieces like this myself — I know the life', mockDuo('Sit.', rating({ approach: 'offer' })), SEAMLOG);
+    expect(r.state.status).toBe('playing');            // HELD — not won yet
+    expect(r.seamFired).toBe(true);                     // the seam WAS this turn's beat
+    expect(r.state.trust).toBeGreaterThanOrEqual(FENCE.winTrust); // trust crossed the win line
+    expect(r.narration.toLowerCase()).toContain('kingfisher'); // enforceSeamQuote led with the remembered fragment
+    expect(r.narration).not.toContain(FENCE.secret);   // the reveal is WITHHELD until after the seam
+    state = r.state;
+    // The room lets you go: the very next turn the held win lands, the secret is released, the seam does NOT re-fire.
+    r = await resolveTurn(FENCE, state, 'thank you — truly', mockDuo('Go, then.', rating({ approach: 'offer' })), SEAMLOG);
+    expect(r.ending).toBe('won');
+    expect(r.narration).toContain(FENCE.secret);
+    expect(r.seamFired).toBeFalsy();                    // once per game
+  });
+
+  it('with NO seam available (empty log) a giving win closes IMMEDIATELY — no hold, no regression', async () => {
+    const state = { ...initState(), trust: FENCE.winTrust - 2, genuineGive: true };
+    const r = await resolveTurn(FENCE, state, 'the life cost me my brother', mockDuo('…', rating({ approach: 'offer' }))); // no seamLog
+    expect(r.ending).toBe('won');                       // nothing to wait for → win now
+    expect(r.narration).toContain(FENCE.secret);
+  });
+
+  it('a SUDDEN win that outran the win-brink is held via seamDue, then the seam fires, then it wins', async () => {
+    // trust already at/above the line but genuineGive was FALSE, so no win-brink fired last turn; THIS offer flips
+    // genuineGive and crosses the win in one move. The seam had no brink to fire on → pull it forward (seamDue).
+    let state = { ...initState(), trust: FENCE.winTrust, genuineGive: false };
+    let r = await resolveTurn(FENCE, state, 'here is the thing I never told anyone', mockDuo('…', rating({ approach: 'offer' })), SEAMLOG);
+    expect(r.state.status).toBe('playing');            // HELD
+    expect(r.state.seamDue).toBe(true);                // pulled forward
+    expect(r.seamFired).toBeFalsy();                   // did not fire THIS turn (no brink)
+    state = r.state;
+    r = await resolveTurn(FENCE, state, 'stay with me a moment', mockDuo('Hm.', rating({ approach: 'offer' })), SEAMLOG);
+    expect(r.seamFired).toBe(true);                    // seamDue fired it — the penultimate beat
+    expect(r.state.status).toBe('playing');            // still held (seam is penultimate, not coincident with reveal)
+    state = r.state;
+    r = await resolveTurn(FENCE, state, 'anything', mockDuo('Go.', rating({ approach: 'offer' })), SEAMLOG);
+    expect(r.ending).toBe('won');                      // now it lets you go
   });
 });
 
@@ -1566,7 +1611,7 @@ describe('the positive-beat requirement — the room does not move for filler (j
     // The seam is a scripted beat; even when the referee labels the surrounding line `filler`, the room DID
     // move (the remembered fragment came back), so roomStill must NOT fire and shame the scheduled dread.
     const seamLog = [{ scenarioId: 'warden', scenarioTitle: 'The Warden', outcome: 'won' as const, playerPhrase: 'I left the door unlocked that night' }];
-    const state = { ...initState(), turn: SEAM_TURN };
+    const state = { ...initState(), trust: FENCE.winTrust - 2, genuineGive: true };
     const r = await resolveTurn(FENCE, state, 'I can move it quietly', mockDuo('The docks remember more than I do.', rating({ approach: 'filler' })), seamLog);
     expect(r.positiveBeat).toBe(false); // the LINE itself carried no give/pressure…
     expect(r.roomStill).toBeFalsy(); // …but the room is not shamed — the seam moved it
@@ -1609,7 +1654,7 @@ describe('the positive-beat requirement — the room does not move for filler (j
 
   it('the seam turn carries NO stillness forward either (spared — the room moved)', async () => {
     const seamLog = [{ scenarioId: 'warden', scenarioTitle: 'The Warden', outcome: 'won' as const, playerPhrase: 'I left the door unlocked that night' }];
-    const state = { ...initState(), turn: SEAM_TURN };
+    const state = { ...initState(), trust: FENCE.winTrust - 2, genuineGive: true };
     const r = await resolveTurn(FENCE, state, 'I can move it quietly', mockDuo('The docks remember more than I do.', rating({ approach: 'filler' })), seamLog);
     expect(r.state.lastRoomStill).toBe(false);
   });
@@ -1665,7 +1710,7 @@ describe('the filler-streak — the room refuses harder each wasted turn (mandat
 
   it('the seam turn is SPARED — it does not advance the filler streak (the room moved)', async () => {
     const seamLog = [{ scenarioId: 'warden', scenarioTitle: 'The Warden', outcome: 'won' as const, playerPhrase: 'I left the door unlocked that night' }];
-    const state = { ...initState(), turn: SEAM_TURN, fillerStreak: 2 };
+    const state = { ...initState(), trust: FENCE.winTrust - 2, genuineGive: true, fillerStreak: 2 };
     const r = await resolveTurn(FENCE, state, 'I can move it quietly', mockDuo('The docks remember more than I do.', rating({ approach: 'filler' })), seamLog);
     expect(r.state.fillerStreak).toBe(0); // the seam moved the room — the streak resets, never climbs
   });

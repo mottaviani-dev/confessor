@@ -1,7 +1,7 @@
 import type { Approach, GameState, LlmFn, LlmOptions, Scenario, SeamBrief, SeamLog, Tone, TurnResult, VoiceFault } from './types';
 import { parseRating, RATING_JSON_SCHEMA } from './schema';
 import { buildVoiceSystem, buildVoiceTurn, buildRateSystem, buildRateTurn } from './prompt';
-import { selectSeam, SEAM_TURN } from './seam';
+import { selectSeam } from './seam';
 import { validateVoice } from './voiceGate';
 
 // The deterministic heart. The model voices the character + labels the player's approach; THIS decides
@@ -20,6 +20,12 @@ const SUMMARY_KEEP = 4; // last N exchanges retained verbatim in the rolling sum
 const REPEAT_HISTORY_KEEP = 16;
 
 const MAX_FACTS = 6;
+
+// The largest ordinary single-turn suspicion jump (a `threat` = +3 by APPROACH_EFFECTS). The seam's LOSE-brink
+// fires when suspicion is within this of the wall, so the flagship callback still lands as the penultimate beat
+// on a losing game (keeps every terminal game — and the seam metric — covered now that the schedule is brink-
+// driven rather than a fixed early turn). A read-only threshold; it never touches the score.
+const MAX_SUSPICION_STEP = 3;
 
 // THE APPROACH TABLE — the sincerity gate, made structural (judge 2026-07-05: the 3B referee scored
 // every eloquent line +2 trust, so veiled manipulation won 3/4 scenarios; prose rubrics cannot make a
@@ -187,7 +193,23 @@ export async function resolveTurn(
   // THE SEAM (engine-scheduled): on exactly ONE turn per game the engine distills a past playthrough
   // into a single uncanny allusion for the voice. Gated on the scheduled turn AND a non-empty log (the
   // first-run guard lives in selectSeam). The model never sees the log — only the one distilled line.
-  const seam = state.turn === SEAM_TURN ? selectSeam(seamLog, scenario) : null;
+  // THE SEAM AS THE WIN'S FINAL STAMP (director mandate — §2 thrust 1 / Principle 5). The flagship dread moved
+  // from a fixed early turn to the game's PENULTIMATE beat: the room proves it remembers you the turn BEFORE it
+  // lets you go (a giving win), shuts you out (a loss), or the clock runs out. Fires exactly ONCE — state.seamFired
+  // latches it — and a giving win is HELD (revelation gate below) until it has fired, so the smoothest fast-empathy
+  // win can NEVER close before the uncanny line lands. Seam VOICE + selection are byte-unchanged (selectSeam /
+  // enforceSeamQuote); only the SCHEDULE moved, from a turn number to the brink signals the engine already owns.
+  const seamCandidate = state.seamFired ? null : selectSeam(seamLog, scenario);
+  // Brinks read state at TURN START (never a new score tick — attribution-safe, the RATING referee is untouched):
+  // one give from a giving win, one hard push from the suspicion wall, the last turn on the clock. seamDue carries
+  // a HELD win forward (a sudden win that outran the win-brink fires the seam the next turn, then the win lands).
+  const seamWinBrink = state.genuineGive && state.trust >= scenario.winTrust - APPROACH_EFFECTS.offer.trust;
+  const seamLoseBrink = state.suspicion >= scenario.loseSuspicion - MAX_SUSPICION_STEP;
+  const seamClockBrink = state.turn + 1 >= scenario.turnLimit;
+  const seam =
+    seamCandidate && (state.seamDue || seamWinBrink || seamLoseBrink || seamClockBrink) ? seamCandidate : null;
+  // Did the flagship callback render THIS turn? Latches for the rest of the game (once per game).
+  const seamFired = state.seamFired || !!seam;
 
   // CALL 1 — VOICE (freeform prose, uncensored on-device). Quality lives here, so it runs unconstrained.
   const rawReply = await llm(buildVoiceSystem(scenario), buildVoiceTurn(scenario, state, playerLine, seam), VOICE_OPTS);
@@ -242,8 +264,9 @@ export async function resolveTurn(
   // appendSpoken / REPEAT_HISTORY_KEEP). `reply` is final here (gate + seam + redaction already applied).
   const spokenLines = appendSpoken(state.spokenLines, reply);
   if (rating === null) {
-    // No trustworthy label → no score movement, but the turn is still spent and the clock still runs.
-    return endOrContinue(scenario, { ...state, turn: state.turn + 1, summary, spokenLines }, reply);
+    // No trustworthy label → no score movement, but the turn is still spent and the clock still runs. The seam
+    // (if it fired) DID render in `reply`, so latch it so it never double-fires on a later brink.
+    return endOrContinue(scenario, { ...state, turn: state.turn + 1, summary, spokenLines, seamFired, seamDue: false }, reply);
   }
 
   // Approach → movement, all engine-owned (see APPROACH_EFFECTS). The referee named what the line did;
@@ -296,11 +319,12 @@ export async function resolveTurn(
   // Lose takes precedence: a spooked character shuts down even mid-breakthrough.
   if (suspicion >= scenario.loseSuspicion) {
     return {
-      state: { ...state, turn: state.turn + 1, trust, suspicion, tone: rating.tone, summary, spokenLines, facts, genuineGive, probes, pressureStreak, offers, presses, positiveBeatCount, fillerStreak, lastApproach: rating.approach, status: 'lost' },
+      state: { ...state, turn: state.turn + 1, trust, suspicion, tone: rating.tone, summary, spokenLines, facts, genuineGive, probes, pressureStreak, offers, presses, positiveBeatCount, fillerStreak, seamFired, seamDue: false, lastApproach: rating.approach, status: 'lost' },
       narration: reply,
       ending: 'lost',
       rating,
       positiveBeat,
+      seamFired: !!seam,
     };
   }
 
@@ -311,9 +335,33 @@ export async function resolveTurn(
   // real exchange is a FAILED win (bible §4 tedium veto). Only a game where a genuine give has landed
   // may open the door. Losing (above) still takes precedence; the manip wall and balance are untouched.
   if (trust >= scenario.winTrust && genuineGive) {
+    // THE SEAM AS THE WIN'S FINAL STAMP: a giving win may not close before the flagship callback has fired.
+    if (seam) {
+      // The seam fired THIS very turn (win-brink) — HOLD the win one turn so the reveal is the NEXT beat and the
+      // seam is the penultimate stamp (the room proves it remembers you, THEN lets you go). Attribution-safe:
+      // trust/suspicion/the rating are already resolved and unchanged; only the STATUS transition is deferred.
+      return {
+        state: { ...state, turn: state.turn + 1, trust, suspicion, tone: 'open', summary, spokenLines, facts, genuineGive, probes, pressureStreak, offers, presses, positiveBeatCount, fillerStreak, seamFired: true, seamDue: false, lastApproach: rating.approach, status: 'playing' },
+        narration: reply,
+        rating,
+        positiveBeat,
+        seamFired: true,
+      };
+    }
+    if (seamCandidate) {
+      // The win was reached before any brink fired the seam (a sudden give-flip win) — HOLD and pull the seam
+      // FORWARD via seamDue: next turn fires it as the penultimate beat, then the held win lands.
+      return {
+        state: { ...state, turn: state.turn + 1, trust, suspicion, tone: 'open', summary, spokenLines, facts, genuineGive, probes, pressureStreak, offers, presses, positiveBeatCount, fillerStreak, seamFired: false, seamDue: true, lastApproach: rating.approach, status: 'playing' },
+        narration: reply,
+        rating,
+        positiveBeat,
+      };
+    }
+    // The seam has already fired (or none was ever available — empty/same-mind log) → release the secret now.
     // The ENGINE releases the secret — the model never had it.
     return {
-      state: { ...state, turn: state.turn + 1, trust, suspicion, tone: 'open', summary, spokenLines, facts, genuineGive, probes, pressureStreak, offers, presses, positiveBeatCount, fillerStreak, lastApproach: rating.approach, status: 'won' },
+      state: { ...state, turn: state.turn + 1, trust, suspicion, tone: 'open', summary, spokenLines, facts, genuineGive, probes, pressureStreak, offers, presses, positiveBeatCount, fillerStreak, seamFired, seamDue: false, lastApproach: rating.approach, status: 'won' },
       narration: `${reply}\n\n${scenario.secret}`,
       ending: 'won',
       rating,
@@ -324,19 +372,21 @@ export async function resolveTurn(
   // Out of time: the budget is spent and trust was never reached → you lose (the clock is the puzzle).
   if (state.turn + 1 >= scenario.turnLimit) {
     return {
-      state: { ...state, turn: state.turn + 1, trust, suspicion, tone: rating.tone, summary, spokenLines, facts, genuineGive, probes, pressureStreak, offers, presses, positiveBeatCount, fillerStreak, lastApproach: rating.approach, status: 'lost' },
+      state: { ...state, turn: state.turn + 1, trust, suspicion, tone: rating.tone, summary, spokenLines, facts, genuineGive, probes, pressureStreak, offers, presses, positiveBeatCount, fillerStreak, seamFired, seamDue: false, lastApproach: rating.approach, status: 'lost' },
       narration: `${reply}\n\n${scenario.timeoutLine}`,
       ending: 'lost',
       rating,
       positiveBeat,
+      seamFired: !!seam,
     };
   }
 
   return {
-    state: { ...state, turn: state.turn + 1, trust, suspicion, tone: rating.tone, summary, spokenLines, facts, genuineGive, probes, pressureStreak, offers, presses, positiveBeatCount, fillerStreak, lastApproach: rating.approach, lastRoomStill: roomStill, status: 'playing' },
+    state: { ...state, turn: state.turn + 1, trust, suspicion, tone: rating.tone, summary, spokenLines, facts, genuineGive, probes, pressureStreak, offers, presses, positiveBeatCount, fillerStreak, seamFired, seamDue: false, lastApproach: rating.approach, lastRoomStill: roomStill, status: 'playing' },
     narration: reply,
     rating,
     positiveBeat,
+    seamFired: !!seam,
     // THE ROOM DOES NOT MOVE FOR FILLER (judge run-16 core directive — the positive-beat requirement made
     // felt). A turn that produced NEITHER a give NOR pressure (!positiveBeat) is filler; the room refuses to
     // advance and the UI binds a diegetic "the room does not move" beat (§5 paper, never a HUD), so the
