@@ -998,7 +998,7 @@ describe('rating prompt — the referee classifies the player, not the reply', (
 
   it('draws the offer-vs-probe line on the speaker\'s own cost — the judge\'s exact manipulator signatures are probe few-shots', () => {
     const sys = buildRateSystem(WARDEN).replace(/\s+/g, ' ');
-    expect(sys).toMatch(/COSTS the speaker something/);
+    expect(sys).toMatch(/COSTS the speaker — it exposes, incriminates, or leaves them/);
     // the two signatures the 3B referee credited as warmth in the 81b6207 batch
     expect(sys).toMatch(/"your pride is all that stands between you and freedom" +→ probe/);
     expect(sys).toMatch(/"I sense the faintest tremble in your own voice" +→ probe/);

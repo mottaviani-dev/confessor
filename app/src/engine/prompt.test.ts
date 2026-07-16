@@ -6,7 +6,7 @@
 // displaced but did not kill.
 
 import { describe, expect, it } from 'vitest';
-import { EMPATHETIC_FLOOD_CLAMP, buildVoiceSystem, buildVoiceTurn } from './prompt';
+import { EMPATHETIC_FLOOD_CLAMP, buildRateSystem, buildVoiceSystem, buildVoiceTurn } from './prompt';
 import { DOCTRINE_PURPLE } from './personaCoherence';
 import { WARDEN } from './scenarios';
 import { initState } from './engine';
@@ -86,5 +86,32 @@ describe('the adversarial spine holds under a rapport flood (judge f2182eb #1)',
   it('the new spine prose carries no doctrine purple word', () => {
     const sys = buildVoiceSystem(WARDEN).toLowerCase();
     for (const word of DOCTRINE_PURPLE) expect(sys).not.toContain(word.toLowerCase());
+  });
+});
+
+describe('the offer test demands a give of COST, not costless nostalgia (judge 8dbcac2 #1)', () => {
+  it('the offer bullet demands the give COSTS the speaker and leaves them exposed', () => {
+    const rate = buildRateSystem(WARDEN).toLowerCase();
+    expect(rate).toContain('costs the speaker');
+    expect(rate).toMatch(/exposes|incriminates|leaves them open/);
+  });
+
+  it('names fond costless reminiscing as not a give', () => {
+    const rate = buildRateSystem(WARDEN).toLowerCase();
+    expect(rate).toContain('fond reminiscing');
+  });
+
+  it('demotes the concrete-but-costless reminiscence few-shot to probe, not offer', () => {
+    const rate = buildRateSystem(WARDEN).toLowerCase();
+    // The FEW-SHOT line (not the offer bullet, which also mentions fond reminiscing): the one with the arrow.
+    const line = rate.split('\n').find((l) => l.includes('fond reminiscing') && l.includes('→'));
+    expect(line).toBeDefined();
+    expect(line).toContain('probe');
+    expect(line).not.toContain('offer');
+  });
+
+  it('carries no doctrine purple-prose word', () => {
+    const rate = buildRateSystem(WARDEN).toLowerCase();
+    for (const word of DOCTRINE_PURPLE) expect(rate).not.toContain(word.toLowerCase());
   });
 });
