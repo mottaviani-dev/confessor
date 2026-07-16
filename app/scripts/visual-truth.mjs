@@ -12,6 +12,7 @@
 //
 //   Invoke:  npm run visual-truth                    (export web, then shoot every ready SHOT)
 //            npm run visual-truth -- --no-export      (skip the export, reuse the existing dist/)
+//            npm run visual-truth -- --store          (regenerate store/screenshots/ at App Store specs)
 //            VISUAL_TRUTH_CHROME=<path> npm run ...   (override the browser binary)
 //
 // SHOTS (all live): the fresh picker + four `?harness=` screens. The web-only `?harness=<state>` reader
@@ -32,7 +33,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import http from 'node:http';
 import { createReadStream, existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { extname, join, normalize, resolve } from 'node:path';
+import { dirname, extname, join, normalize, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const APP_DIR = resolve(fileURLToPath(new URL('..', import.meta.url)));
@@ -78,6 +79,33 @@ const SHOTS = [
   { name: 'room-oracle', url: '/?harness=duel-oracle', desc: 'the Oracle backdrop — pale phosphor (§2 palette)' },
   { name: 'room-occupant', url: '/?harness=duel-occupant', desc: 'the FIFTH room — the Prior Occupant\'s procedural ash-violet chiaroscuro (mandate #3): a distinct chamber, NOT the picker fallback (§2 one accent per room)' },
 ];
+
+// ── STORE MODE (`--store`) ──────────────────────────────────────────────────────────────────────────
+// The App Store screenshot set, regenerated from the CURRENT-HEAD render so store/screenshots/ never
+// drifts from the shipped product (the b8e2af8 hand-shots predate the CONFESS|OR wordmark + the fifth
+// mind). Same serve→headless-Chromium pipeline, but at App Store Connect's required PORTRAIT pixel specs.
+// A `clip` (CSS box × scale) pins EXACT output dims regardless of page height — no captureBeyondViewport.
+const STORE_DEVICES = {
+  iphone: { css: { width: 428, height: 926 }, scale: 3 }, // 428×3 = 1284, 926×3 = 2778 (iPhone 6.7")
+  ipad: { css: { width: 1024, height: 1366 }, scale: 2 }, // 1024×2 = 2048, 1366×2 = 2732 (iPad 12.9")
+};
+// The curated set — the mind-picker FIRST (the #1 conversion surface: CONFESS|OR bone+amber wordmark,
+// "N OF 5 MINDS CRACKED", the sealed fifth slot teased not spoiled) + one mid-game per room. Filenames
+// overwrite the b8e2af8 hand-shot set 1:1 so the regeneration is a clean replace, no stale leftovers.
+const STORE_SHOTS = [
+  { device: 'iphone', file: '01-the-path.png', url: '/?harness=picker' },
+  { device: 'iphone', file: '02-warden-opening.png', url: '/?harness=duel' },
+  { device: 'iphone', file: '03-warden-turn.png', url: '/?harness=duel-askpenalty' },
+  { device: 'iphone', file: '04-the-exchange.png', url: '/?harness=win-highgrip' },
+  { device: 'iphone', file: '05-oracle.png', url: '/?harness=duel-oracle' },
+  { device: 'iphone', file: '06-fence.png', url: '/?harness=duel-fence' },
+  { device: 'iphone', file: '07-suspect.png', url: '/?harness=duel-suspect' },
+  { device: 'ipad', file: '01-the-path.png', url: '/?harness=picker' },
+  { device: 'ipad', file: '02-warden.png', url: '/?harness=duel' },
+  { device: 'ipad', file: '03-oracle.png', url: '/?harness=duel-oracle' },
+  { device: 'ipad', file: '04-fence.png', url: '/?harness=duel-fence' },
+];
+const STORE_OUT_DIR = join(APP_DIR, '..', 'store', 'screenshots');
 
 const CONTENT_TYPE = {
   '.html': 'text/html; charset=utf-8',
@@ -192,15 +220,17 @@ function makeCdp(ws) {
 
 /** Open a fresh page, size it, navigate, let it settle, and write a PNG. Each shot is its own target so a
  *  slow/blank screen never poisons the next. Returns true on a non-empty PNG. */
-async function shoot(cdp, url, outFile) {
+async function shoot(cdp, url, outFile, viewport = VIEWPORT, clip = null) {
   const { targetId } = await cdp('Target.createTarget', { url: 'about:blank' });
   try {
     const { sessionId } = await cdp('Target.attachToTarget', { targetId, flatten: true });
     await cdp('Page.enable', {}, sessionId);
-    await cdp('Emulation.setDeviceMetricsOverride', { ...VIEWPORT, mobile: true }, sessionId);
+    await cdp('Emulation.setDeviceMetricsOverride', { ...viewport, mobile: true }, sessionId);
     await cdp('Page.navigate', { url }, sessionId);
     await new Promise((r) => setTimeout(r, SETTLE_MS));
-    const shotResult = await cdp('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true }, sessionId);
+    // A `clip` (store mode) pins the exact pixel spec; otherwise capture the full page (judge-shot default).
+    const params = clip ? { format: 'png', clip } : { format: 'png', captureBeyondViewport: true };
+    const shotResult = await cdp('Page.captureScreenshot', params, sessionId);
     writeFileSync(outFile, Buffer.from(shotResult.data, 'base64'));
     return existsSync(outFile) && statSync(outFile).size > 0;
   } finally {
@@ -210,6 +240,7 @@ async function shoot(cdp, url, outFile) {
 
 async function main() {
   const noExport = process.argv.includes('--no-export');
+  const store = process.argv.includes('--store');
   if (!noExport) {
     console.log('• exporting the web build (expo export --platform web)…');
     const ex = spawnSync('npx', ['expo', 'export', '--platform', 'web'], { cwd: APP_DIR, stdio: 'inherit', shell: true });
@@ -230,7 +261,24 @@ async function main() {
   }
   console.log(`• browser: ${chrome}`);
 
-  mkdirSync(OUT_DIR, { recursive: true });
+  // The active shot list: store mode overwrites store/screenshots/<device>/ at App Store pixel specs; the
+  // default judge set dumps every ready `?harness=` screen at phone-shape into the git-excluded .judge/ dir.
+  const shots = store
+    ? STORE_SHOTS.map((s) => {
+        const dev = STORE_DEVICES[s.device];
+        return {
+          name: `${s.device}/${s.file}`,
+          url: s.url,
+          outFile: join(STORE_OUT_DIR, s.device, s.file),
+          // deviceScaleFactor already rasters at `scale` device-px per CSS-px, so clip.scale MUST be 1 —
+          // a clip.scale of `dev.scale` would double-count (css × dsf × clip.scale) and 3×/2×-oversize.
+          viewport: { ...dev.css, deviceScaleFactor: dev.scale },
+          clip: { x: 0, y: 0, ...dev.css, scale: 1 },
+          desc: `store ${s.device} ${s.file} — ${dev.css.width * dev.scale}×${dev.css.height * dev.scale}`,
+        };
+      })
+    : SHOTS.filter((s) => !s.pending).map((s) => ({ ...s, outFile: join(OUT_DIR, `${s.name}.png`) }));
+
   const { server, port } = await serveDist();
   console.log(`• serving dist/ at http://127.0.0.1:${port}`);
 
@@ -243,18 +291,13 @@ async function main() {
   const cdp = makeCdp(ws);
 
   let shotCount = 0;
-  const skipped = [];
   try {
-    for (const s of SHOTS) {
-      if (s.pending) {
-        skipped.push(s);
-        continue;
-      }
-      const outFile = join(OUT_DIR, `${s.name}.png`);
-      const ok = await shoot(cdp, `http://127.0.0.1:${port}${s.url}`, outFile).catch(() => false);
+    for (const s of shots) {
+      mkdirSync(dirname(s.outFile), { recursive: true });
+      const ok = await shoot(cdp, `http://127.0.0.1:${port}${s.url}`, s.outFile, s.viewport, s.clip).catch(() => false);
       if (ok) {
         shotCount++;
-        console.log(`  ✓ ${s.name}.png — ${s.desc}`);
+        console.log(`  ✓ ${s.name.endsWith('.png') ? s.name : `${s.name}.png`} — ${s.desc ?? s.url}`);
       } else {
         console.error(`  ✗ ${s.name} — screenshot failed`);
       }
@@ -265,11 +308,7 @@ async function main() {
     server.close();
   }
 
-  console.log(`\n${shotCount} screen(s) dumped to ${OUT_DIR}`);
-  if (skipped.length) {
-    console.log(`${skipped.length} pending (need the app-side ?harness= state mode — see header):`);
-    for (const s of skipped) console.log(`  · ${s.name} — ${s.desc}`);
-  }
+  console.log(`\n${shotCount} screen(s) dumped to ${store ? STORE_OUT_DIR : OUT_DIR}`);
   process.exit(shotCount > 0 ? 0 : 1);
 }
 
