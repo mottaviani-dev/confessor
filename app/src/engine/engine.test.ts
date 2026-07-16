@@ -553,6 +553,19 @@ describe('THE SEAM AS THE WIN\'S FINAL STAMP — a giving win is held until the 
     expect(r.seamFired).toBeFalsy();                    // once per game
   });
 
+  it('reports seamFired even when the turn is UNGRADEABLE — the §7 seam meter is not blinded by a null rating', async () => {
+    // The seam fires off the win-brink (genuineGive + trust at the line), read at turn START, so it renders
+    // regardless of THIS turn's rating. When the rating comes back untrusted the turn routes through the
+    // no-score path — but the flagship callback STILL landed in the reply, so the OUTPUT flag must report it.
+    // Otherwise the metrics/playtest seam-quote instrument scores a phantom MISS (judge fffdab5 #1).
+    const state = { ...initState(), trust: FENCE.winTrust - 2, genuineGive: true };
+    const r = await resolveTurn(FENCE, state, 'I move pieces like this myself — I know the life',
+      mockRateRaw('Sit.', 'the fence just looks at you'), SEAMLOG); // unparseable rating → rating===null
+    expect(r.narration.toLowerCase()).toContain('kingfisher'); // the seam quote DID render this turn
+    expect(r.rating).toBeUndefined();                          // …on a turn with no trustworthy label
+    expect(r.seamFired).toBe(true);                            // and the meter must SEE it (was undefined — the bug)
+  });
+
   it('with NO seam available (empty log) a giving win closes IMMEDIATELY — no hold, no regression', async () => {
     const state = { ...initState(), trust: FENCE.winTrust - 2, genuineGive: true };
     const r = await resolveTurn(FENCE, state, 'the life cost me my brother', mockDuo('…', rating({ approach: 'offer' }))); // no seamLog

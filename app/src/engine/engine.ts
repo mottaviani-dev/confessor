@@ -265,8 +265,14 @@ export async function resolveTurn(
   const spokenLines = appendSpoken(state.spokenLines, reply);
   if (rating === null) {
     // No trustworthy label → no score movement, but the turn is still spent and the clock still runs. The seam
-    // (if it fired) DID render in `reply`, so latch it so it never double-fires on a later brink.
-    return endOrContinue(scenario, { ...state, turn: state.turn + 1, summary, spokenLines, seamFired, seamDue: false }, reply);
+    // (if it fired) DID render in `reply`, so latch it in state so it never double-fires on a later brink — AND
+    // report it on the TurnResult (seamFired: !!seam) exactly like every scored path below. Without this, an
+    // ungradeable turn routes through endOrContinue, which returns no output flag, so the §7 seam-quote
+    // instrument scores a phantom MISS on a seam that verbatim fired (judge fffdab5 #1).
+    return {
+      ...endOrContinue(scenario, { ...state, turn: state.turn + 1, summary, spokenLines, seamFired, seamDue: false }, reply),
+      seamFired: !!seam,
+    };
   }
 
   // Approach → movement, all engine-owned (see APPROACH_EFFECTS). The referee named what the line did;
