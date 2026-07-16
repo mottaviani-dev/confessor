@@ -3,6 +3,7 @@ import { parseRating, RATING_JSON_SCHEMA } from './schema';
 import { buildVoiceSystem, buildVoiceTurn, buildRateSystem, buildRateTurn } from './prompt';
 import { selectSeam } from './seam';
 import { validateVoice } from './voiceGate';
+import { personaCoherence } from './personaCoherence';
 
 // The deterministic heart. The model voices the character + labels the player's approach; THIS decides
 // everything that matters: maps approach → score movement, rules win/lose, holds + releases the secret,
@@ -240,6 +241,18 @@ export async function resolveTurn(
     // but that left NOTHING catching the ship-target 3B when it ignores the QUOTE order and answers with
     // generic filler ("That diner's been around longer than I have" where the kingfisher pin should be).
     // enforceSeamQuote guarantees the callback lands without touching the craft when the model DOES surface it.
+    //
+    // COHERENCE ON THE SEAM TURN (judge 35994f6 #1). Skipping the WHOLE gate also left the persona VOCABULARY
+    // leak un-caught on the flagship beat: the oracle's own seam-fire line shipped "…the fire crackles in the
+    // DARKNESS, but I SENSE a presence…" (EMPATHETIC_FLOOD + MIRROR_TIC lexicon), diluting the callback exactly
+    // where it should feel sharpest — coherence pinned at 2/10 a third straight batch, the leak riding the one
+    // line that most needs to land. An off-persona / grief-flood / doctrine-purple WORD is a HARD fault the
+    // player SEES and must never ship, seam turn or not. Unlike the STRUCTURAL re-rolls the seam is HANDS-OFF
+    // from (a POV/scenery/camera/denial neutral-beat could mangle the scheduled callback), a vocabulary re-roll
+    // is safe: gateSeamCoherence scans ONLY personaCoherence, and enforceSeamQuote runs AFTER it — re-leading
+    // with the remembered fragment so the dread still lands regardless of which line the re-roll returned. The
+    // craft the director marked don't-touch is untouched; only the leaked word is caught.
+    reply = await gateSeamCoherence(scenario, state, playerLine, reply, llm);
     reply = enforceSeamQuote(reply, seam);
   }
 
@@ -555,6 +568,44 @@ async function gateVoice(
     const retryFault = validateVoice(retry, prior, scenario);
     if (!retryFault || !isHardFault(retryFault)) return retry; // clean, or only a soft residual → ship it
     fault = retryFault; // still a hard fault → correct against the NEW one and try once more
+  }
+  return NEUTRAL_BEAT;
+}
+
+/** The seam turn's COHERENCE-ONLY gate (judge 35994f6 #1). gateVoice is HANDS-OFF on the seam turn because
+ *  its structural re-rolls / neutral-beat fallback could drop or mangle the engine-scheduled callback the
+ *  director marked don't-touch. But an off-persona / grief-flood / mirror-tic / doctrine-purple WORD is a
+ *  HARD fault the player SEES, and it leaked onto the flagship seam line for a third straight batch (the
+ *  oracle's own seam-fire turn shipped "darkness" + "i sense"). This closes that gap WITHOUT touching the
+ *  craft: scan ONLY personaCoherence (the vocabulary lexicon — never the structural POV/scenery/camera/denial
+ *  detectors, which could false-positive on the seam's foreign fragment and force a needless re-roll), re-roll
+ *  the SAME hard-fault budget as gateVoice (re-validated, up to two, then the doctrine-blessed neutral beat so
+ *  the flagged word can never ship). The caller re-applies enforceSeamQuote AFTER, so the remembered fragment
+ *  still leads regardless of the re-roll — the flagship dread is engine-guaranteed, never model-dependent.
+ *  Pure of scoring, like gateVoice: this only chooses which line the character SAYS. */
+async function gateSeamCoherence(
+  scenario: Scenario,
+  state: GameState,
+  playerLine: string,
+  reply: string,
+  llm: LlmFn,
+): Promise<string> {
+  const leak = (line: string): VoiceFault | null => {
+    const c = personaCoherence(scenario, line);
+    return c.coherent ? null : { kind: 'persona', terms: [...c.offPersona, ...c.purple] };
+  };
+  let fault = leak(reply);
+  if (!fault) return reply;
+  // HARD-fault budget (mirrors gateVoice's persona path): re-validate every retry so the flagged word can
+  // never ship; up to TWO re-rolls, correcting against the freshest leaked terms; a dead retry or a still-
+  // leaking retry after the budget falls to the neutral beat. seam=null in the re-roll turn — enforceSeamQuote
+  // re-leads with the fragment after, so a dropped quote is RESTORED, never lost.
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const retry = cleanReply(await llm(buildVoiceSystem(scenario), buildVoiceTurn(scenario, state, playerLine, null, fault), VOICE_OPTS));
+    if (!retry) break; // dead retry → never keep the flagged first line → neutral beat
+    const retryFault = leak(retry);
+    if (!retryFault) return retry; // clean → ship (enforceSeamQuote re-leads with the fragment after)
+    fault = retryFault; // still leaking → correct against the new terms and try once more
   }
   return NEUTRAL_BEAT;
 }

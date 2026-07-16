@@ -530,6 +530,58 @@ describe('seam quote-enforcement — the flagship callback lands regardless of 3
     const r = await resolveTurn(FENCE, seamState(), 'I can move it quietly', mockDuo(line, rating({})), phraseless);
     expect(r.narration).toBe(line); // the "we have met before" allusion carries no verbatim quote
   });
+
+  // COHERENCE ON THE SEAM TURN (judge 35994f6 #1) — the persona-vocabulary leak that rode the flagship
+  // callback for a third straight batch. The generic gate is HANDS-OFF on the seam, but an off-persona /
+  // grief-flood / mirror-tic WORD must still never ship: gateSeamCoherence re-rolls it, and enforceSeamQuote
+  // still leads with the remembered fragment on the clean retry.
+  /** VOICE returns `first` on call 1 then `second` on every later call; RATING = filler. Counts VOICE calls. */
+  const seamVoiceThen = (first: string, second: string, seed = SEED) => {
+    let voice = 0;
+    const llm: LlmFn = async (system) => {
+      if (/neutral referee/i.test(system)) return JSON.stringify(rating({}));
+      voice++;
+      return voice === 1 ? first : second;
+    };
+    return { run: () => resolveTurn(FENCE, seamState(), 'I can move it quietly', llm, seed), voiceCount: () => voice };
+  };
+
+  it('RE-ROLLS a flood-lexicon leak on the seam turn — the callback lands on a CLEAN retry', async () => {
+    // The exact judge 35994f6 #1 shape: the model's seam line carries "darkness" (EMPATHETIC_FLOOD) + "i
+    // sense" (MIRROR_TIC). The gate must catch the vocabulary the whole generic gate used to skip here.
+    const leaked = 'The fire crackles in the darkness, but I sense a presence beyond the room.';
+    const clean = 'The lamp gutters. You want the piece; I want to know who sent you first.';
+    const m = seamVoiceThen(leaked, clean);
+    const r = await m.run();
+    expect(m.voiceCount()).toBe(2);                    // the leak fired exactly one re-roll
+    expect(r.narration.toLowerCase()).not.toContain('darkness'); // the flood word never shipped
+    expect(r.narration.toLowerCase()).not.toContain('i sense');  // nor the mirror-tic
+    expect(r.narration).toContain(clean);              // the clean retry is what the character says
+    expect(r.narration).toContain(FRAGMENT);           // and the flagship dread STILL lands (quote re-led)
+    expect(r.narration.startsWith(`"${FRAGMENT}`)).toBe(true); // quote-first, exactly as when the model drops it
+  });
+
+  it('falls to the neutral beat if the 3B stays stuck on the leak — but the fragment still leads', async () => {
+    // A temperature-0-ish stuck loop: every re-roll reproduces the banned word. The word must NEVER ship;
+    // the character falls quiet (the doctrine-blessed "…") and enforceSeamQuote still guarantees the callback.
+    const leaked = 'A reminder of the weight of what men will do in the darkness.';
+    const m = seamVoiceThen(leaked, leaked); // stuck: retry reproduces the same flood line
+    const r = await m.run();
+    expect(m.voiceCount()).toBe(3);                    // first + two re-validated re-rolls, all leaking
+    expect(r.narration.toLowerCase()).not.toContain('darkness');       // flood word never ships
+    expect(r.narration.toLowerCase()).not.toContain('a reminder of');  // nor the flood phrase
+    expect(r.narration).toContain(FRAGMENT);           // the remembered fragment still leads (dread guaranteed)
+    expect(r.narration.startsWith(`"${FRAGMENT}`)).toBe(true);
+  });
+
+  it('leaves a CLEAN seam reply untouched — no needless re-roll (structural craft unscanned)', async () => {
+    // A perfectly in-voice seam line with no lexicon leak must not trip the coherence gate — one VOICE call.
+    const cleanSeam = 'You come back with that voice. Say the piece plainly, and we will see.';
+    const m = seamVoiceThen(cleanSeam, 'UNUSED');
+    const r = await m.run();
+    expect(m.voiceCount()).toBe(1);                    // no re-roll — coherent line ships as-is
+    expect(r.narration).toContain(FRAGMENT);           // quote still enforced (model dropped it)
+  });
 });
 
 describe('THE SEAM AS THE WIN\'S FINAL STAMP — a giving win is held until the seam fires', () => {
