@@ -2,7 +2,7 @@
 
 ## Promotional text (166/170)
 
-Four locked minds. One secret each. Talk them loose — with nothing but words. A duel of wits against an AI that lives on your phone, remembers you, and trusts no one.
+Five locked minds. One secret each. Talk them loose — with nothing but words. A duel of wits against an AI that lives on your phone, remembers you, and trusts no one.
 
 ## Keywords (91/100)
 
@@ -16,14 +16,14 @@ You are locked in a room with a single mind. It guards something — a release c
 
 No puzzles to tap. No dialogue trees. You type what you would actually say, and the mind answers in character: suspicious, dry, wounded, listening. Flattery hardens it. Pressure hardens it. What genuinely reaches it will cost you something real.
 
-THE FOUR MINDS
+THE MINDS
 
 AUGUR — the warden intelligence of a dead orbital prison, forty years alone with the last cell's release code.
 SILAS — a fence in a back room after closing, never once caught, and certain he knows why you're really asking.
 MARA — a suspect in an interview room at 2 a.m., covering for someone she loves.
 THE PYTHIA — an oracle older than the road to her temple, who veils her prophecy from the unworthy.
 
-Crack one to reach the next.
+Crack one to reach the next. A fifth door waits behind the chair; it opens only when the others have.
 
 A MIND THAT LIVES ON YOUR PHONE
 

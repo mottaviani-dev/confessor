@@ -37,7 +37,7 @@ You are locked in a room with one mind. It guards a single secret. You have four
 
 The mind is a real AI, and it runs entirely on your iPhone. No servers. No account. Nothing you say ever leaves your hands. Turn on airplane mode and it works exactly the same — because the whole game lives in the phone. That is not a feature bolted on. It is the point.
 
-FOUR OCCUPANTS OF ONE CHAIR
+OCCUPANTS OF ONE CHAIR
 A warden who will not be commanded. A fence who deals only in leverage. A suspect who holds the leverage over you. An oracle who withholds a prophecy until you prove worthy. Each is a coherent, guarded consciousness with its own way of being closed — and its own way of being opened. Read it. Press too hard and it draws back. Earn a real moment and it gives ground. There is no phrase that wins; there is only the conversation you actually have.
 
 IT REMEMBERS
